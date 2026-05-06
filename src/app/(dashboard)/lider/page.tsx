@@ -139,7 +139,7 @@ export default async function LiderPage() {
                       <p className="font-medium text-sm">{collab?.full_name ?? 'Sin nombre'}</p>
                       <p className="text-xs text-slate-500">{collab?.email}</p>
                     </div>
-                    <div className="text-right">
+                    <div className="flex flex-col items-end gap-1">
                       {nextMeeting ? (
                         <>
                           <p className="text-xs text-slate-500">Próxima 1:1</p>
@@ -148,6 +148,9 @@ export default async function LiderPage() {
                       ) : (
                         <Badge variant="outline" className="text-xs">Sin agendar</Badge>
                       )}
+                      <Button asChild size="sm" variant="outline" className="text-xs mt-1">
+                        <Link href="/colaborador/1to1/nueva">Agendar</Link>
+                      </Button>
                     </div>
                   </div>
                 )

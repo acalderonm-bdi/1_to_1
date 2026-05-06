@@ -78,7 +78,12 @@ export default async function ColaboradorPage() {
                       <p className="text-sm font-medium">{formatDateTime(meeting.scheduled_at)}</p>
                       <p className="text-xs text-slate-500 capitalize">{meeting.modality}</p>
                     </div>
-                    <Badge variant="outline">{STATUS_LABELS[meeting.status]}</Badge>
+                    <div className="flex flex-col items-end gap-1">
+                      <Badge variant="outline">{STATUS_LABELS[meeting.status]}</Badge>
+                      <Button asChild size="sm" variant="outline" className="text-xs mt-1">
+                        <Link href={`/colaborador/1to1/${meeting.id}`}>Ver detalle</Link>
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
