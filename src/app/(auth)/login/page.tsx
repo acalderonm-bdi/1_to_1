@@ -3,15 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default function LoginPage() {
   const router = useRouter()
 
+  const [tab, setTab] = useState<'email' | 'google'>('email')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -55,24 +51,45 @@ export default function LoginPage() {
   }
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Sistema de 1:1s</CardTitle>
-        <CardDescription>Inicia sesión para continuar</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="email">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="email">Correo y contraseña</TabsTrigger>
-            <TabsTrigger value="google">Google</TabsTrigger>
-          </TabsList>
+    <div className="auth-screen">
+      <div className="auth-screen__brand-side">
+        <div className="auth-screen__brand-mark-row">
+          <div className="sidebar__brand-mark" style={{ width: 36, height: 36, fontSize: 17 }}>1</div>
+          <div>
+            <div className="sidebar__brand-name" style={{ color: 'white' }}>1to1</div>
+            <div className="sidebar__brand-tag">B-Drive</div>
+          </div>
+        </div>
+        <div className="auth-screen__quote">
+          <div className="auth-screen__quote-mark">&ldquo;</div>
+          <p>
+            Las mejores 1:1 son las que se preparan con tiempo, se conducen con escucha y
+            cierran con compromisos claros. Esta plataforma existe para que esa práctica sea consistente.
+          </p>
+          <cite>— Equipo de Arquitectura Humana</cite>
+        </div>
+        <div className="u-muted" style={{ position: 'relative', zIndex: 1, fontSize: 12, color: 'var(--text-on-dark-muted)' }}>
+          B-Drive · Sistema interno · {new Date().getFullYear()}
+        </div>
+      </div>
 
-          <TabsContent value="email">
-            <form onSubmit={handleEmailLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Correo electrónico</Label>
-                <Input
+      <div className="auth-screen__form-side">
+        <div className="auth-card">
+          <h1 className="auth-card__title">Bienvenida</h1>
+          <p className="auth-card__subtitle">Ingresa con tu cuenta corporativa para continuar.</p>
+
+          <div className="tabs">
+            <button type="button" data-active={tab === 'email'} onClick={() => setTab('email')}>Correo</button>
+            <button type="button" data-active={tab === 'google'} onClick={() => setTab('google')}>Google</button>
+          </div>
+
+          {tab === 'email' ? (
+            <form onSubmit={handleEmailLogin} style={{ display: 'grid', gap: 14 }}>
+              <div>
+                <label className="ui-label" htmlFor="email">Correo electrónico</label>
+                <input
                   id="email"
+                  className="ui-input"
                   type="email"
                   placeholder="tu@empresa.com"
                   value={email}
@@ -81,10 +98,11 @@ export default function LoginPage() {
                   autoComplete="email"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Contraseña</Label>
-                <Input
+              <div>
+                <label className="ui-label" htmlFor="password">Contraseña</label>
+                <input
                   id="password"
+                  className="ui-input"
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
@@ -92,35 +110,26 @@ export default function LoginPage() {
                   autoComplete="current-password"
                 />
               </div>
-              {error && (
-                <p className="text-sm text-destructive">{error}</p>
-              )}
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
-              </Button>
+              {error && <p style={{ fontSize: 13, color: 'var(--red-700)', margin: 0 }}>{error}</p>}
+              <button type="submit" className="ui-btn ui-btn--primary ui-btn--block" disabled={loading}>
+                {loading ? <span className="spinner" /> : null}
+                {loading ? 'Iniciando sesión…' : 'Iniciar sesión'}
+              </button>
             </form>
-          </TabsContent>
-
-          <TabsContent value="google">
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground text-center">
+          ) : (
+            <div style={{ display: 'grid', gap: 14 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
                 Inicia sesión con tu cuenta de Google Workspace de la organización.
               </p>
-              {error && (
-                <p className="text-sm text-destructive text-center">{error}</p>
-              )}
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleGoogleLogin}
-                disabled={loading}
-              >
-                {loading ? 'Conectando...' : 'Continuar con Google'}
-              </Button>
+              {error && <p style={{ fontSize: 13, color: 'var(--red-700)', margin: 0 }}>{error}</p>}
+              <button type="button" className="ui-btn ui-btn--outline ui-btn--block" onClick={handleGoogleLogin} disabled={loading}>
+                {loading ? <span className="spinner" /> : null}
+                {loading ? 'Conectando…' : 'Continuar con Google'}
+              </button>
             </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }

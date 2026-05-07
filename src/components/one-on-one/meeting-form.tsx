@@ -2,20 +2,10 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, Calendar } from 'lucide-react'
 import { scheduleOneOnOne } from '@/lib/actions/one-on-ones'
 
-interface Person {
-  id: string
-  full_name: string
-  email: string
-}
-
+interface Person { id: string; full_name: string; email: string }
 interface MeetingFormProps {
   counterparts: Person[]
   currentRole: 'leader' | 'collaborator'
@@ -39,108 +29,87 @@ export function MeetingForm({ counterparts, currentRole, currentUserId }: Meetin
       setError('Selecciona participante y fecha')
       return
     }
-
     const scheduledAt = new Date(`${date}T${time}:00`).toISOString()
-
     startTransition(async () => {
-      const leaderId = currentRole === 'leader' ? currentUserId : counterpartId
       const collaboratorId = currentRole === 'leader' ? counterpartId : currentUserId
-
       const result = await scheduleOneOnOne({
-        collaboratorId: collaboratorId,
+        collaboratorId,
         scheduledAt,
         durationMinutes: parseInt(duration),
         modality,
         location: modality === 'presencial' ? location : undefined,
       })
-
-      if (!result.success) {
-        setError(result.error ?? 'Error al agendar')
-        return
-      }
-
+      if (!result.success) { setError(result.error ?? 'Error al agendar'); return }
       const basePath = currentRole === 'leader' ? '/lider' : '/colaborador'
       router.push(`${basePath}/1to1/${result.data?.id}`)
     })
   }
 
   const counterpartLabel = currentRole === 'leader' ? 'Colaborador' : 'Líder'
+  const minDate = new Date().toISOString().split('T')[0]
 
   return (
-    <Card className="max-w-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Calendar className="h-4 w-4" />
-          Agendar 1:1
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label>{counterpartLabel}</Label>
-            <Select value={counterpartId} onValueChange={setCounterpartId}>
-              <SelectTrigger>
-                <SelectValue placeholder={`Selecciona ${counterpartLabel.toLowerCase()}`} />
-              </SelectTrigger>
-              <SelectContent>
-                {counterparts.map(p => (
-                  <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+    <div className="ui-card" style={{ maxWidth: 560 }}>
+      <div className="ui-card__head">
+        <div>
+          <h3 className="ui-card__title font-serif" style={{ fontSize: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Calendar size={16} /> Agendar 1:1
+          </h3>
+          <p className="ui-card__desc">Define los detalles de la próxima reunión</p>
+        </div>
+      </div>
+      <form onSubmit={handleSubmit} className="ui-card__body" style={{ display: 'grid', gap: 16 }}>
+        <div>
+          <label className="ui-label">{counterpartLabel}</label>
+          <select className="ui-select" value={counterpartId} onChange={e => setCounterpartId(e.target.value)} required>
+            {counterparts.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+          </select>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label className="ui-label">Fecha</label>
+            <input className="ui-input" type="date" value={date} onChange={e => setDate(e.target.value)} required min={minDate} />
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="date">Fecha</Label>
-              <Input id="date" type="date" value={date} onChange={e => setDate(e.target.value)} required min={new Date().toISOString().split('T')[0]} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="time">Hora</Label>
-              <Input id="time" type="time" value={time} onChange={e => setTime(e.target.value)} />
-            </div>
+          <div>
+            <label className="ui-label">Hora</label>
+            <input className="ui-input" type="time" value={time} onChange={e => setTime(e.target.value)} />
           </div>
+        </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Duración</Label>
-              <Select value={duration} onValueChange={setDuration}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="15">15 min</SelectItem>
-                  <SelectItem value="30">30 min</SelectItem>
-                  <SelectItem value="45">45 min</SelectItem>
-                  <SelectItem value="60">1 hora</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Modalidad</Label>
-              <Select value={modality} onValueChange={(v: 'virtual' | 'presencial') => setModality(v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="virtual">Virtual (Meet)</SelectItem>
-                  <SelectItem value="presencial">Presencial</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label className="ui-label">Duración</label>
+            <select className="ui-select" value={duration} onChange={e => setDuration(e.target.value)}>
+              <option value="15">15 min</option>
+              <option value="30">30 min</option>
+              <option value="45">45 min</option>
+              <option value="60">1 hora</option>
+            </select>
           </div>
+          <div>
+            <label className="ui-label">Modalidad</label>
+            <select className="ui-select" value={modality} onChange={e => setModality(e.target.value as 'virtual' | 'presencial')}>
+              <option value="virtual">Virtual (Meet)</option>
+              <option value="presencial">Presencial</option>
+            </select>
+          </div>
+        </div>
 
-          {modality === 'presencial' && (
-            <div className="space-y-2">
-              <Label htmlFor="location">Ubicación (sala, oficina...)</Label>
-              <Input id="location" value={location} onChange={e => setLocation(e.target.value)} placeholder="Sala de juntas A" />
-            </div>
-          )}
+        {modality === 'presencial' && (
+          <div>
+            <label className="ui-label">Ubicación</label>
+            <input className="ui-input" value={location} onChange={e => setLocation(e.target.value)} placeholder="Sala de juntas A" />
+          </div>
+        )}
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && <p style={{ fontSize: 13, color: 'var(--red-700)', margin: 0 }}>{error}</p>}
 
-          <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Agendar reunión
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        <button type="submit" className="ui-btn ui-btn--primary ui-btn--block" disabled={isPending}>
+          {isPending ? <Loader2 size={14} className="animate-spin" /> : null}
+          Agendar reunión
+        </button>
+      </form>
+    </div>
   )
 }

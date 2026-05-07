@@ -1,21 +1,12 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { EmptyState } from '@/components/shared/empty-state'
-import { Building2 } from 'lucide-react'
+import { Network } from 'lucide-react'
 
-interface RelUser {
-  id: string
-  full_name: string
-  email: string
-  department_id?: string | null
-}
-
-interface RelationRow {
-  leader_id: string
-  collaborator_id: string
-  leader: RelUser | RelUser[] | null
-  collaborator: RelUser | RelUser[] | null
+interface User { id: string; full_name: string; email: string; department_id?: string | null }
+interface Relation {
+  leader_id: string; collaborator_id: string
+  leader: User | User[] | null
+  collaborator: User | User[] | null
 }
 
 export default async function EstructuraPage() {
@@ -23,13 +14,10 @@ export default async function EstructuraPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: rawDepts } = await supabase
-    .from('departments')
-    .select('id, name')
-    .order('name')
-  const departments = rawDepts as Array<{ id: string; name: string }> | null
+  const { data: rawDepts } = await supabase.from('departments').select('id, name').order('name')
+  const departments = (rawDepts ?? []) as Array<{ id: string; name: string }>
 
-  const { data: rawRelations } = await supabase
+  const { data: rawRels } = await supabase
     .from('leadership_relations')
     .select(`
       leader_id, collaborator_id,
@@ -37,56 +25,71 @@ export default async function EstructuraPage() {
       collaborator:users!leadership_relations_collaborator_id_fkey(id, full_name, email)
     `)
     .is('ended_at', null)
+  const relations = (rawRels ?? []) as Relation[]
 
-  const relations = rawRelations as RelationRow[] | null
-
-  const byDept: Record<string, RelationRow[]> = {}
-  relations?.forEach(rel => {
-    const leader = Array.isArray(rel.leader) ? rel.leader[0] : rel.leader
-    const deptId = leader?.department_id ?? 'sin-dept'
-    if (!byDept[deptId]) byDept[deptId] = []
-    byDept[deptId]!.push(rel)
+  const byDept: Record<string, Relation[]> = {}
+  relations.forEach(r => {
+    const leader = Array.isArray(r.leader) ? r.leader[0] : r.leader
+    const dept = leader?.department_id ?? 'sin'
+    if (!byDept[dept]) byDept[dept] = []
+    byDept[dept]!.push(r)
   })
-
-  const getDeptName = (deptId: string) =>
-    departments?.find(d => d.id === deptId)?.name ?? 'Sin área'
+  const getDept = (id: string) => departments.find(d => d.id === id)?.name ?? 'Sin área'
+  const AV_COLORS = ['av-blue', 'av-violet', 'av-pink', 'av-green', 'av-amber', 'av-orange', 'av-teal', 'av-rose']
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Estructura organizacional</h1>
-        <p className="text-slate-500 mt-1">Relaciones líder-colaborador activas</p>
+    <div className="page">
+      <div className="page__head">
+        <div>
+          <h1 className="page__title">Estructura organizacional</h1>
+          <p className="page__subtitle">Relaciones líder ↔ colaborador activas</p>
+        </div>
       </div>
 
-      {!relations?.length ? (
-        <EmptyState icon={Building2} title="Sin relaciones configuradas" className="py-16" />
+      {relations.length === 0 ? (
+        <div className="ui-card" style={{ padding: 60, textAlign: 'center' }}>
+          <Network size={32} style={{ margin: '0 auto', color: 'var(--text-subtle)' }} />
+          <p style={{ marginTop: 12, color: 'var(--text-muted)' }}>Sin relaciones configuradas</p>
+        </div>
       ) : (
-        <div className="space-y-4">
+        <div style={{ display: 'grid', gap: 14 }}>
           {Object.entries(byDept).map(([deptId, rels]) => (
-            <Card key={deptId}>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">{getDeptName(deptId)}</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-4">
-                  {rels.map(rel => {
-                    const leader = Array.isArray(rel.leader) ? rel.leader[0] : rel.leader
-                    const collaborator = Array.isArray(rel.collaborator) ? rel.collaborator[0] : rel.collaborator
-                    return (
-                      <div key={`${rel.leader_id}-${rel.collaborator_id}`} className="flex items-start gap-4 text-sm">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium text-slate-700">
-                            {leader?.full_name}{' '}
-                            <span className="text-slate-400 font-normal">(Líder)</span>
-                          </p>
-                          <p className="text-slate-500 pl-4 mt-1">└ {collaborator?.full_name}</p>
+            <div key={deptId} className="ui-card">
+              <div className="ui-card__head">
+                <div>
+                  <h3 className="ui-card__title">{getDept(deptId)}</h3>
+                  <p className="ui-card__desc">{rels.length} relación{rels.length !== 1 ? 'es' : ''} activa{rels.length !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+              <div className="ui-card__body">
+                {rels.map((rel, idx) => {
+                  const leader = Array.isArray(rel.leader) ? rel.leader[0] : rel.leader
+                  const collab = Array.isArray(rel.collaborator) ? rel.collaborator[0] : rel.collaborator
+                  const lInit = leader?.full_name.split(' ').map(p => p[0]).slice(0, 2).join('') ?? '?'
+                  const cInit = collab?.full_name.split(' ').map(p => p[0]).slice(0, 2).join('') ?? '?'
+                  return (
+                    <div key={`${rel.leader_id}-${rel.collaborator_id}`} style={{ marginBottom: idx < rels.length - 1 ? 16 : 0 }}>
+                      <div className="tree-row">
+                        <div className={`avatar avatar--sm ${AV_COLORS[(idx * 2) % AV_COLORS.length]}`}>{lInit}</div>
+                        <div>
+                          <div style={{ fontSize: 13.5, fontWeight: 500 }}>{leader?.full_name}</div>
+                          <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Líder</div>
                         </div>
                       </div>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+                      <div className="tree-node">
+                        <div className="tree-row">
+                          <div className={`avatar avatar--sm ${AV_COLORS[(idx * 2 + 1) % AV_COLORS.length]}`}>{cInit}</div>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 500 }}>{collab?.full_name}</div>
+                            <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{collab?.email}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           ))}
         </div>
       )}

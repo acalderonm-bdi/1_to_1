@@ -1,9 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { Sparkles, Save, Loader2 } from 'lucide-react'
+import { Save, Loader2 } from 'lucide-react'
 import { saveMinute } from '@/lib/actions/minutes'
 import type { ExtractedAgreement } from '@/types/domain'
 
@@ -17,12 +15,13 @@ interface MinuteEditorProps {
   onAgreementsExtracted: (agreements: ExtractedAgreement[]) => void
 }
 
-export function MinuteEditor({ oneOnOneId, initialContent, participants, onAgreementsExtracted }: MinuteEditorProps) {
+export function MinuteEditor({ oneOnOneId, initialContent, onAgreementsExtracted }: MinuteEditorProps) {
   const [content, setContent] = useState(initialContent)
   const [isSaving, startSave] = useTransition()
   const [isExtracting, setIsExtracting] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
   const [aiError, setAiError] = useState('')
+  const [hasExtracted, setHasExtracted] = useState(false)
 
   async function handleSave() {
     startSave(async () => {
@@ -49,6 +48,7 @@ export function MinuteEditor({ oneOnOneId, initialContent, participants, onAgree
         setAiError(data.error)
       } else {
         onAgreementsExtracted(data.agreements)
+        setHasExtracted(true)
       }
     } catch {
       setAiError('IA no disponible — agrega los acuerdos manualmente')
@@ -58,23 +58,39 @@ export function MinuteEditor({ oneOnOneId, initialContent, participants, onAgree
   }
 
   return (
-    <div className="space-y-3">
-      <Textarea
-        placeholder="Escribe aquí los puntos discutidos, decisiones y compromisos de la reunión..."
+    <div>
+      <textarea
+        className="ui-textarea"
+        placeholder="Escribe lo que pasó en la reunión. Compromisos, decisiones, temas pendientes…"
         value={content}
         onChange={e => setContent(e.target.value)}
-        className="min-h-[160px] text-sm"
+        style={{ minHeight: 180, fontSize: 13.5, lineHeight: 1.6 }}
       />
-      {aiError && <p className="text-xs text-amber-600">{aiError}</p>}
-      <div className="flex items-center gap-2">
-        <Button size="sm" variant="outline" onClick={handleSave} disabled={isSaving}>
-          {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 mr-1" />}
-          {savedMsg || 'Guardar'}
-        </Button>
-        <Button size="sm" onClick={handleExtract} disabled={isExtracting || !content.trim()}>
-          {isExtracting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
-          Extraer acuerdos con IA
-        </Button>
+      {aiError && <p style={{ fontSize: 12, color: 'var(--amber-700)', marginTop: 6 }}>{aiError}</p>}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
+        <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+          {content.length} caracteres{savedMsg && ` · ${savedMsg}`}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            className="ui-btn ui-btn--ghost ui-btn--sm"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+            Guardar
+          </button>
+          <button
+            type="button"
+            className="ui-btn ui-btn--accent ui-btn--sm"
+            onClick={handleExtract}
+            disabled={isExtracting || !content.trim()}
+          >
+            {isExtracting ? <span className="spinner" /> : <span>✦</span>}
+            {isExtracting ? 'Procesando…' : (hasExtracted ? 'Reextraer acuerdos' : 'Extraer acuerdos con IA')}
+          </button>
+        </div>
       </div>
     </div>
   )

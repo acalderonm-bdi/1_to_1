@@ -3,48 +3,63 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Calendar, Users, FileText, BarChart2, Map, AlertTriangle,
-  Clock, Building2, LogOut, Sparkles, CheckSquare
+  Home, Calendar, CalendarPlus, CheckSquare, Users, Sparkles, LayoutDashboard,
+  Grid, FileText, AlertTriangle, Repeat, Network, UsersRound, Settings, LogOut,
 } from 'lucide-react'
-import { cn } from '@/lib/utils/cn'
 import { createClient } from '@/lib/supabase/client'
 import type { UserRole } from '@/types/domain'
 
 interface NavItem {
+  key: string
   label: string
+  icon: React.ComponentType<{ size?: number | string; className?: string }>
   href: string
-  icon: React.ComponentType<{ className?: string }>
+  badge?: number
+  divider?: boolean
 }
 
-const NAV_ITEMS: Record<UserRole, NavItem[]> = {
+const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   collaborator: [
-    { label: 'Mis 1:1s', href: '/colaborador', icon: Calendar },
-    { label: 'Mis acuerdos', href: '/colaborador/acuerdos', icon: CheckSquare },
+    { key: 'col-dash', label: 'Inicio', icon: Home, href: '/colaborador' },
+    { key: 'col-1to1-new', label: 'Agendar 1:1', icon: CalendarPlus, href: '/colaborador/1to1/nueva' },
+    { key: 'col-acuerdos', label: 'Mis acuerdos', icon: CheckSquare, href: '/colaborador/acuerdos' },
+    { key: 'col-config', label: 'Configuración', icon: Settings, href: '/colaborador/configuracion', divider: true },
   ],
   leader: [
-    { label: 'Panel', href: '/lider', icon: BarChart2 },
-    { label: 'Mi equipo', href: '/lider/equipo', icon: Users },
-    { label: 'Sugerencias IA', href: '/lider/insights', icon: Sparkles },
+    { key: 'lid-dash', label: 'Resumen', icon: LayoutDashboard, href: '/lider' },
+    { key: 'lid-equipo', label: 'Mi equipo', icon: Users, href: '/lider/equipo' },
+    { key: 'lid-insights', label: 'Insights', icon: Sparkles, href: '/lider/insights' },
+    { key: 'lid-1to1-new', label: 'Agendar 1:1', icon: CalendarPlus, href: '/colaborador/1to1/nueva' },
+    { key: 'lid-config', label: 'Configuración', icon: Settings, href: '/lider/configuracion', divider: true },
   ],
   hr: [
-    { label: 'Panel', href: '/arquitectura-humana', icon: BarChart2 },
-    { label: 'Mapa de calor', href: '/arquitectura-humana/mapa-calor', icon: Map },
-    { label: 'Reportes IA', href: '/arquitectura-humana/reportes', icon: FileText },
-    { label: 'Disputas', href: '/arquitectura-humana/disputas', icon: AlertTriangle },
-    { label: 'Cadencias', href: '/arquitectura-humana/cadencias', icon: Clock },
-    { label: 'Estructura', href: '/arquitectura-humana/estructura', icon: Building2 },
-    { label: 'Usuarios', href: '/arquitectura-humana/usuarios', icon: Users },
+    { key: 'rh-dash', label: 'Panel general', icon: LayoutDashboard, href: '/arquitectura-humana' },
+    { key: 'rh-mapa', label: 'Mapa de calor', icon: Grid, href: '/arquitectura-humana/mapa-calor' },
+    { key: 'rh-reportes', label: 'Reportes IA', icon: FileText, href: '/arquitectura-humana/reportes' },
+    { key: 'rh-disputas', label: 'Disputas', icon: AlertTriangle, href: '/arquitectura-humana/disputas' },
+    { key: 'rh-cadencias', label: 'Cadencias', icon: Repeat, href: '/arquitectura-humana/cadencias' },
+    { key: 'rh-estructura', label: 'Estructura', icon: Network, href: '/arquitectura-humana/estructura' },
+    { key: 'rh-usuarios', label: 'Usuarios', icon: UsersRound, href: '/arquitectura-humana/usuarios' },
+    { key: 'rh-config', label: 'Configuración', icon: Settings, href: '/arquitectura-humana/configuracion', divider: true },
   ],
+}
+
+const ROLE_LABEL: Record<UserRole, string> = {
+  collaborator: 'Colaborador',
+  leader: 'Líder',
+  hr: 'Arquitectura Humana',
 }
 
 interface SidebarProps {
   role: UserRole
   currentPath: string
   userName?: string
+  userEmail?: string
 }
 
-export function Sidebar({ role, currentPath, userName }: SidebarProps) {
+export function Sidebar({ role, currentPath, userName, userEmail }: SidebarProps) {
   const router = useRouter()
+  const items = NAV_BY_ROLE[role] ?? []
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -53,53 +68,53 @@ export function Sidebar({ role, currentPath, userName }: SidebarProps) {
     router.refresh()
   }
 
-  const items = NAV_ITEMS[role] ?? []
+  const initials = (userName ?? userEmail ?? '?')
+    .split(' ')
+    .map(p => p[0]?.toUpperCase() ?? '')
+    .slice(0, 2)
+    .join('') || '?'
 
   return (
-    <aside className="flex flex-col w-64 min-h-screen bg-slate-900 text-slate-100">
-      <div className="p-6 border-b border-slate-800">
-        <h1 className="font-semibold text-lg leading-tight">Sistema de 1:1s</h1>
-        {userName && (
-          <p className="text-xs text-slate-400 mt-1 truncate">{userName}</p>
-        )}
+    <aside className="sidebar">
+      <div className="sidebar__brand">
+        <div className="sidebar__brand-mark">1</div>
+        <div>
+          <div className="sidebar__brand-name">1to1</div>
+          <div className="sidebar__brand-tag">B-Drive</div>
+        </div>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
+      <div className="sidebar__section-label">Navegación</div>
+      <nav className="sidebar__nav">
         {items.map(item => {
           const Icon = item.icon
           const isActive =
             currentPath === item.href ||
-            (
-              item.href !== '/colaborador' &&
+            (item.href !== '/colaborador' &&
               item.href !== '/lider' &&
               item.href !== '/arquitectura-humana' &&
-              currentPath.startsWith(item.href)
-            )
+              currentPath.startsWith(item.href))
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
-                isActive
-                  ? 'bg-slate-700 text-white'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {item.label}
-            </Link>
+            <div key={item.key}>
+              {item.divider && <div className="sidebar__divider" aria-hidden="true" />}
+              <Link href={item.href} className="sidebar__link" data-active={isActive}>
+                <Icon size={16} />
+                <span>{item.label}</span>
+                {item.badge ? <span className="sidebar__link-badge">{item.badge}</span> : null}
+              </Link>
+            </div>
           )
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-800">
-        <button
-          onClick={handleSignOut}
-          className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-colors w-full"
-        >
-          <LogOut className="h-4 w-4" />
-          Cerrar sesión
+      <div className="sidebar__user">
+        <div className="sidebar__user-avatar">{initials}</div>
+        <div className="sidebar__user-meta">
+          <div className="sidebar__user-name">{userName ?? 'Usuario'}</div>
+          <div className="sidebar__user-role">{ROLE_LABEL[role]}</div>
+        </div>
+        <button className="sidebar__user-action" onClick={handleSignOut} title="Cerrar sesión" type="button">
+          <LogOut size={14} />
         </button>
       </div>
     </aside>

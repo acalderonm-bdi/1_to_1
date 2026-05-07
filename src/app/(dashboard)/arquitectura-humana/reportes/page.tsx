@@ -1,66 +1,59 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { EmptyState } from '@/components/shared/empty-state'
 import { FileText } from 'lucide-react'
-import { formatRelative } from '@/lib/utils/dates'
-import { SEVERITY_LABELS } from '@/lib/constants'
-import type { AIReport } from '@/types/domain'
+
+const SEVERITY_TONE: Record<string, string> = { info: 'blue', warning: 'amber', critical: 'red' }
+const SEVERITY_LABELS: Record<string, string> = { info: 'Informativo', warning: 'Atención', critical: 'Crítico' }
 
 export default async function ReportesPage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: reports } = await supabase
-    .from('ai_reports')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(50)
-
-  const SEVERITY_COLORS: Record<string, string> = {
-    info: 'bg-blue-100 text-blue-800',
-    warning: 'bg-yellow-100 text-yellow-800',
-    critical: 'bg-red-100 text-red-800',
-  }
+  const { data: rawReports } = await supabase
+    .from('ai_reports').select('*').order('created_at', { ascending: false }).limit(50)
+  const reports = (rawReports ?? []) as Array<{
+    id: string; title: string; content: string; severity: string;
+    reviewed: boolean; created_at: string
+  }>
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Reportes de IA</h1>
-        <p className="text-slate-500 mt-1">Patrones y alertas detectadas automáticamente</p>
+    <div className="page">
+      <div className="page__head">
+        <div>
+          <h1 className="page__title">Reportes del asistente</h1>
+          <p className="page__subtitle">Patrones detectados automáticamente que merecen tu atención</p>
+        </div>
+        <span className="ai-chip">Generado por IA</span>
       </div>
 
-      {!reports?.length ? (
-        <EmptyState
-          icon={FileText}
-          title="Sin reportes por ahora"
-          description="Los reportes de IA aparecerán aquí cuando se detecten patrones relevantes"
-          className="py-16"
-        />
+      {reports.length === 0 ? (
+        <div className="ui-card" style={{ padding: 60, textAlign: 'center' }}>
+          <FileText size={32} style={{ margin: '0 auto', color: 'var(--text-subtle)' }} />
+          <p style={{ marginTop: 12, color: 'var(--text-muted)', fontSize: 14 }}>Sin reportes por ahora</p>
+        </div>
       ) : (
-        <div className="space-y-4">
-          {(reports as AIReport[]).map(report => (
-            <Card key={report.id} className={report.reviewed ? 'opacity-60' : ''}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-4">
-                  <CardTitle className="text-sm font-semibold">{report.title}</CardTitle>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${SEVERITY_COLORS[report.severity] ?? ''}`}>
-                      {SEVERITY_LABELS[report.severity]}
+        <div style={{ display: 'grid', gap: 14 }}>
+          {reports.map(r => (
+            <div key={r.id} className="ui-card" style={{ opacity: r.reviewed ? 0.65 : 1 }}>
+              <div className="ui-card__head">
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span className={`ui-badge ui-badge--${SEVERITY_TONE[r.severity] ?? 'slate'}`}>
+                      {SEVERITY_LABELS[r.severity]}
                     </span>
-                    {report.reviewed && (
-                      <Badge variant="outline" className="text-xs">Revisado</Badge>
-                    )}
+                    {r.reviewed && <span className="ui-badge ui-badge--slate ui-badge--plain">Revisado</span>}
                   </div>
+                  <h3 className="ui-card__title font-serif" style={{ fontSize: 17 }}>{r.title}</h3>
                 </div>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-2">
-                <p className="text-sm text-slate-600">{report.content}</p>
-                <p className="text-xs text-slate-400">{formatRelative(report.created_at)}</p>
-              </CardContent>
-            </Card>
+                <span style={{ fontSize: 11.5, color: 'var(--text-subtle)' }}>
+                  {new Date(r.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
+                </span>
+              </div>
+              <div className="ui-card__body">
+                <p style={{ fontSize: 13.5, lineHeight: 1.65, color: 'var(--text-c)', margin: 0 }}>{r.content}</p>
+              </div>
+            </div>
           ))}
         </div>
       )}

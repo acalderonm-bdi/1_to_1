@@ -1,164 +1,143 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { EmptyState } from '@/components/shared/empty-state'
-import { Users, Calendar, TrendingUp, Plus } from 'lucide-react'
-import { formatDateTime } from '@/lib/utils/dates'
-import { STATUS_LABELS } from '@/lib/constants'
+import { Users, Calendar, TrendingUp, Plus, ArrowRight } from 'lucide-react'
 
 export default async function LiderPage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('full_name')
-    .eq('id', user.id)
-    .single()
+  const { data: rawProfile } = await supabase.from('users').select('full_name').eq('id', user.id).single()
+  const profile = rawProfile as { full_name: string } | null
 
-  // Colaboradores del líder
-  const { data: relations } = await supabase
+  const { data: rawRelations } = await supabase
     .from('leadership_relations')
-    .select('collaborator_id, users!leadership_relations_collaborator_id_fkey(id, full_name, email, avatar_url)')
+    .select('collaborator_id, users!leadership_relations_collaborator_id_fkey(id, full_name, email)')
     .eq('leader_id', user.id)
     .is('ended_at', null)
 
-  const collaboratorIds = relations?.map(r => r.collaborator_id) ?? []
+  const relations = (rawRelations ?? []) as Array<{
+    collaborator_id: string
+    users: { id: string; full_name: string; email: string } | Array<{ id: string; full_name: string; email: string }> | null
+  }>
 
-  // 1:1s del mes actual
+  const collaboratorIds = relations.map(r => r.collaborator_id)
+
   const startOfMonth = new Date()
   startOfMonth.setDate(1)
   startOfMonth.setHours(0, 0, 0, 0)
 
-  const { data: monthMeetings } = await supabase
+  const { data: rawMeetings } = await supabase
     .from('one_on_ones')
     .select('id, status, collaborator_id, scheduled_at')
     .eq('leader_id', user.id)
     .gte('scheduled_at', startOfMonth.toISOString())
+  const monthMeetings = (rawMeetings ?? []) as Array<{ id: string; status: string; collaborator_id: string; scheduled_at: string }>
 
-  const realized = monthMeetings?.filter(m => m.status === 'realizada').length ?? 0
-  const total = monthMeetings?.length ?? 0
+  const realized = monthMeetings.filter(m => m.status === 'realizada').length
+  const total = monthMeetings.length
   const compliance = total > 0 ? Math.round((realized / total) * 100) : 0
 
-  // Próxima 1:1 por colaborador
-  const upcomingMap: Record<string, { scheduled_at: string; status: string }> = {}
+  const upcomingMap: Record<string, { id: string; scheduled_at: string }> = {}
   if (collaboratorIds.length > 0) {
-    const { data: upcoming } = await supabase
+    const { data: rawUpcoming } = await supabase
       .from('one_on_ones')
-      .select('collaborator_id, scheduled_at, status')
+      .select('id, collaborator_id, scheduled_at')
       .eq('leader_id', user.id)
       .eq('status', 'agendada')
       .gte('scheduled_at', new Date().toISOString())
       .order('scheduled_at', { ascending: true })
-
-    upcoming?.forEach(m => {
-      if (!upcomingMap[m.collaborator_id]) {
-        upcomingMap[m.collaborator_id] = { scheduled_at: m.scheduled_at, status: m.status }
-      }
+    const upcoming = (rawUpcoming ?? []) as Array<{ id: string; collaborator_id: string; scheduled_at: string }>
+    upcoming.forEach(m => {
+      if (!upcomingMap[m.collaborator_id]) upcomingMap[m.collaborator_id] = { id: m.id, scheduled_at: m.scheduled_at }
     })
   }
 
   const firstName = profile?.full_name.split(' ')[0] ?? 'Líder'
+  const AV_COLORS = ['av-blue', 'av-violet', 'av-pink', 'av-green', 'av-amber', 'av-orange', 'av-teal', 'av-rose']
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page">
+      <div className="page__head">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Panel del Líder</h1>
-          <p className="text-slate-500 mt-1">Hola, {firstName}</p>
+          <h1 className="page__title">Hola, {firstName}</h1>
+          <p className="page__subtitle">Resumen de tu equipo y cumplimiento de cadencia.</p>
         </div>
-        <Button asChild>
-          <Link href="/colaborador/1to1/nueva">
-            <Plus className="h-4 w-4 mr-2" />
-            Agendar 1:1
+        <div className="page__actions">
+          <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--primary">
+            <Plus size={14} /> Agendar 1:1
           </Link>
-        </Button>
+        </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <Users className="h-8 w-8 text-slate-400" />
-              <div>
-                <p className="text-2xl font-bold">{collaboratorIds.length}</p>
-                <p className="text-xs text-slate-500">Colaboradores</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <Calendar className="h-8 w-8 text-slate-400" />
-              <div>
-                <p className="text-2xl font-bold">{total}</p>
-                <p className="text-xs text-slate-500">1:1s este mes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <TrendingUp className="h-8 w-8 text-slate-400" />
-              <div>
-                <p className="text-2xl font-bold">{compliance}%</p>
-                <p className="text-xs text-slate-500">Cumplimiento</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+        <div className="kpi">
+          <div className="kpi__label"><Users size={13} /> Colaboradores</div>
+          <div className="kpi__value">{collaboratorIds.length}</div>
+          <div className="kpi__delta">a tu cargo</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi__label"><Calendar size={13} /> 1:1s este mes</div>
+          <div className="kpi__value">{total}</div>
+          <div className="kpi__delta">{realized} realizadas</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi__label"><TrendingUp size={13} /> Cumplimiento</div>
+          <div className="kpi__value">{compliance}%</div>
+          <div className="kpi__delta kpi__delta--up">de tu cadencia</div>
+        </div>
       </div>
 
-      {/* Lista de colaboradores */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Mi equipo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!relations?.length ? (
-            <EmptyState
-              title="Sin colaboradores asignados"
-              description="Contacta a Arquitectura Humana para configurar tu equipo"
-              className="py-12"
-            />
+      <div className="ui-card">
+        <div className="ui-card__head">
+          <div>
+            <h3 className="ui-card__title">Mi equipo</h3>
+            <p className="ui-card__desc">Próximas 1:1s con cada colaborador</p>
+          </div>
+        </div>
+        <div className="ui-card__body ui-card__body--flush">
+          {relations.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+              Sin colaboradores asignados. Contacta a Arquitectura Humana.
+            </div>
           ) : (
-            <div className="space-y-3">
-              {relations.map(rel => {
-                const collab = Array.isArray(rel.users) ? rel.users[0] : rel.users
-                const nextMeeting = upcomingMap[rel.collaborator_id]
-                return (
-                  <div key={rel.collaborator_id} className="flex items-center justify-between p-4 rounded-lg border hover:border-slate-300 transition-colors">
-                    <div>
-                      <p className="font-medium text-sm">{collab?.full_name ?? 'Sin nombre'}</p>
-                      <p className="text-xs text-slate-500">{collab?.email}</p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      {nextMeeting ? (
-                        <>
-                          <p className="text-xs text-slate-500">Próxima 1:1</p>
-                          <p className="text-xs font-medium">{formatDateTime(nextMeeting.scheduled_at)}</p>
-                        </>
-                      ) : (
-                        <Badge variant="outline" className="text-xs">Sin agendar</Badge>
-                      )}
-                      <Button asChild size="sm" variant="outline" className="text-xs mt-1">
-                        <Link href="/colaborador/1to1/nueva">Agendar</Link>
-                      </Button>
-                    </div>
+            relations.map((rel, idx) => {
+              const collab = Array.isArray(rel.users) ? rel.users[0] : rel.users
+              if (!collab) return null
+              const next = upcomingMap[rel.collaborator_id]
+              const initials = collab.full_name.split(' ').map(p => p[0]).slice(0, 2).join('')
+              return (
+                <div key={rel.collaborator_id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 24px', borderBottom: '1px solid var(--border-c)' }}>
+                  <div className={`avatar avatar--md ${AV_COLORS[idx % AV_COLORS.length]}`}>{initials}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 500, fontSize: 14 }}>{collab.full_name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{collab.email}</div>
                   </div>
-                )
-              })}
-            </div>
+                  <div style={{ textAlign: 'right' }}>
+                    {next ? (
+                      <>
+                        <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Próxima 1:1</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>
+                          {new Date(next.scheduled_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
+                        </div>
+                      </>
+                    ) : (
+                      <span className="ui-badge ui-badge--slate">Sin agendar</span>
+                    )}
+                  </div>
+                  <Link
+                    href={next ? `/lider/1to1/${next.id}` : '/colaborador/1to1/nueva'}
+                    className="ui-btn ui-btn--outline ui-btn--sm"
+                  >
+                    {next ? 'Ver' : 'Agendar'} <ArrowRight size={12} />
+                  </Link>
+                </div>
+              )
+            })
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

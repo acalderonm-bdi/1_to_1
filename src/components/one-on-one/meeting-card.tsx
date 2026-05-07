@@ -1,13 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Calendar, Video, MapPin, ExternalLink } from 'lucide-react'
-import { formatDateTime } from '@/lib/utils/dates'
+import { Calendar, Clock, Video, MapPin, ExternalLink, ArrowRight } from 'lucide-react'
 import { STATUS_LABELS } from '@/lib/constants'
-import { cn } from '@/lib/utils/cn'
+
+const STATUS_TONE: Record<string, string> = {
+  agendada: 'blue', realizada: 'green', no_realizada: 'red', en_disputa: 'orange',
+}
 
 interface MeetingCardProps {
   meeting: {
@@ -18,65 +17,50 @@ interface MeetingCardProps {
     location: string | null
     meet_link: string | null
     status: string
-    leader: { full_name: string } | null
-    collaborator: { full_name: string } | null
   }
-  currentUserId: string
+  partnerName: string
+  partnerInitials: string
+  partnerColor?: string
   href: string
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  agendada: 'bg-blue-100 text-blue-800',
-  realizada: 'bg-green-100 text-green-800',
-  no_realizada: 'bg-red-100 text-red-800',
-  en_disputa: 'bg-orange-100 text-orange-800',
-}
+export function MeetingCard({ meeting, partnerName, partnerInitials, partnerColor = 'av-blue', href }: MeetingCardProps) {
+  const date = new Date(meeting.scheduled_at)
+  const dateLabel = date.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })
+  const time = date.toTimeString().slice(0, 5)
+  const isVirtual = meeting.modality === 'virtual'
 
-export function MeetingCard({ meeting, href }: MeetingCardProps) {
   return (
-    <Card className="hover:border-slate-300 transition-colors">
-      <CardContent className="pt-4 pb-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
-              <span className="text-sm font-medium">{formatDateTime(meeting.scheduled_at)}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              {meeting.modality === 'virtual' ? (
-                <Video className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-              ) : (
-                <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-              )}
-              <span className="text-xs text-slate-500 capitalize">
-                {meeting.modality === 'virtual' ? 'Virtual' : `Presencial${meeting.location ? ` · ${meeting.location}` : ''}`}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              {meeting.meet_link && meeting.status === 'agendada' && (
-                <a
-                  href={meeting.meet_link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-600 hover:underline flex items-center gap-1"
-                  onClick={e => e.stopPropagation()}
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  Unirse a Meet
-                </a>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-2 shrink-0">
-            <span className={cn('text-xs font-medium px-2 py-1 rounded-full', STATUS_COLORS[meeting.status] ?? 'bg-slate-100 text-slate-700')}>
-              {STATUS_LABELS[meeting.status] ?? meeting.status}
-            </span>
-            <Button asChild size="sm" variant="outline" className="text-xs h-7">
-              <Link href={href}>Ver detalle</Link>
-            </Button>
+    <div className="ui-card" style={{ padding: 16, display: 'grid', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className={`avatar avatar--md ${partnerColor}`}>{partnerInitials}</div>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>{partnerName}</div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+        <span className={`ui-badge ui-badge--${STATUS_TONE[meeting.status] ?? 'slate'}`}>
+          {STATUS_LABELS[meeting.status]}
+        </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12.5, color: 'var(--text-muted)' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Calendar size={13} /> {dateLabel}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Clock size={13} /> {time} · {meeting.duration_minutes} min</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          {isVirtual ? <Video size={13} /> : <MapPin size={13} />}
+          {isVirtual ? 'Virtual' : (meeting.location || 'Presencial')}
+        </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {meeting.meet_link ? (
+          <a className="ui-btn ui-btn--ghost ui-btn--sm" href={meeting.meet_link} target="_blank" rel="noreferrer">
+            <Video size={13} /> Unirse a Meet <ExternalLink size={12} />
+          </a>
+        ) : <span />}
+        <Link href={href} className="ui-btn ui-btn--outline ui-btn--sm">
+          Ver detalle <ArrowRight size={12} />
+        </Link>
+      </div>
+    </div>
   )
 }

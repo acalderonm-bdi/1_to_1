@@ -1,81 +1,80 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Clock } from 'lucide-react'
+import { Repeat } from 'lucide-react'
 
 export default async function CadenciasPage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: globalCadenceRaw } = await supabase
-    .from('cadence_configs')
-    .select('id, frequency_days, scope_type')
-    .eq('scope_type', 'global')
-    .maybeSingle()
+  const { data: globalRaw } = await supabase
+    .from('cadence_configs').select('id, frequency_days, scope_type')
+    .eq('scope_type', 'global').maybeSingle()
+  const globalCadence = globalRaw as { id: string; frequency_days: number; scope_type: string } | null
 
-  const globalCadence = globalCadenceRaw as { id: string; frequency_days: number; scope_type: string } | null
-
-  const { data: deptCadencesRaw } = await supabase
-    .from('cadence_configs')
-    .select('id, frequency_days, departments(name)')
+  const { data: deptRaw } = await supabase
+    .from('cadence_configs').select('id, frequency_days, departments(name)')
     .eq('scope_type', 'department')
-
-  const deptCadences = deptCadencesRaw as Array<{
-    id: string
-    frequency_days: number
+  const deptCadences = deptRaw as Array<{
+    id: string; frequency_days: number;
     departments: { name: string } | Array<{ name: string }> | null
   }> | null
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Cadencias</h1>
-        <p className="text-slate-500 mt-1">Frecuencia esperada de las reuniones 1:1</p>
+    <div className="page">
+      <div className="page__head">
+        <div>
+          <h1 className="page__title">Cadencias</h1>
+          <p className="page__subtitle">Frecuencia esperada de las reuniones 1:1</p>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Clock className="h-4 w-4" />
-            Cadencia global
-          </CardTitle>
-          <CardDescription>Aplica a toda la organización cuando no hay cadencia específica</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="ui-card" style={{ marginBottom: 18 }}>
+        <div className="ui-card__head">
+          <div>
+            <h3 className="ui-card__title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Repeat size={15} /> Cadencia global
+            </h3>
+            <p className="ui-card__desc">Aplica a toda la organización por defecto</p>
+          </div>
+        </div>
+        <div className="ui-card__body">
           {globalCadence ? (
-            <div className="flex items-center gap-3">
-              <div className="text-4xl font-bold text-slate-900">{globalCadence.frequency_days}</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
+              <span style={{ fontFamily: 'var(--font-serif)', fontSize: 56, fontWeight: 500, letterSpacing: '-0.02em', lineHeight: 1, color: 'var(--text-c)' }}>
+                {globalCadence.frequency_days}
+              </span>
               <div>
-                <p className="font-medium">días entre 1:1s</p>
-                <p className="text-sm text-slate-500">Cada {globalCadence.frequency_days} días</p>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>días entre 1:1s</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>≈ {Math.round(30 / globalCadence.frequency_days)} reuniones por mes</div>
               </div>
             </div>
           ) : (
-            <p className="text-slate-500 text-sm">Sin cadencia global configurada</p>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Sin cadencia global configurada.</p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {deptCadences && deptCadences.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Cadencias por área</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {deptCadences.map(c => {
-                const dept = Array.isArray(c.departments) ? c.departments[0] : c.departments
-                return (
-                  <div key={c.id} className="flex items-center justify-between p-3 rounded border">
-                    <span className="text-sm font-medium">{dept?.name ?? 'Área'}</span>
-                    <span className="text-sm text-slate-600">Cada {c.frequency_days} días</span>
-                  </div>
-                )
-              })}
+        <div className="ui-card">
+          <div className="ui-card__head">
+            <div>
+              <h3 className="ui-card__title">Cadencias por área</h3>
+              <p className="ui-card__desc">Sobreescriben la cadencia global</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="ui-card__body ui-card__body--flush">
+            {deptCadences.map(c => {
+              const dept = Array.isArray(c.departments) ? c.departments[0] : c.departments
+              return (
+                <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 24px', borderBottom: '1px solid var(--border-c)' }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 500 }}>{dept?.name ?? 'Área'}</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Cada <strong style={{ color: 'var(--text-c)' }}>{c.frequency_days}</strong> días</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       )}
     </div>
   )

@@ -1,10 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { EmptyState } from '@/components/shared/empty-state'
-import { Users } from 'lucide-react'
 import { ROLE_LABELS } from '@/lib/constants'
+
+const ROLE_TONE: Record<string, string> = { hr: 'blue', leader: 'violet', collaborator: 'slate' }
 
 export default async function UsuariosPage() {
   const supabase = createClient()
@@ -12,57 +10,44 @@ export default async function UsuariosPage() {
   if (!user) redirect('/login')
 
   const { data: rawUsers } = await supabase
-    .from('users')
-    .select('id, full_name, email, role, departments(name)')
-    .order('full_name')
+    .from('users').select('id, full_name, email, role, departments(name)').order('full_name')
 
-  type UserRow = {
-    id: string
-    full_name: string
-    email: string
-    role: string
+  type Row = {
+    id: string; full_name: string; email: string; role: string;
     departments: { name: string } | Array<{ name: string }> | null
   }
-
-  const users = rawUsers as UserRow[] | null
-
-  const ROLE_VARIANTS: Record<string, 'default' | 'secondary' | 'outline'> = {
-    hr: 'default',
-    leader: 'secondary',
-    collaborator: 'outline',
-  }
+  const users = (rawUsers ?? []) as Row[]
+  const AV = ['av-blue', 'av-violet', 'av-pink', 'av-green', 'av-amber', 'av-orange', 'av-teal', 'av-rose']
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Usuarios</h1>
-        <p className="text-slate-500 mt-1">{users?.length ?? 0} usuarios en el sistema</p>
+    <div className="page">
+      <div className="page__head">
+        <div>
+          <h1 className="page__title">Usuarios</h1>
+          <p className="page__subtitle">{users.length} usuarios en el sistema</p>
+        </div>
       </div>
 
-      {!users?.length ? (
-        <EmptyState icon={Users} title="Sin usuarios" className="py-16" />
-      ) : (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-2">
-              {users.map(u => {
-                const dept = Array.isArray(u.departments) ? u.departments[0] : u.departments
-                return (
-                  <div key={u.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                    <div>
-                      <p className="text-sm font-medium">{u.full_name}</p>
-                      <p className="text-xs text-slate-500">{u.email} · {dept?.name ?? 'Sin área'}</p>
-                    </div>
-                    <Badge variant={ROLE_VARIANTS[u.role] ?? 'outline'}>
-                      {ROLE_LABELS[u.role] ?? u.role}
-                    </Badge>
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <div className="ui-card">
+        <div className="ui-card__body ui-card__body--flush">
+          {users.map((u, idx) => {
+            const dept = Array.isArray(u.departments) ? u.departments[0] : u.departments
+            const initials = u.full_name.split(' ').map(p => p[0]).slice(0, 2).join('')
+            return (
+              <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 24px', borderBottom: '1px solid var(--border-c)' }}>
+                <div className={`avatar avatar--md ${AV[idx % AV.length]}`}>{initials}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 500 }}>{u.full_name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{u.email} · {dept?.name ?? 'Sin área'}</div>
+                </div>
+                <span className={`ui-badge ui-badge--${ROLE_TONE[u.role] ?? 'slate'}`}>
+                  {ROLE_LABELS[u.role] ?? u.role}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,10 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { BarChart2, AlertTriangle, FileText, CheckSquare } from 'lucide-react'
+import { TrendingUp, AlertTriangle, FileText, CheckSquare, ArrowRight } from 'lucide-react'
 
 export default async function ArquitecturaHumanaPage() {
   const supabase = createClient()
@@ -27,139 +24,92 @@ export default async function ArquitecturaHumanaPage() {
     supabase.from('agreements').select('status'),
   ])
 
-  const metrics = rawMetrics as Array<{
-    department_id: string | null
-    department_name: string | null
-    compliance_rate: number | null
-    realized_meetings: number | null
-    total_meetings: number | null
-  }> | null
-  const monthMeetings = rawMeetings as Array<{ status: string }> | null
-  const agreements = rawAgreements as Array<{ status: string }> | null
+  const metrics = (rawMetrics ?? []) as Array<{
+    department_id: string | null; department_name: string | null;
+    compliance_rate: number | null; realized_meetings: number | null; total_meetings: number | null
+  }>
+  const monthMeetings = (rawMeetings ?? []) as Array<{ status: string }>
+  const agreements = (rawAgreements ?? []) as Array<{ status: string }>
 
-  const totalMeetings = monthMeetings?.length ?? 0
-  const realized = monthMeetings?.filter(m => m.status === 'realizada').length ?? 0
-  const disputed = monthMeetings?.filter(m => m.status === 'en_disputa').length ?? 0
-  const missed = monthMeetings?.filter(m => m.status === 'no_realizada').length ?? 0
-
-  const totalAgreements = agreements?.length ?? 0
-  const fulfilled = agreements?.filter(a => a.status === 'cumplido').length ?? 0
-  const pending = agreements?.filter(a => a.status === 'pendiente').length ?? 0
-
+  const totalMeetings = monthMeetings.length
+  const realized = monthMeetings.filter(m => m.status === 'realizada').length
+  const disputed = monthMeetings.filter(m => m.status === 'en_disputa').length
+  const missed = monthMeetings.filter(m => m.status === 'no_realizada').length
+  const fulfilled = agreements.filter(a => a.status === 'cumplido').length
+  const pending = agreements.filter(a => a.status === 'pendiente').length
   const globalCompliance = totalMeetings > 0 ? Math.round((realized / totalMeetings) * 100) : 0
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Panel de Arquitectura Humana</h1>
-        <p className="text-slate-500 mt-1">Visibilidad global del cumplimiento organizacional</p>
+    <div className="page">
+      <div className="page__head">
+        <div>
+          <h1 className="page__title">Panel de Arquitectura Humana</h1>
+          <p className="page__subtitle">Visibilidad global del cumplimiento organizacional</p>
+        </div>
       </div>
 
-      {/* KPIs principales */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-3xl font-bold text-green-600">{globalCompliance}%</p>
-            <p className="text-xs text-slate-500 mt-1">Cumplimiento global este mes</p>
-            <p className="text-xs text-slate-400">{realized}/{totalMeetings} realizadas</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-3xl font-bold text-red-500">{missed}</p>
-            <p className="text-xs text-slate-500 mt-1">1:1s no realizadas</p>
-            <p className="text-xs text-slate-400">este mes</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-3xl font-bold text-orange-500">{disputed}</p>
-                <p className="text-xs text-slate-500 mt-1">En disputa</p>
-              </div>
-              {disputed > 0 && (
-                <Button asChild size="sm" variant="outline" className="text-xs">
-                  <Link href="/arquitectura-humana/disputas">Ver</Link>
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-3xl font-bold text-blue-500">{unreviewedReports ?? 0}</p>
-                <p className="text-xs text-slate-500 mt-1">Reportes IA sin revisar</p>
-              </div>
-              {(unreviewedReports ?? 0) > 0 && (
-                <Button asChild size="sm" variant="outline" className="text-xs">
-                  <Link href="/arquitectura-humana/reportes">Ver</Link>
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+        <div className="kpi">
+          <div className="kpi__label"><TrendingUp size={13} /> Cumplimiento</div>
+          <div className="kpi__value">{globalCompliance}%</div>
+          <div className="kpi__delta kpi__delta--up">{realized}/{totalMeetings} realizadas</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi__label">No realizadas</div>
+          <div className="kpi__value">{missed}</div>
+          <div className="kpi__delta">este mes</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi__label"><AlertTriangle size={13} /> En disputa</div>
+          <div className="kpi__value">{disputed}</div>
+          <div className="kpi__delta">requieren revisión</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi__label"><FileText size={13} /> Reportes IA</div>
+          <div className="kpi__value">{unreviewedReports ?? 0}</div>
+          <div className="kpi__delta">sin revisar</div>
+        </div>
       </div>
 
-      {/* Acuerdos */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6 flex items-center gap-3">
-            <CheckSquare className="h-8 w-8 text-slate-400" />
-            <div>
-              <p className="text-2xl font-bold">{pending}</p>
-              <p className="text-xs text-slate-500">Acuerdos pendientes</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6 flex items-center gap-3">
-            <CheckSquare className="h-8 w-8 text-green-400" />
-            <div>
-              <p className="text-2xl font-bold">{fulfilled}</p>
-              <p className="text-xs text-slate-500">Acuerdos cumplidos</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6 flex items-center gap-3">
-            <BarChart2 className="h-8 w-8 text-slate-400" />
-            <div>
-              <p className="text-2xl font-bold">{totalAgreements}</p>
-              <p className="text-xs text-slate-500">Total de acuerdos</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+        <div className="kpi">
+          <div className="kpi__label"><CheckSquare size={13} /> Acuerdos pendientes</div>
+          <div className="kpi__value">{pending}</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi__label">Acuerdos cumplidos</div>
+          <div className="kpi__value">{fulfilled}</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi__label">Total de acuerdos</div>
+          <div className="kpi__value">{agreements.length}</div>
+        </div>
       </div>
 
-      {/* Compliance por departamento */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Cumplimiento por área</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {(metrics ?? []).map(dept => (
-              <div key={dept.department_id} className="flex items-center justify-between">
-                <span className="text-sm font-medium">{dept.department_name}</span>
-                <div className="flex items-center gap-3">
-                  <div className="w-32 bg-slate-100 rounded-full h-2">
-                    <div
-                      className="h-2 rounded-full bg-green-500"
-                      style={{ width: `${dept.compliance_rate ?? 0}%` }}
-                    />
-                  </div>
-                  <span className="text-sm font-medium w-12 text-right">
-                    {dept.compliance_rate ?? 0}%
-                  </span>
-                </div>
-              </div>
-            ))}
+      <div className="ui-card">
+        <div className="ui-card__head">
+          <div>
+            <h3 className="ui-card__title">Cumplimiento por área</h3>
+            <p className="ui-card__desc">Ordenado de menor a mayor</p>
           </div>
-        </CardContent>
-      </Card>
+          <Link href="/arquitectura-humana/mapa-calor" className="ui-btn ui-btn--ghost ui-btn--sm">
+            Ver mapa de calor <ArrowRight size={12} />
+          </Link>
+        </div>
+        <div className="ui-card__body" style={{ display: 'grid', gap: 14 }}>
+          {metrics.map(d => (
+            <div key={d.department_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 500, minWidth: 160 }}>{d.department_name}</span>
+              <div className="progress-bar" style={{ flex: 1 }}>
+                <div className="progress-bar__fill" style={{ width: `${d.compliance_rate ?? 0}%` }} />
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 500, minWidth: 50, textAlign: 'right', fontFamily: 'var(--font-serif)' }}>
+                {d.compliance_rate ?? 0}%
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,17 +1,17 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Button } from '@/components/ui/button'
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { Check, X, Loader2 } from 'lucide-react'
 import { submitVobo } from '@/lib/actions/vobos'
 
 interface VoboButtonProps {
   oneOnOneId: string
   userVobo: boolean | null
   onVobo?: (confirmed: boolean) => void
+  partnerName?: string
 }
 
-export function VoboButton({ oneOnOneId, userVobo, onVobo }: VoboButtonProps) {
+export function VoboButton({ oneOnOneId, userVobo, onVobo, partnerName }: VoboButtonProps) {
   const [myVobo, setMyVobo] = useState<boolean | null>(userVobo)
   const [isPending, startTransition] = useTransition()
 
@@ -27,34 +27,57 @@ export function VoboButton({ oneOnOneId, userVobo, onVobo }: VoboButtonProps) {
 
   if (myVobo !== null) {
     return (
-      <div className={`flex items-center gap-2 text-sm font-medium ${myVobo ? 'text-green-600' : 'text-red-600'}`}>
-        {myVobo ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-        {myVobo ? 'Confirmaste que se realizó' : 'Indicaste que no se realizó'}
+      <div className="vobo">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: '50%',
+              background: myVobo ? 'var(--green-100)' : 'var(--red-100)',
+              color: myVobo ? 'var(--green-700)' : 'var(--red-700)',
+              display: 'grid', placeItems: 'center'
+            }}>
+              {myVobo ? <Check size={18} /> : <X size={18} />}
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>
+                {myVobo ? 'Confirmaste que sí se realizó' : 'Indicaste que no se realizó'}
+              </div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                {partnerName ? `Esperando confirmación de ${partnerName.split(' ')[0]}` : 'Confirmación registrada'}
+              </div>
+            </div>
+          </div>
+          <button type="button" className="ui-btn ui-btn--ghost ui-btn--sm" onClick={() => setMyVobo(null)}>
+            Cambiar
+          </button>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-2">
-      <p className="text-sm text-slate-600">¿Esta 1:1 se realizó?</p>
-      <div className="flex gap-3">
-        <Button
+    <div className="vobo">
+      <h3 className="vobo__title">¿Esta reunión se realizó?</h3>
+      <p className="vobo__sub">Tu confirmación es independiente. Si hay contradicción, se levanta una disputa para revisión.</p>
+      <div className="vobo__buttons">
+        <button
+          type="button"
+          className="ui-btn ui-btn--success ui-btn--lg"
           onClick={() => handleVobo(true)}
           disabled={isPending}
-          className="bg-green-600 hover:bg-green-700 text-white"
         >
-          {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+          {isPending ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
           Sí, se realizó
-        </Button>
-        <Button
-          variant="outline"
+        </button>
+        <button
+          type="button"
+          className="ui-btn ui-btn--danger-outline ui-btn--lg"
           onClick={() => handleVobo(false)}
           disabled={isPending}
-          className="border-red-300 text-red-600 hover:bg-red-50"
         >
-          <XCircle className="h-4 w-4 mr-2" />
+          <X size={15} />
           No se realizó
-        </Button>
+        </button>
       </div>
     </div>
   )

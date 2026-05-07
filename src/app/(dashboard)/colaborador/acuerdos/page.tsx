@@ -1,73 +1,69 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { EmptyState } from '@/components/shared/empty-state'
 import { CheckSquare } from 'lucide-react'
 import { AGREEMENT_LABELS } from '@/lib/constants'
-import type { Agreement } from '@/types/domain'
+
+const STATUS_TONE: Record<string, string> = {
+  pendiente: 'amber',
+  cumplido: 'green',
+  parcial: 'blue',
+  no_cumplido: 'red',
+}
 
 export default async function AcuerdosPage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: agreements } = await supabase
+  const { data: rawAgreements } = await supabase
     .from('agreements')
-    .select('*')
+    .select('id, description, status, due_date, ai_generated, created_at')
     .eq('responsible_id', user.id)
     .order('created_at', { ascending: false })
 
-  const STATUS_COLORS: Record<string, string> = {
-    pendiente: 'bg-yellow-100 text-yellow-800',
-    cumplido: 'bg-green-100 text-green-800',
-    parcial: 'bg-blue-100 text-blue-800',
-    no_cumplido: 'bg-red-100 text-red-800',
-  }
+  const agreements = (rawAgreements ?? []) as Array<{
+    id: string; description: string; status: string; due_date: string | null;
+    ai_generated: boolean; created_at: string
+  }>
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Mis acuerdos</h1>
-        <p className="text-slate-500 mt-1">Todos los compromisos de tus 1:1s</p>
+    <div className="page">
+      <div className="page__head">
+        <div>
+          <h1 className="page__title">Mis acuerdos</h1>
+          <p className="page__subtitle">{agreements.length} compromisos en total</p>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <CheckSquare className="h-4 w-4" />
-            {agreements?.length ?? 0} acuerdos en total
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!agreements?.length ? (
-            <EmptyState
-              title="Sin acuerdos registrados"
-              description="Los acuerdos de tus 1:1s aparecerán aquí"
-              className="py-12"
-            />
-          ) : (
-            <div className="space-y-3">
-              {(agreements as Agreement[]).map(agr => (
-                <div key={agr.id} className="flex items-start justify-between p-4 rounded-lg border hover:border-slate-300 transition-colors">
-                  <div className="space-y-1 flex-1 mr-4">
-                    <p className="text-sm font-medium">{agr.description}</p>
-                    {agr.due_date && (
-                      <p className="text-xs text-slate-500">Vence: {agr.due_date}</p>
-                    )}
-                    {agr.ai_generated && (
-                      <p className="text-xs text-slate-400">✦ Generado por IA</p>
-                    )}
-                  </div>
-                  <span className={`text-xs font-medium px-2 py-1 rounded-full shrink-0 ${STATUS_COLORS[agr.status] ?? ''}`}>
-                    {AGREEMENT_LABELS[agr.status]}
-                  </span>
-                </div>
-              ))}
+      <div className="ui-card">
+        <div className="ui-card__head">
+          <div>
+            <h3 className="ui-card__title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CheckSquare size={15} /> Todos
+            </h3>
+          </div>
+        </div>
+        <div className="ui-card__body" style={{ display: 'grid', gap: 10 }}>
+          {agreements.length === 0 ? (
+            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+              Sin acuerdos registrados. Aparecerán aquí cuando tengas tu primera 1:1.
             </div>
+          ) : (
+            agreements.map(a => (
+              <div key={a.id} className="agreement">
+                <div className="agreement__head">
+                  <p className="agreement__desc">{a.description}</p>
+                  <span className={`ui-badge ui-badge--${STATUS_TONE[a.status] ?? 'slate'}`}>{AGREEMENT_LABELS[a.status]}</span>
+                </div>
+                <div className="agreement__meta">
+                  {a.due_date && <span className="agreement__meta-item">📅 {a.due_date}</span>}
+                  {a.ai_generated && <span className="ai-chip">Sugerido por IA</span>}
+                </div>
+              </div>
+            ))
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }
