@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { FileText } from 'lucide-react'
+import { FileText, Sparkles } from 'lucide-react'
 
 const SEVERITY_TONE: Record<string, string> = { info: 'blue', warning: 'amber', critical: 'red' }
 const SEVERITY_LABELS: Record<string, string> = { info: 'Informativo', warning: 'Atención', critical: 'Crítico' }
@@ -21,32 +21,42 @@ export default async function ReportesPage() {
     <div className="page">
       <div className="page__head">
         <div>
+          <span className="page__eyebrow"><Sparkles size={12} /> Asistente IA</span>
           <h1 className="page__title">Reportes del asistente</h1>
-          <p className="page__subtitle">Patrones detectados automáticamente que merecen tu atención</p>
+          <p className="page__subtitle">
+            Patrones detectados automáticamente que merecen tu atención.
+          </p>
         </div>
         <span className="ai-chip">Generado por IA</span>
       </div>
 
       {reports.length === 0 ? (
-        <div className="ui-card" style={{ padding: 60, textAlign: 'center' }}>
-          <FileText size={32} style={{ margin: '0 auto', color: 'var(--text-subtle)' }} />
-          <p style={{ marginTop: 12, color: 'var(--text-muted)', fontSize: 14 }}>Sin reportes por ahora</p>
+        <div className="ui-card">
+          <div className="empty">
+            <div className="empty__icon"><FileText /></div>
+            <h3 className="empty__title">Sin reportes por ahora</h3>
+            <p className="empty__desc">
+              Aparecerán aquí cuando el asistente detecte patrones organizacionales relevantes.
+            </p>
+          </div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 14 }}>
+        <div style={{ display: 'grid', gap: 14 }} className="anim-stagger">
           {reports.map(r => (
-            <div key={r.id} className="ui-card" style={{ opacity: r.reviewed ? 0.65 : 1 }}>
+            <div key={r.id} className="ui-card" style={{ opacity: r.reviewed ? 0.7 : 1 }}>
               <div className="ui-card__head">
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                     <span className={`ui-badge ui-badge--${SEVERITY_TONE[r.severity] ?? 'slate'}`}>
                       {SEVERITY_LABELS[r.severity]}
                     </span>
                     {r.reviewed && <span className="ui-badge ui-badge--slate ui-badge--plain">Revisado</span>}
                   </div>
-                  <h3 className="ui-card__title font-serif" style={{ fontSize: 17 }}>{r.title}</h3>
+                  <h3 className="font-serif" style={{ fontSize: 18, letterSpacing: '-0.012em', fontWeight: 500, margin: 0 }}>
+                    {r.title}
+                  </h3>
                 </div>
-                <span style={{ fontSize: 11.5, color: 'var(--text-subtle)' }}>
+                <span style={{ fontSize: 11.5, color: 'var(--text-subtle)', whiteSpace: 'nowrap' }}>
                   {new Date(r.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
                 </span>
               </div>

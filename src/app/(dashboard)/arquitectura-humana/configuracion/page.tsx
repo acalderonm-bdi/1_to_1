@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { Settings } from 'lucide-react'
 import { SettingsShell } from '@/components/settings/settings-shell'
 
 export default async function ConfiguracionRHPage() {
@@ -15,8 +16,9 @@ export default async function ConfiguracionRHPage() {
     <div className="page">
       <div className="page__head">
         <div>
+          <span className="page__eyebrow"><Settings size={12} /> Tu cuenta y la organización</span>
           <h1 className="page__title">Configuración</h1>
-          <p className="page__subtitle">Configuración personal y de la organización</p>
+          <p className="page__subtitle">Configuración personal y de la organización.</p>
         </div>
       </div>
       <SettingsShell

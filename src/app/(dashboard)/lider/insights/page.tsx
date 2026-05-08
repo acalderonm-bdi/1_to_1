@@ -32,22 +32,29 @@ export default async function InsightsPage() {
     <div className="page">
       <div className="page__head">
         <div>
+          <span className="page__eyebrow"><Sparkles size={12} /> Asistente IA</span>
           <h1 className="page__title">Insights del asistente</h1>
-          <p className="page__subtitle">Sugerencias contextuales para tus 1:1s</p>
+          <p className="page__subtitle">
+            Sugerencias contextuales para tus 1:1s, basadas en patrones de conversación y acuerdos.
+          </p>
         </div>
         <span className="ai-chip" style={{ fontSize: 11.5 }}>Asistente IA</span>
       </div>
 
       {insights.length === 0 ? (
-        <div className="ui-card" style={{ padding: 60, textAlign: 'center' }}>
-          <Sparkles size={32} style={{ margin: '0 auto', color: 'var(--accent-300)' }} />
-          <h3 style={{ marginTop: 14, fontSize: 15, fontWeight: 600 }}>Sin sugerencias por ahora</h3>
-          <p style={{ marginTop: 4, color: 'var(--text-muted)', fontSize: 13 }}>
-            Las sugerencias aparecerán después de tus próximas 1:1s.
-          </p>
+        <div className="ui-card">
+          <div className="empty">
+            <div className="empty__icon" style={{ background: 'var(--ai-tint)', color: 'var(--ai-text)' }}>
+              <Sparkles />
+            </div>
+            <h3 className="empty__title">Sin sugerencias por ahora</h3>
+            <p className="empty__desc">
+              Las sugerencias del asistente aparecerán después de tus próximas 1:1s.
+            </p>
+          </div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 14 }}>
+        <div style={{ display: 'grid', gap: 14 }} className="anim-stagger">
           {insights.map(insight => {
             const collab = Array.isArray(insight.users) ? insight.users[0] : insight.users
             const content = insight.content as Record<string, unknown>
@@ -55,13 +62,13 @@ export default async function InsightsPage() {
               <div key={insight.id} className="ui-card ai-card">
                 <div className="ui-card__head" style={{ borderBottom: 'none' }}>
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                       <span className="ai-chip">Sugerencia</span>
                       <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                         {new Date(insight.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
                       </span>
                     </div>
-                    <h3 className="ui-card__title font-serif" style={{ fontSize: 18 }}>
+                    <h3 className="font-serif" style={{ fontSize: 20, letterSpacing: '-0.014em', fontWeight: 500, margin: 0 }}>
                       Para {collab?.full_name?.split(' ')[0] ?? 'tu colaborador'}
                     </h3>
                   </div>

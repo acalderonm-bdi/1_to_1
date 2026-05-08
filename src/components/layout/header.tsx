@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, Search } from 'lucide-react'
+import { Bell, Search, Calendar, CheckSquare, Sparkles, AlertTriangle, type LucideIcon } from 'lucide-react'
 import { useRealtimeNotifications } from '@/hooks/use-realtime-notifications'
 import { formatRelative } from '@/lib/utils/dates'
 import { ROLE_LABELS } from '@/lib/constants'
@@ -12,6 +12,19 @@ interface HeaderProps {
   userName: string
   userRole: string
   breadcrumbs?: string[]
+}
+
+const NOTIF_ICONS: Record<string, { icon: LucideIcon; tone: string }> = {
+  vobo: { icon: CheckSquare, tone: 'av-blue' },
+  meeting: { icon: Calendar, tone: 'av-violet' },
+  agreement: { icon: CheckSquare, tone: 'av-amber' },
+  ai: { icon: Sparkles, tone: 'av-violet' },
+  dispute: { icon: AlertTriangle, tone: 'av-rose' },
+}
+
+function pickIcon(notifType?: string | null) {
+  if (notifType && NOTIF_ICONS[notifType]) return NOTIF_ICONS[notifType]
+  return { icon: Bell, tone: 'av-blue' }
 }
 
 export function Header({ userId, userName, userRole, breadcrumbs = ['Inicio'] }: HeaderProps) {
@@ -53,19 +66,24 @@ export function Header({ userId, userName, userRole, breadcrumbs = ['Inicio'] }:
 
       <div className="app-header__spacer" />
 
-      <div className="app-header__search">
+      <div className="app-header__search" role="button" tabIndex={0} aria-label="Buscar">
         <Search size={14} />
         <span>Buscar persona, 1:1, acuerdo…</span>
         <kbd>⌘K</kbd>
       </div>
 
       <div ref={ref} style={{ position: 'relative' }}>
-        <button className="app-header__icon-btn" onClick={() => setOpenNotif(o => !o)} type="button" aria-label="Notificaciones">
+        <button
+          className="app-header__icon-btn"
+          onClick={() => setOpenNotif(o => !o)}
+          type="button"
+          aria-label="Notificaciones"
+        >
           <Bell size={18} />
           {unreadCount > 0 && <span className="dot" />}
         </button>
         {openNotif && (
-          <div className="popover notif-list" style={{ top: 'calc(100% + 6px)', right: 0 }}>
+          <div className="popover notif-list" style={{ top: 'calc(100% + 8px)', right: 0 }}>
             <div className="notif-list__head">
               <div className="notif-list__title">
                 Notificaciones{' '}
@@ -80,31 +98,35 @@ export function Header({ userId, userName, userRole, breadcrumbs = ['Inicio'] }:
               )}
             </div>
             {notifications.length === 0 ? (
-              <div style={{ padding: 24, textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-                Sin notificaciones
+              <div style={{ padding: 28, textAlign: 'center', fontSize: 13, color: 'var(--text-muted)', display: 'grid', placeItems: 'center', gap: 6 }}>
+                <Bell size={20} style={{ color: 'var(--text-subtle)', opacity: 0.6 }} />
+                <span>Sin notificaciones</span>
               </div>
             ) : (
-              notifications.slice(0, 8).map(n => (
-                <div key={n.id} className="notif-item" onClick={() => handleNotificationClick(n)}>
-                  <div className="notif-item__icon av-blue">
-                    <Bell size={14} />
-                  </div>
-                  <div>
-                    <div className="notif-item__title">
-                      {n.title}
-                      {!n.read && <span className="unread-dot" />}
+              notifications.slice(0, 8).map(n => {
+                const { icon: Icon, tone } = pickIcon((n as { type?: string }).type)
+                return (
+                  <div key={n.id} className="notif-item" onClick={() => handleNotificationClick(n)}>
+                    <div className={`notif-item__icon ${tone}`}>
+                      <Icon size={14} />
                     </div>
-                    <div className="notif-item__body">{n.content}</div>
+                    <div>
+                      <div className="notif-item__title">
+                        {n.title}
+                        {!n.read && <span className="unread-dot" />}
+                      </div>
+                      <div className="notif-item__body">{n.content}</div>
+                    </div>
+                    <div className="notif-item__time">{formatRelative(n.created_at)}</div>
                   </div>
-                  <div className="notif-item__time">{formatRelative(n.created_at)}</div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         )}
       </div>
 
-      <div className="app-header__user-chip">
+      <div className="app-header__user-chip" tabIndex={0} role="button" aria-label="Tu perfil">
         <div className="app-header__user-avatar">{initials}</div>
         <div className="app-header__user-text">
           <strong>{userName}</strong>

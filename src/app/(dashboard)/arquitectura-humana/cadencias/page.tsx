@@ -24,8 +24,9 @@ export default async function CadenciasPage() {
     <div className="page">
       <div className="page__head">
         <div>
+          <span className="page__eyebrow"><Repeat size={12} /> Ritmo de conversaciones</span>
           <h1 className="page__title">Cadencias</h1>
-          <p className="page__subtitle">Frecuencia esperada de las reuniones 1:1</p>
+          <p className="page__subtitle">Frecuencia esperada de las reuniones 1:1 a nivel global y por área.</p>
         </div>
       </div>
 
@@ -40,13 +41,29 @@ export default async function CadenciasPage() {
         </div>
         <div className="ui-card__body">
           {globalCadence ? (
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
-              <span style={{ fontFamily: 'var(--font-serif)', fontSize: 56, fontWeight: 500, letterSpacing: '-0.02em', lineHeight: 1, color: 'var(--text-c)' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
+              <span
+                className="u-tabular"
+                style={{
+                  fontFamily: 'var(--font-serif)',
+                  fontSize: 64,
+                  fontWeight: 500,
+                  letterSpacing: '-0.028em',
+                  lineHeight: 1,
+                  color: 'var(--text-c)',
+                  background: 'linear-gradient(135deg, var(--accent-700), var(--slate-900))',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}
+              >
                 {globalCadence.frequency_days}
               </span>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>días entre 1:1s</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>≈ {Math.round(30 / globalCadence.frequency_days)} reuniones por mes</div>
+                <div style={{ fontSize: 14.5, fontWeight: 500, letterSpacing: '-0.005em' }}>días entre 1:1s</div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                  ≈ {Math.round(30 / globalCadence.frequency_days)} reuniones por mes
+                </div>
               </div>
             </div>
           ) : (

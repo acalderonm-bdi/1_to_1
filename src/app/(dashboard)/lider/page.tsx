@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { Users, Calendar, TrendingUp, Plus, ArrowRight } from 'lucide-react'
+import { Users, Calendar, TrendingUp, Plus, ArrowRight, UserPlus } from 'lucide-react'
 
 export default async function LiderPage() {
   const supabase = createClient()
@@ -57,12 +57,20 @@ export default async function LiderPage() {
   const firstName = profile?.full_name.split(' ')[0] ?? 'Líder'
   const AV_COLORS = ['av-blue', 'av-violet', 'av-pink', 'av-green', 'av-amber', 'av-orange', 'av-teal', 'av-rose']
 
+  const complianceTone =
+    compliance >= 80 ? 'green' :
+    compliance >= 60 ? 'amber' :
+    compliance >= 40 ? 'orange' : 'red'
+
   return (
     <div className="page">
       <div className="page__head">
         <div>
+          <span className="page__eyebrow"><Users size={12} /> Equipo a tu cargo</span>
           <h1 className="page__title">Hola, {firstName}</h1>
-          <p className="page__subtitle">Resumen de tu equipo y cumplimiento de cadencia.</p>
+          <p className="page__subtitle">
+            Resumen de tu equipo y cumplimiento de cadencia este mes.
+          </p>
         </div>
         <div className="page__actions">
           <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--primary">
@@ -71,35 +79,54 @@ export default async function LiderPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }} className="anim-stagger">
         <div className="kpi">
-          <div className="kpi__label"><Users size={13} /> Colaboradores</div>
-          <div className="kpi__value">{collaboratorIds.length}</div>
+          <div className="kpi__icon kpi__icon--blue"><Users /></div>
+          <div className="kpi__label">Colaboradores</div>
+          <div className="kpi__value u-tabular">{collaboratorIds.length}</div>
           <div className="kpi__delta">a tu cargo</div>
         </div>
         <div className="kpi">
-          <div className="kpi__label"><Calendar size={13} /> 1:1s este mes</div>
-          <div className="kpi__value">{total}</div>
+          <div className="kpi__icon kpi__icon--violet"><Calendar /></div>
+          <div className="kpi__label">1:1s este mes</div>
+          <div className="kpi__value u-tabular">{total}</div>
           <div className="kpi__delta">{realized} realizadas</div>
         </div>
         <div className="kpi">
-          <div className="kpi__label"><TrendingUp size={13} /> Cumplimiento</div>
-          <div className="kpi__value">{compliance}%</div>
-          <div className="kpi__delta kpi__delta--up">de tu cadencia</div>
+          <div className={`kpi__icon kpi__icon--${complianceTone}`}><TrendingUp /></div>
+          <div className="kpi__label">Cumplimiento</div>
+          <div className="kpi__value u-tabular">{compliance}%</div>
+          <div style={{ marginTop: 8 }}>
+            <div className="progress-bar">
+              <div
+                className={`progress-bar__fill progress-bar__fill--${complianceTone === 'orange' ? 'amber' : complianceTone}`}
+                style={{ width: `${compliance}%` }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="ui-card">
         <div className="ui-card__head">
           <div>
-            <h3 className="ui-card__title">Mi equipo</h3>
+            <h3 className="ui-card__title">
+              <Users size={15} /> Mi equipo
+            </h3>
             <p className="ui-card__desc">Próximas 1:1s con cada colaborador</p>
           </div>
+          <Link href="/lider/equipo" className="ui-btn ui-btn--ghost ui-btn--sm">
+            Ver todos <ArrowRight size={11} />
+          </Link>
         </div>
         <div className="ui-card__body ui-card__body--flush">
           {relations.length === 0 ? (
-            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-              Sin colaboradores asignados. Contacta a Arquitectura Humana.
+            <div className="empty">
+              <div className="empty__icon"><UserPlus /></div>
+              <h3 className="empty__title">Sin colaboradores asignados</h3>
+              <p className="empty__desc">
+                Contacta a Arquitectura Humana para que configure tu relación con tu equipo.
+              </p>
             </div>
           ) : (
             relations.map((rel, idx) => {
@@ -108,17 +135,32 @@ export default async function LiderPage() {
               const next = upcomingMap[rel.collaborator_id]
               const initials = collab.full_name.split(' ').map(p => p[0]).slice(0, 2).join('')
               return (
-                <div key={rel.collaborator_id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 24px', borderBottom: '1px solid var(--border-c)' }}>
+                <div
+                  key={rel.collaborator_id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 14,
+                    padding: '14px 24px',
+                    borderBottom: '1px solid var(--border-c)',
+                  }}
+                >
                   <div className={`avatar avatar--md ${AV_COLORS[idx % AV_COLORS.length]}`}>{initials}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 500, fontSize: 14 }}>{collab.full_name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{collab.email}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 500, fontSize: 14, letterSpacing: '-0.005em' }}>
+                      {collab.full_name}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {collab.email}
+                    </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     {next ? (
                       <>
-                        <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Próxima 1:1</div>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
+                          Próxima
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-serif)', letterSpacing: '-0.008em' }}>
                           {new Date(next.scheduled_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
                         </div>
                       </>

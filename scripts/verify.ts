@@ -1,8 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { config } from 'dotenv'
 import Anthropic from '@anthropic-ai/sdk'
+import ws from 'ws'
 
 config({ path: '.env.local' })
+
+;(globalThis as unknown as { WebSocket: unknown }).WebSocket = ws
 
 interface Check {
   name: string

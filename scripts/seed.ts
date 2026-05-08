@@ -1,8 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { config } from 'dotenv'
 import { addDays, subDays, subWeeks, addHours } from 'date-fns'
+import ws from 'ws'
 
 config({ path: '.env.local' })
+
+;(globalThis as unknown as { WebSocket: unknown }).WebSocket = ws
 
 const DEMO_PASSWORD = 'Demo1234!'
 

@@ -1,7 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { Calendar, Clock, Video, MapPin, ChevronLeft, MoreHorizontal } from 'lucide-react'
+import { Calendar, Clock, Video, MapPin, ChevronLeft, MoreHorizontal, ArrowRight } from 'lucide-react'
 import { STATUS_LABELS } from '@/lib/constants'
 import { AgendaList } from '@/components/one-on-one/agenda-list'
 import { DetailInteraction } from '@/components/one-on-one/detail-interaction'
@@ -83,61 +83,92 @@ export default async function OneOnOneDetailPage({ params }: { params: { id: str
 
   return (
     <div className="page">
-      <div style={{ marginBottom: 14 }}>
+      <div style={{ marginBottom: 18 }}>
         <Link href="/colaborador" className="ui-btn ui-btn--ghost ui-btn--sm">
           <ChevronLeft size={13} /> Volver al inicio
         </Link>
       </div>
 
-      <div className="ui-card" style={{ marginBottom: 18 }}>
-        <div className="ui-card__body" style={{ padding: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <span className={`ui-badge ui-badge--${STATUS_TONE[meeting.status] ?? 'slate'}`}>
-                  {STATUS_LABELS[meeting.status]}
-                </span>
-                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>· 1:1 quincenal</span>
-              </div>
-              <h1 className="page__title" style={{ fontSize: 28, marginBottom: 4 }}>
-                1:1 con {partnerName}
-              </h1>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 22, marginTop: 12, fontSize: 13.5, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Calendar size={14} /> {dateLabel}</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Clock size={14} /> {time} · {meeting.duration_minutes} min</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  {meeting.modality === 'virtual' ? <Video size={14} /> : <MapPin size={14} />}
-                  {meeting.modality === 'virtual' ? 'Google Meet' : (meeting.location ?? 'Presencial')}
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 18 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div className="avatar avatar--sm av-violet">{lInit}</div>
-                  <div style={{ fontSize: 13 }}>
-                    <div style={{ fontWeight: 500 }}>{leader?.full_name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Líder</div>
+      <div className="hero-card" style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <span className={`ui-badge ui-badge--${STATUS_TONE[meeting.status] ?? 'slate'}`}>
+                {STATUS_LABELS[meeting.status]}
+              </span>
+              <span style={{ fontSize: 12.5, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+                · 1:1 quincenal
+              </span>
+            </div>
+            <h1 className="font-serif" style={{ fontSize: 30, letterSpacing: '-0.024em', fontWeight: 500, margin: '0 0 4px', lineHeight: 1.1 }}>
+              1:1 con {partnerName}
+            </h1>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 22,
+                marginTop: 14,
+                fontSize: 13.5,
+                color: 'var(--text-muted)',
+                flexWrap: 'wrap',
+              }}
+            >
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Calendar size={14} /> {dateLabel}
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Clock size={14} /> {time} · {meeting.duration_minutes} min
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {meeting.modality === 'virtual' ? <Video size={14} /> : <MapPin size={14} />}
+                {meeting.modality === 'virtual' ? 'Google Meet' : (meeting.location ?? 'Presencial')}
+              </span>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                marginTop: 22,
+                padding: '12px 14px',
+                background: 'var(--bg-subtle)',
+                border: '1px solid var(--border-c)',
+                borderRadius: 'var(--r-md)',
+                width: 'fit-content',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="avatar avatar--sm av-violet">{lInit}</div>
+                <div style={{ fontSize: 13 }}>
+                  <div style={{ fontWeight: 500, letterSpacing: '-0.005em' }}>{leader?.full_name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+                    Líder
                   </div>
                 </div>
-                <span style={{ margin: '0 8px', color: 'var(--text-subtle)' }}>↔</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div className="avatar avatar--sm av-blue">{cInit}</div>
-                  <div style={{ fontSize: 13 }}>
-                    <div style={{ fontWeight: 500 }}>{collaborator?.full_name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Colaborador</div>
+              </div>
+              <ArrowRight size={14} style={{ color: 'var(--text-subtle)', margin: '0 4px' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="avatar avatar--sm av-blue">{cInit}</div>
+                <div style={{ fontSize: 13 }}>
+                  <div style={{ fontWeight: 500, letterSpacing: '-0.005em' }}>{collaborator?.full_name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+                    Colaborador
                   </div>
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {meeting.meet_link && (
-                <a href={meeting.meet_link} target="_blank" rel="noreferrer" className="ui-btn ui-btn--outline">
-                  <Video size={14} /> Unirse a Meet
-                </a>
-              )}
-              <button type="button" className="ui-btn ui-btn--ghost ui-btn--icon" aria-label="Más opciones">
-                <MoreHorizontal size={16} />
-              </button>
-            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {meeting.meet_link && (
+              <a href={meeting.meet_link} target="_blank" rel="noreferrer" className="ui-btn ui-btn--accent">
+                <Video size={14} /> Unirse a Meet
+              </a>
+            )}
+            <button type="button" className="ui-btn ui-btn--ghost ui-btn--icon" aria-label="Más opciones">
+              <MoreHorizontal size={16} />
+            </button>
           </div>
         </div>
       </div>
@@ -176,10 +207,15 @@ export default async function OneOnOneDetailPage({ params }: { params: { id: str
         )}
 
         {!isPastMeeting && (
-          <div className="ui-card" style={{ padding: 40, textAlign: 'center' }}>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-              La minuta y acuerdos estarán disponibles después de la reunión.
-            </p>
+          <div className="ui-card" style={{ padding: 0 }}>
+            <div className="empty">
+              <div className="empty__icon"><Clock /></div>
+              <h3 className="empty__title">Aún no es hora</h3>
+              <p className="empty__desc">
+                La minuta y los acuerdos estarán disponibles después de la reunión.
+                Mientras tanto, agreguen los temas que quieran tratar en la agenda.
+              </p>
+            </div>
           </div>
         )}
       </div>

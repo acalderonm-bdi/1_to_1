@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Users } from 'lucide-react'
+import { Users, Calendar } from 'lucide-react'
 import { AGREEMENT_LABELS } from '@/lib/constants'
 
 const STATUS_TONE: Record<string, string> = {
@@ -46,18 +46,22 @@ export default async function EquipoPage() {
     <div className="page">
       <div className="page__head">
         <div>
+          <span className="page__eyebrow"><Users size={12} /> Tu equipo</span>
           <h1 className="page__title">Mi equipo</h1>
-          <p className="page__subtitle">Acuerdos pendientes por persona</p>
+          <p className="page__subtitle">Acuerdos pendientes por persona y estado de cada conversación.</p>
         </div>
       </div>
 
       {relations.length === 0 ? (
-        <div className="ui-card" style={{ padding: 60, textAlign: 'center' }}>
-          <Users size={32} style={{ margin: '0 auto', color: 'var(--text-subtle)' }} />
-          <p style={{ marginTop: 12, color: 'var(--text-muted)', fontSize: 14 }}>Sin colaboradores asignados</p>
+        <div className="ui-card">
+          <div className="empty">
+            <div className="empty__icon"><Users /></div>
+            <h3 className="empty__title">Sin colaboradores asignados</h3>
+            <p className="empty__desc">Contacta a Arquitectura Humana para configurar tu equipo.</p>
+          </div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 14 }}>
+        <div style={{ display: 'grid', gap: 14 }} className="anim-stagger">
           {relations.map((rel, idx) => {
             const collab = Array.isArray(rel.users) ? rel.users[0] : rel.users
             if (!collab) return null
@@ -67,7 +71,7 @@ export default async function EquipoPage() {
               <div key={rel.collaborator_id} className="ui-card">
                 <div className="ui-card__head">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div className={`avatar avatar--md ${AV_COLORS[idx % AV_COLORS.length]}`}>{initials}</div>
+                    <div className={`avatar avatar--lg ${AV_COLORS[idx % AV_COLORS.length]}`}>{initials}</div>
                     <div>
                       <h3 className="ui-card__title">{collab.full_name}</h3>
                       <p className="ui-card__desc">{collab.email}</p>
@@ -78,13 +82,31 @@ export default async function EquipoPage() {
                   </span>
                 </div>
                 {pending.length > 0 && (
-                  <div className="ui-card__body" style={{ display: 'grid', gap: 8 }}>
+                  <div className="ui-card__body" style={{ display: 'grid', gap: 10 }}>
                     {pending.map((a, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13 }}>
-                        <span style={{ color: 'var(--text-c)' }}>{a.description}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11.5, color: 'var(--text-muted)' }}>
-                          {a.due_date && <span>{a.due_date}</span>}
-                          <span className={`ui-badge ui-badge--${STATUS_TONE[a.status] ?? 'slate'}`}>{AGREEMENT_LABELS[a.status]}</span>
+                      <div
+                        key={i}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          fontSize: 13,
+                          padding: '10px 12px',
+                          borderRadius: 'var(--r-md)',
+                          background: 'var(--bg-subtle)',
+                          border: '1px solid var(--border-c)',
+                        }}
+                      >
+                        <span style={{ color: 'var(--text-c)', flex: 1, lineHeight: 1.5 }}>{a.description}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11.5, color: 'var(--text-muted)', flexShrink: 0 }}>
+                          {a.due_date && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <Calendar size={11} /> {a.due_date}
+                            </span>
+                          )}
+                          <span className={`ui-badge ui-badge--${STATUS_TONE[a.status] ?? 'slate'}`}>
+                            {AGREEMENT_LABELS[a.status]}
+                          </span>
                         </div>
                       </div>
                     ))}

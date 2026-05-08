@@ -47,7 +47,7 @@ export function DetailInteraction({
       />
 
       {/* Minuta */}
-      <div className="ui-card">
+      <div className="ui-card anim-fade-in-up">
         <div className="ui-card__head">
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -82,7 +82,7 @@ export function DetailInteraction({
       </div>
 
       {/* Acuerdos */}
-      <div className="ui-card">
+      <div className="ui-card anim-fade-in-up">
         <div className="ui-card__head">
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>

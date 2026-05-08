@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Plus, Calendar, Loader2, ChevronDown } from 'lucide-react'
+import { Plus, Calendar, Loader2, ChevronDown, Sparkles } from 'lucide-react'
 import { createAgreement, updateAgreementStatus } from '@/lib/actions/agreements'
 import { AGREEMENT_LABELS } from '@/lib/constants'
 import type { ExtractedAgreement } from '@/types/domain'
@@ -82,16 +82,28 @@ export function AgreementList({
   return (
     <div style={{ display: 'grid', gap: 10 }}>
       {extractedSuggestions && extractedSuggestions.length > 0 && (
-        <div className="ai-card" style={{ padding: 14, display: 'grid', gap: 10 }}>
+        <div className="ai-card anim-fade-in" style={{ padding: 16, display: 'grid', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span className="ai-chip">IA</span>
-            <span style={{ fontSize: 12.5, fontWeight: 500 }}>
-              Extraje {extractedSuggestions.length} acuerdo{extractedSuggestions.length !== 1 ? 's' : ''} — confirma cuáles agregar
+            <span style={{ fontSize: 12.5, fontWeight: 500, letterSpacing: '-0.005em' }}>
+              Extraje {extractedSuggestions.length} acuerdo{extractedSuggestions.length !== 1 ? 's' : ''} —
+              confirma cuáles agregar
             </span>
           </div>
           {extractedSuggestions.map((s, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: 10, borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--ai-border)' }}>
-              <p style={{ flex: 1, fontSize: 13.5, lineHeight: 1.5, margin: 0 }}>{s.description}</p>
+            <div
+              key={i}
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 10,
+                padding: 12,
+                borderRadius: 8,
+                background: 'var(--bg-card)',
+                border: '1px solid var(--ai-border)',
+              }}
+            >
+              <p style={{ flex: 1, fontSize: 13.5, lineHeight: 1.55, margin: 0 }}>{s.description}</p>
               <button
                 type="button"
                 className="ui-btn ui-btn--accent ui-btn--sm"
@@ -105,10 +117,23 @@ export function AgreementList({
       )}
 
       {agreements.length === 0 && !extractedSuggestions?.length && (
-        <div style={{ padding: 32, textAlign: 'center', border: '1px dashed var(--border-strong)', borderRadius: 8, color: 'var(--text-muted)' }}>
-          <div style={{ fontSize: 13.5, marginBottom: 6 }}>✦ Aún no hay acuerdos</div>
-          <div style={{ fontSize: 12.5, maxWidth: 380, margin: '0 auto' }}>
-            Cuando termines la minuta, presiona <strong>Extraer acuerdos con IA</strong> o agrégalos manualmente.
+        <div
+          style={{
+            padding: 32,
+            textAlign: 'center',
+            border: '1px dashed var(--border-strong)',
+            borderRadius: 8,
+            color: 'var(--text-muted)',
+            background: 'var(--bg-subtle)',
+          }}
+        >
+          <Sparkles size={20} style={{ color: 'var(--accent-600)', opacity: 0.6, marginBottom: 6 }} />
+          <div style={{ fontSize: 13.5, marginBottom: 6, fontWeight: 500, color: 'var(--text-c)' }}>
+            Aún no hay acuerdos
+          </div>
+          <div style={{ fontSize: 12.5, maxWidth: 400, margin: '0 auto', lineHeight: 1.55 }}>
+            Cuando termines la minuta, presiona <strong>Extraer acuerdos con IA</strong> o
+            agrégalos manualmente.
           </div>
         </div>
       )}
@@ -116,7 +141,7 @@ export function AgreementList({
       {agreements.map((a, idx) => {
         const r = responsibleInfo(a.responsible_id, idx)
         return (
-          <div key={a.id} className="agreement">
+          <div key={a.id} className="agreement anim-fade-in">
             <div className="agreement__head">
               <p className="agreement__desc">{a.description}</p>
               <div style={{ position: 'relative' }}>
@@ -139,6 +164,7 @@ export function AgreementList({
                           display: 'block', width: '100%', textAlign: 'left',
                           background: 'transparent', border: 'none', padding: '7px 10px',
                           borderRadius: 5, fontSize: 12.5, cursor: 'pointer',
+                          color: 'var(--text-c)',
                         }}
                         onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
@@ -165,19 +191,20 @@ export function AgreementList({
       {!showAdd ? (
         <button
           type="button"
-          className="ui-btn ui-btn--ghost"
+          className="ui-btn ui-btn--ghost ui-btn--sm"
           onClick={() => setShowAdd(true)}
           style={{ alignSelf: 'flex-start' }}
         >
-          <Plus size={14} /> Agregar acuerdo manualmente
+          <Plus size={13} /> Agregar acuerdo manualmente
         </button>
       ) : (
-        <div className="ui-card" style={{ padding: 14, display: 'grid', gap: 10 }}>
+        <div className="ui-card anim-fade-in" style={{ padding: 14, display: 'grid', gap: 10 }}>
           <input
             className="ui-input"
             placeholder="Descripción del acuerdo…"
             value={newDesc}
             onChange={e => setNewDesc(e.target.value)}
+            autoFocus
           />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <select className="ui-select" value={newResponsible} onChange={e => setNewResponsible(e.target.value)}>
@@ -187,11 +214,21 @@ export function AgreementList({
             <input className="ui-input" type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)} />
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button type="button" className="ui-btn ui-btn--ghost ui-btn--sm" onClick={() => { setShowAdd(false); setNewDesc(''); setNewDueDate('') }}>
+            <button
+              type="button"
+              className="ui-btn ui-btn--ghost ui-btn--sm"
+              onClick={() => { setShowAdd(false); setNewDesc(''); setNewDueDate('') }}
+            >
               Cancelar
             </button>
-            <button type="button" className="ui-btn ui-btn--accent ui-btn--sm" onClick={handleAddManual} disabled={isPending || !newDesc.trim()}>
-              {isPending ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Guardar
+            <button
+              type="button"
+              className="ui-btn ui-btn--accent ui-btn--sm"
+              onClick={handleAddManual}
+              disabled={isPending || !newDesc.trim()}
+            >
+              {isPending ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+              Guardar
             </button>
           </div>
         </div>

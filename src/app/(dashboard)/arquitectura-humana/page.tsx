@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { TrendingUp, AlertTriangle, FileText, CheckSquare, ArrowRight } from 'lucide-react'
+import { TrendingUp, AlertTriangle, FileText, CheckSquare, ArrowRight, Calendar, Building2 } from 'lucide-react'
 
 export default async function ArquitecturaHumanaPage() {
   const supabase = createClient()
@@ -39,75 +39,121 @@ export default async function ArquitecturaHumanaPage() {
   const pending = agreements.filter(a => a.status === 'pendiente').length
   const globalCompliance = totalMeetings > 0 ? Math.round((realized / totalMeetings) * 100) : 0
 
+  function complianceTone(rate: number) {
+    if (rate >= 80) return 'green'
+    if (rate >= 60) return 'amber'
+    if (rate >= 40) return 'orange'
+    return 'red'
+  }
+
   return (
     <div className="page">
       <div className="page__head">
         <div>
+          <span className="page__eyebrow"><Building2 size={12} /> Visión global</span>
           <h1 className="page__title">Panel de Arquitectura Humana</h1>
-          <p className="page__subtitle">Visibilidad global del cumplimiento organizacional</p>
+          <p className="page__subtitle">
+            Visibilidad organizacional del cumplimiento, acuerdos y salud de las conversaciones 1:1.
+          </p>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 16 }} className="anim-stagger">
         <div className="kpi">
-          <div className="kpi__label"><TrendingUp size={13} /> Cumplimiento</div>
-          <div className="kpi__value">{globalCompliance}%</div>
+          <div className="kpi__icon kpi__icon--green"><TrendingUp /></div>
+          <div className="kpi__label">Cumplimiento</div>
+          <div className="kpi__value u-tabular">{globalCompliance}%</div>
           <div className="kpi__delta kpi__delta--up">{realized}/{totalMeetings} realizadas</div>
         </div>
         <div className="kpi">
+          <div className="kpi__icon kpi__icon--red"><Calendar /></div>
           <div className="kpi__label">No realizadas</div>
-          <div className="kpi__value">{missed}</div>
+          <div className="kpi__value u-tabular">{missed}</div>
           <div className="kpi__delta">este mes</div>
         </div>
         <div className="kpi">
-          <div className="kpi__label"><AlertTriangle size={13} /> En disputa</div>
-          <div className="kpi__value">{disputed}</div>
+          <div className="kpi__icon kpi__icon--orange"><AlertTriangle /></div>
+          <div className="kpi__label">En disputa</div>
+          <div className="kpi__value u-tabular">{disputed}</div>
           <div className="kpi__delta">requieren revisión</div>
         </div>
         <div className="kpi">
-          <div className="kpi__label"><FileText size={13} /> Reportes IA</div>
-          <div className="kpi__value">{unreviewedReports ?? 0}</div>
+          <div className="kpi__icon kpi__icon--violet"><FileText /></div>
+          <div className="kpi__label">Reportes IA</div>
+          <div className="kpi__value u-tabular">{unreviewedReports ?? 0}</div>
           <div className="kpi__delta">sin revisar</div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }} className="anim-stagger">
         <div className="kpi">
-          <div className="kpi__label"><CheckSquare size={13} /> Acuerdos pendientes</div>
-          <div className="kpi__value">{pending}</div>
+          <div className="kpi__icon kpi__icon--amber"><CheckSquare /></div>
+          <div className="kpi__label">Acuerdos pendientes</div>
+          <div className="kpi__value u-tabular">{pending}</div>
         </div>
         <div className="kpi">
+          <div className="kpi__icon kpi__icon--green"><CheckSquare /></div>
           <div className="kpi__label">Acuerdos cumplidos</div>
-          <div className="kpi__value">{fulfilled}</div>
+          <div className="kpi__value u-tabular">{fulfilled}</div>
         </div>
         <div className="kpi">
+          <div className="kpi__icon kpi__icon--blue"><CheckSquare /></div>
           <div className="kpi__label">Total de acuerdos</div>
-          <div className="kpi__value">{agreements.length}</div>
+          <div className="kpi__value u-tabular">{agreements.length}</div>
         </div>
       </div>
 
       <div className="ui-card">
         <div className="ui-card__head">
           <div>
-            <h3 className="ui-card__title">Cumplimiento por área</h3>
-            <p className="ui-card__desc">Ordenado de menor a mayor</p>
+            <h3 className="ui-card__title">
+              <TrendingUp size={15} /> Cumplimiento por área
+            </h3>
+            <p className="ui-card__desc">Ordenado de menor a mayor cumplimiento</p>
           </div>
           <Link href="/arquitectura-humana/mapa-calor" className="ui-btn ui-btn--ghost ui-btn--sm">
-            Ver mapa de calor <ArrowRight size={12} />
+            Ver mapa de calor <ArrowRight size={11} />
           </Link>
         </div>
         <div className="ui-card__body" style={{ display: 'grid', gap: 14 }}>
-          {metrics.map(d => (
-            <div key={d.department_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-              <span style={{ fontSize: 13.5, fontWeight: 500, minWidth: 160 }}>{d.department_name}</span>
-              <div className="progress-bar" style={{ flex: 1 }}>
-                <div className="progress-bar__fill" style={{ width: `${d.compliance_rate ?? 0}%` }} />
+          {metrics.map(d => {
+            const rate = d.compliance_rate ?? 0
+            const tone = complianceTone(rate)
+            const fillTone = tone === 'orange' ? 'amber' : tone
+            return (
+              <div
+                key={d.department_id}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '180px 1fr 60px',
+                  alignItems: 'center',
+                  gap: 16,
+                }}
+              >
+                <span style={{ fontSize: 13.5, fontWeight: 500, letterSpacing: '-0.005em' }}>
+                  {d.department_name}
+                </span>
+                <div className="progress-bar">
+                  <div
+                    className={`progress-bar__fill progress-bar__fill--${fillTone}`}
+                    style={{ width: `${rate}%` }}
+                  />
+                </div>
+                <span
+                  className="u-tabular"
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 500,
+                    textAlign: 'right',
+                    fontFamily: 'var(--font-serif)',
+                    letterSpacing: '-0.012em',
+                  }}
+                >
+                  {rate}%
+                </span>
               </div>
-              <span style={{ fontSize: 13, fontWeight: 500, minWidth: 50, textAlign: 'right', fontFamily: 'var(--font-serif)' }}>
-                {d.compliance_rate ?? 0}%
-              </span>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>

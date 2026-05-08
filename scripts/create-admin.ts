@@ -1,7 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { config } from 'dotenv'
+import ws from 'ws'
 
 config({ path: '.env.local' })
+
+// Node 20 lacks native WebSocket; supabase-js realtime needs one at construction.
+;(globalThis as unknown as { WebSocket: unknown }).WebSocket = ws
 
 async function main() {
   const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL']

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { MeetingForm } from '@/components/one-on-one/meeting-form'
-import { Users } from 'lucide-react'
+import { Users, CalendarPlus } from 'lucide-react'
 
 export default async function NuevaOneOnOnePage() {
   const supabase = createClient()
@@ -43,18 +43,24 @@ export default async function NuevaOneOnOnePage() {
     <div className="page">
       <div className="page__head">
         <div>
-          <h1 className="page__title">Nueva 1:1</h1>
-          <p className="page__subtitle">Agenda una reunión uno a uno</p>
+          <span className="page__eyebrow"><CalendarPlus size={12} /> Nueva 1:1</span>
+          <h1 className="page__title">Agenda una reunión uno a uno</h1>
+          <p className="page__subtitle">
+            Crea la próxima reunión con la persona indicada y define los detalles importantes.
+          </p>
         </div>
       </div>
 
       {counterparts.length === 0 ? (
-        <div className="ui-card" style={{ padding: 60, textAlign: 'center', maxWidth: 560 }}>
-          <Users size={32} style={{ margin: '0 auto', color: 'var(--text-subtle)' }} />
-          <h3 style={{ marginTop: 14, fontSize: 15, fontWeight: 600 }}>Sin relaciones configuradas</h3>
-          <p style={{ marginTop: 4, color: 'var(--text-muted)', fontSize: 13 }}>
-            Pide a Arquitectura Humana que configure tu relación con tu líder o colaboradores.
-          </p>
+        <div className="ui-card" style={{ maxWidth: 560 }}>
+          <div className="empty">
+            <div className="empty__icon"><Users /></div>
+            <h3 className="empty__title">Sin relaciones configuradas</h3>
+            <p className="empty__desc">
+              Pide a Arquitectura Humana que configure tu relación con tu líder o
+              colaboradores antes de poder agendar una 1:1.
+            </p>
+          </div>
         </div>
       ) : (
         <MeetingForm

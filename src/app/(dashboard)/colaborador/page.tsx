@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { Calendar, CheckSquare, Plus, ArrowRight, Video, MapPin } from 'lucide-react'
+import { Calendar, CheckSquare, Plus, ArrowRight, Video, MapPin, Sparkles, CalendarPlus } from 'lucide-react'
 import { STATUS_LABELS, AGREEMENT_LABELS } from '@/lib/constants'
 
 export default async function ColaboradorPage() {
@@ -26,7 +26,6 @@ export default async function ColaboradorPage() {
     meet_link: string | null; status: string; leader_id: string
   }>
 
-  // Cargar líderes para mostrar nombres
   const leaderIds = Array.from(new Set(upcoming.map(m => m.leader_id)))
   let leaderMap: Record<string, string> = {}
   if (leaderIds.length > 0) {
@@ -43,15 +42,37 @@ export default async function ColaboradorPage() {
     .limit(5)
   const pendingAgreements = (rawAgreements ?? []) as Array<{ id: string; description: string; status: string; due_date: string | null }>
 
+  const { count: realizedCount } = await supabase
+    .from('one_on_ones')
+    .select('id', { count: 'exact', head: true })
+    .or(`leader_id.eq.${user.id},collaborator_id.eq.${user.id}`)
+    .eq('status', 'realizada')
+
+  const { count: completedAgreements } = await supabase
+    .from('agreements')
+    .select('id', { count: 'exact', head: true })
+    .eq('responsible_id', user.id)
+    .eq('status', 'cumplido')
+
   const firstName = profile?.full_name.split(' ')[0] ?? 'equipo'
   const MONTHS = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC']
+  const today = new Date()
+  const isOverdue = (dueIso: string | null) => dueIso ? new Date(dueIso) < today : false
+
+  function formatDueDate(due: string) {
+    const d = new Date(due)
+    return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
+  }
 
   return (
     <div className="page">
       <div className="page__head">
         <div>
+          <span className="page__eyebrow"><Sparkles size={12} /> Tu espacio personal</span>
           <h1 className="page__title">Hola, {firstName}</h1>
-          <p className="page__subtitle">Aquí está un resumen de tus próximas 1:1s y compromisos abiertos.</p>
+          <p className="page__subtitle">
+            Aquí está un resumen de tus próximas 1:1s y los compromisos que tienes abiertos.
+          </p>
         </div>
         <div className="page__actions">
           <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--primary">
@@ -60,20 +81,50 @@ export default async function ColaboradorPage() {
         </div>
       </div>
 
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }} className="anim-stagger">
+        <div className="kpi">
+          <div className="kpi__icon kpi__icon--blue"><Calendar /></div>
+          <div className="kpi__label">Próximas 1:1s</div>
+          <div className="kpi__value u-tabular">{upcoming.length}</div>
+          <div className="kpi__delta">agendadas</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi__icon kpi__icon--green"><CheckSquare /></div>
+          <div className="kpi__label">Acuerdos cumplidos</div>
+          <div className="kpi__value u-tabular">{completedAgreements ?? 0}</div>
+          <div className="kpi__delta">en total</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi__icon kpi__icon--violet"><Sparkles /></div>
+          <div className="kpi__label">1:1s realizadas</div>
+          <div className="kpi__value u-tabular">{realizedCount ?? 0}</div>
+          <div className="kpi__delta">tu historial</div>
+        </div>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
         <div className="ui-card">
           <div className="ui-card__head">
             <div>
-              <h3 className="ui-card__title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h3 className="ui-card__title">
                 <Calendar size={15} /> Próximas reuniones
               </h3>
-              <p className="ui-card__desc">{upcoming.length} agendadas</p>
+              <p className="ui-card__desc">
+                {upcoming.length === 0 ? 'Sin reuniones próximas' : `${upcoming.length} agendada${upcoming.length === 1 ? '' : 's'}`}
+              </p>
             </div>
           </div>
           <div className="ui-card__body ui-card__body--flush">
             {upcoming.length === 0 ? (
-              <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                Sin reuniones próximas. <Link href="/colaborador/1to1/nueva" style={{ color: 'var(--accent-600)' }}>Agenda tu próxima 1:1</Link>
+              <div className="empty">
+                <div className="empty__icon"><CalendarPlus /></div>
+                <h3 className="empty__title">Sin reuniones próximas</h3>
+                <p className="empty__desc">Agenda tu próxima 1:1 con tu líder para mantener el ritmo de tus conversaciones.</p>
+                <div className="empty__action">
+                  <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--accent ui-btn--sm">
+                    <Plus size={13} /> Agendar 1:1
+                  </Link>
+                </div>
               </div>
             ) : (
               upcoming.map(m => {
@@ -89,11 +140,19 @@ export default async function ColaboradorPage() {
                       <div className="up-row__date-time">{time}</div>
                     </div>
                     <div>
-                      <div style={{ fontWeight: 500, fontSize: 14 }}>1:1 con {leaderMap[m.leader_id] ?? 'líder'}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>
-                        {m.modality === 'virtual'
-                          ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Video size={12} /> Virtual</span>
-                          : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MapPin size={12} /> {m.location ?? 'Presencial'}</span>}
+                      <div style={{ fontWeight: 500, fontSize: 14, letterSpacing: '-0.005em' }}>
+                        1:1 con {leaderMap[m.leader_id] ?? 'líder'}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 5, fontSize: 12, color: 'var(--text-muted)' }}>
+                        {m.modality === 'virtual' ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                            <Video size={12} /> Virtual
+                          </span>
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                            <MapPin size={12} /> {m.location ?? 'Presencial'}
+                          </span>
+                        )}
                         <span className="ui-badge ui-badge--blue">{STATUS_LABELS[m.status]}</span>
                       </div>
                     </div>
@@ -110,30 +169,46 @@ export default async function ColaboradorPage() {
         <div className="ui-card">
           <div className="ui-card__head">
             <div>
-              <h3 className="ui-card__title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h3 className="ui-card__title">
                 <CheckSquare size={15} /> Acuerdos pendientes
               </h3>
               <p className="ui-card__desc">Compromisos que tienes abiertos</p>
             </div>
             <Link href="/colaborador/acuerdos" className="ui-btn ui-btn--ghost ui-btn--sm">
-              Ver todos
+              Ver todos <ArrowRight size={11} />
             </Link>
           </div>
           <div className="ui-card__body ui-card__body--flush">
             {pendingAgreements.length === 0 ? (
-              <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                ¡Al día con todos tus compromisos!
+              <div className="empty">
+                <div className="empty__icon" style={{ background: 'var(--green-50)', color: 'var(--green-700)' }}>
+                  <CheckSquare />
+                </div>
+                <h3 className="empty__title">¡Estás al día!</h3>
+                <p className="empty__desc">No tienes acuerdos pendientes. Sigue así.</p>
               </div>
             ) : (
-              pendingAgreements.map(a => (
-                <div key={a.id} style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-c)' }}>
-                  <div style={{ fontSize: 13.5, lineHeight: 1.5 }}>{a.description}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
-                    <span className="ui-badge ui-badge--amber">{AGREEMENT_LABELS[a.status]}</span>
-                    {a.due_date && <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Vence {a.due_date}</span>}
+              pendingAgreements.map(a => {
+                const overdue = isOverdue(a.due_date)
+                return (
+                  <div
+                    key={a.id}
+                    style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-c)' }}
+                  >
+                    <div style={{ fontSize: 13.5, lineHeight: 1.5 }}>{a.description}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+                      <span className={`ui-badge ${overdue ? 'ui-badge--red' : 'ui-badge--amber'}`}>
+                        {overdue ? 'Vencido' : AGREEMENT_LABELS[a.status]}
+                      </span>
+                      {a.due_date && (
+                        <span style={{ fontSize: 11.5, color: overdue ? 'var(--red-700)' : 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <Calendar size={11} /> Vence {formatDueDate(a.due_date)}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         </div>

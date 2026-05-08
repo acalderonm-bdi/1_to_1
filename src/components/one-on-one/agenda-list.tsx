@@ -39,7 +39,17 @@ export function AgendaList({ oneOnOneId, initialItems, currentUserId, authorMap 
   return (
     <div style={{ display: 'grid', gap: 8 }}>
       {items.length === 0 && (
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: 8, fontStyle: 'italic' }}>
+        <div
+          style={{
+            fontSize: 13,
+            color: 'var(--text-muted)',
+            padding: '16px 12px',
+            textAlign: 'center',
+            border: '1px dashed var(--border-strong)',
+            borderRadius: 'var(--r-md)',
+            background: 'var(--bg-subtle)',
+          }}
+        >
           Aún no hay temas. Agrega el primero abajo.
         </div>
       )}
@@ -47,17 +57,19 @@ export function AgendaList({ oneOnOneId, initialItems, currentUserId, authorMap 
         const isMine = item.author_id === currentUserId
         const authorName = authorMap[item.author_id] ?? 'Tú'
         return (
-          <div key={item.id} className="agenda-item" style={{ position: 'relative' }}>
+          <div key={item.id} className="agenda-item anim-fade-in">
             <div className="agenda-item__bullet" />
             <div className="agenda-item__text">
               {item.content}
-              <div className="agenda-item__author">Sugerido por {isMine ? 'ti' : authorName.split(' ')[0]}</div>
+              <div className="agenda-item__author">
+                Sugerido por {isMine ? 'ti' : authorName.split(' ')[0]}
+              </div>
             </div>
             {isMine && (
               <button
                 onClick={() => handleDelete(item.id)}
                 className="ui-btn ui-btn--ghost ui-btn--icon"
-                style={{ width: 26, height: 26, padding: 4 }}
+                style={{ width: 28, height: 28, padding: 4 }}
                 aria-label="Eliminar"
                 type="button"
               >

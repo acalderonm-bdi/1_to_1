@@ -41,15 +41,19 @@ export default async function EstructuraPage() {
     <div className="page">
       <div className="page__head">
         <div>
+          <span className="page__eyebrow"><Network size={12} /> Relaciones</span>
           <h1 className="page__title">Estructura organizacional</h1>
-          <p className="page__subtitle">Relaciones líder ↔ colaborador activas</p>
+          <p className="page__subtitle">Relaciones líder ↔ colaborador activas, agrupadas por área.</p>
         </div>
       </div>
 
       {relations.length === 0 ? (
-        <div className="ui-card" style={{ padding: 60, textAlign: 'center' }}>
-          <Network size={32} style={{ margin: '0 auto', color: 'var(--text-subtle)' }} />
-          <p style={{ marginTop: 12, color: 'var(--text-muted)' }}>Sin relaciones configuradas</p>
+        <div className="ui-card">
+          <div className="empty">
+            <div className="empty__icon"><Network /></div>
+            <h3 className="empty__title">Sin relaciones configuradas</h3>
+            <p className="empty__desc">Aún no hay relaciones líder ↔ colaborador en el sistema.</p>
+          </div>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 14 }}>

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { Settings } from 'lucide-react'
 import { SettingsShell } from '@/components/settings/settings-shell'
 
 export default async function ConfiguracionLiderPage() {
@@ -15,8 +16,9 @@ export default async function ConfiguracionLiderPage() {
     <div className="page">
       <div className="page__head">
         <div>
+          <span className="page__eyebrow"><Settings size={12} /> Tu cuenta</span>
           <h1 className="page__title">Configuración</h1>
-          <p className="page__subtitle">Personaliza tu experiencia en 1to1</p>
+          <p className="page__subtitle">Personaliza tu experiencia en 1to1.</p>
         </div>
       </div>
       <SettingsShell
