@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { Calendar, CheckSquare, Plus, ArrowRight, Video, MapPin, Sparkles, CalendarPlus } from 'lucide-react'
+import { Calendar, CheckSquare, Plus, ArrowRight, Video, MapPin, Sparkles } from 'lucide-react'
 import { STATUS_LABELS, AGREEMENT_LABELS } from '@/lib/constants'
+import { EmptyState } from '@/components/shared/empty-state'
 
 export default async function ColaboradorPage() {
   const supabase = createClient()
@@ -75,8 +76,8 @@ export default async function ColaboradorPage() {
           </p>
         </div>
         <div className="page__actions">
-          <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--primary">
-            <Plus size={14} /> Agendar 1:1
+          <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--accent">
+            <Plus size={14} /> <span>Agendar 1:1</span>
           </Link>
         </div>
       </div>
@@ -102,7 +103,7 @@ export default async function ColaboradorPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+      <div className="layout-2col" style={{ gridTemplateColumns: '1fr 1fr', gap: 18 }}>
         <div className="ui-card">
           <div className="ui-card__head">
             <div>
@@ -116,16 +117,16 @@ export default async function ColaboradorPage() {
           </div>
           <div className="ui-card__body ui-card__body--flush">
             {upcoming.length === 0 ? (
-              <div className="empty">
-                <div className="empty__icon"><CalendarPlus /></div>
-                <h3 className="empty__title">Sin reuniones próximas</h3>
-                <p className="empty__desc">Agenda tu próxima 1:1 con tu líder para mantener el ritmo de tus conversaciones.</p>
-                <div className="empty__action">
-                  <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--accent ui-btn--sm">
-                    <Plus size={13} /> Agendar 1:1
+              <EmptyState
+                illustration="meetings"
+                title="Sin reuniones próximas"
+                description="Agenda tu próxima 1:1 con tu líder para mantener el ritmo de tus conversaciones."
+                action={
+                  <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--accent">
+                    <Plus size={13} /> <span>Agendar 1:1</span>
                   </Link>
-                </div>
-              </div>
+                }
+              />
             ) : (
               upcoming.map(m => {
                 const d = new Date(m.scheduled_at)
@@ -180,35 +181,39 @@ export default async function ColaboradorPage() {
           </div>
           <div className="ui-card__body ui-card__body--flush">
             {pendingAgreements.length === 0 ? (
-              <div className="empty">
-                <div className="empty__icon" style={{ background: 'var(--green-50)', color: 'var(--green-700)' }}>
-                  <CheckSquare />
-                </div>
-                <h3 className="empty__title">¡Estás al día!</h3>
-                <p className="empty__desc">No tienes acuerdos pendientes. Sigue así.</p>
-              </div>
+              <EmptyState
+                illustration="success"
+                title="¡Estás al día!"
+                description="No tienes acuerdos pendientes. Sigue así."
+              />
             ) : (
-              pendingAgreements.map(a => {
-                const overdue = isOverdue(a.due_date)
-                return (
-                  <div
-                    key={a.id}
-                    style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-c)' }}
-                  >
-                    <div style={{ fontSize: 13.5, lineHeight: 1.5 }}>{a.description}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
-                      <span className={`ui-badge ${overdue ? 'ui-badge--red' : 'ui-badge--amber'}`}>
-                        {overdue ? 'Vencido' : AGREEMENT_LABELS[a.status]}
-                      </span>
-                      {a.due_date && (
-                        <span style={{ fontSize: 11.5, color: overdue ? 'var(--red-700)' : 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          <Calendar size={11} /> Vence {formatDueDate(a.due_date)}
+              <div className="anim-stagger" style={{ padding: '8px 16px 16px' }}>
+                {pendingAgreements.map(a => {
+                  const overdue = isOverdue(a.due_date)
+                  return (
+                    <div
+                      key={a.id}
+                      className="agreement"
+                      style={{ marginTop: 8 }}
+                    >
+                      <div className="agreement__desc">{a.description}</div>
+                      <div className="agreement__meta">
+                        <span className={`ui-badge ${overdue ? 'ui-badge--red' : 'ui-badge--amber'}`}>
+                          {overdue ? 'Vencido' : AGREEMENT_LABELS[a.status]}
                         </span>
-                      )}
+                        {a.due_date && (
+                          <span
+                            className="agreement__meta-item"
+                            style={{ color: overdue ? 'var(--red-700)' : 'var(--text-muted)' }}
+                          >
+                            <Calendar size={11} /> Vence {formatDueDate(a.due_date)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )
-              })
+                  )
+                })}
+              </div>
             )}
           </div>
         </div>

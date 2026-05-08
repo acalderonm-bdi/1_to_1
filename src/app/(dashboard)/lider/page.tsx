@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Users, Calendar, TrendingUp, Plus, ArrowRight, UserPlus } from 'lucide-react'
+import { EmptyState } from '@/components/shared/empty-state'
 
 export default async function LiderPage() {
   const supabase = createClient()
@@ -73,8 +74,8 @@ export default async function LiderPage() {
           </p>
         </div>
         <div className="page__actions">
-          <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--primary">
-            <Plus size={14} /> Agendar 1:1
+          <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--accent">
+            <Plus size={14} /> <span>Agendar 1:1</span>
           </Link>
         </div>
       </div>
@@ -121,13 +122,19 @@ export default async function LiderPage() {
         </div>
         <div className="ui-card__body ui-card__body--flush">
           {relations.length === 0 ? (
-            <div className="empty">
-              <div className="empty__icon"><UserPlus /></div>
-              <h3 className="empty__title">Sin colaboradores asignados</h3>
-              <p className="empty__desc">
-                Contacta a Arquitectura Humana para que configure tu relación con tu equipo.
-              </p>
-            </div>
+            <EmptyState
+              illustration="meetings"
+              title="Sin colaboradores asignados"
+              description="Contacta a Arquitectura Humana para que configure tu relación con tu equipo."
+              action={
+                <a
+                  href="mailto:arquitectura.humana@b-drive.com.mx"
+                  className="ui-btn ui-btn--outline"
+                >
+                  <UserPlus size={14} /> <span>Solicitar asignación</span>
+                </a>
+              }
+            />
           ) : (
             relations.map((rel, idx) => {
               const collab = Array.isArray(rel.users) ? rel.users[0] : rel.users

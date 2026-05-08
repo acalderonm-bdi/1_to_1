@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Sparkles } from 'lucide-react'
+import { EmptyState } from '@/components/shared/empty-state'
 
 const CATEGORY_TONE: Record<string, string> = {
   desempeño: 'blue', desarrollo: 'violet', bienestar: 'green',
@@ -43,15 +44,11 @@ export default async function InsightsPage() {
 
       {insights.length === 0 ? (
         <div className="ui-card">
-          <div className="empty">
-            <div className="empty__icon" style={{ background: 'var(--ai-tint)', color: 'var(--ai-text)' }}>
-              <Sparkles />
-            </div>
-            <h3 className="empty__title">Sin sugerencias por ahora</h3>
-            <p className="empty__desc">
-              Las sugerencias del asistente aparecerán después de tus próximas 1:1s.
-            </p>
-          </div>
+          <EmptyState
+            illustration="sparkles"
+            title="Sin sugerencias por ahora"
+            description="Las sugerencias del asistente aparecerán después de tus próximas 1:1s. Cada conversación enriquece el contexto."
+          />
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 14 }} className="anim-stagger">

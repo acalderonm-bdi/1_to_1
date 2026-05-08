@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Users, Calendar } from 'lucide-react'
 import { AGREEMENT_LABELS } from '@/lib/constants'
+import { EmptyState } from '@/components/shared/empty-state'
 
 const STATUS_TONE: Record<string, string> = {
   pendiente: 'amber', cumplido: 'green', parcial: 'blue', no_cumplido: 'red',
@@ -54,11 +55,16 @@ export default async function EquipoPage() {
 
       {relations.length === 0 ? (
         <div className="ui-card">
-          <div className="empty">
-            <div className="empty__icon"><Users /></div>
-            <h3 className="empty__title">Sin colaboradores asignados</h3>
-            <p className="empty__desc">Contacta a Arquitectura Humana para configurar tu equipo.</p>
-          </div>
+          <EmptyState
+            illustration="meetings"
+            title="Sin colaboradores asignados"
+            description="Contacta a Arquitectura Humana para configurar tu equipo."
+            action={
+              <a href="mailto:arquitectura.humana@b-drive.com.mx" className="ui-btn ui-btn--outline">
+                <span>Solicitar configuración</span>
+              </a>
+            }
+          />
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 14 }} className="anim-stagger">

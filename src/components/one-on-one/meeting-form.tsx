@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Calendar, Clock, Video, MapPin, AlertCircle } from 'lucide-react'
+import { Calendar, Clock, Video, MapPin, AlertCircle } from 'lucide-react'
 import { scheduleOneOnOne } from '@/lib/actions/one-on-ones'
 
 interface Person { id: string; full_name: string; email: string }
@@ -155,9 +155,9 @@ export function MeetingForm({ counterparts, currentRole, currentUserId }: Meetin
           <button type="button" className="ui-btn ui-btn--outline" onClick={() => router.back()}>
             Cancelar
           </button>
-          <button type="submit" className="ui-btn ui-btn--primary" disabled={isPending}>
-            {isPending && <Loader2 size={14} className="animate-spin" />}
-            Agendar reunión
+          <button type="submit" className="ui-btn ui-btn--accent" disabled={isPending}>
+            {isPending ? <span className="spinner" /> : <Calendar size={14} />}
+            <span>{isPending ? 'Agendando…' : 'Agendar reunión'}</span>
           </button>
         </div>
       </form>

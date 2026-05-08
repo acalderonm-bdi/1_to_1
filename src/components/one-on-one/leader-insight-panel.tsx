@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles, Loader2 } from 'lucide-react'
+import { Sparkles, RefreshCw } from 'lucide-react'
 
 interface Insight { id: string; type: string; content: unknown; created_at: string }
 interface LeaderInsightPanelProps {
@@ -67,8 +67,8 @@ export function LeaderInsightPanel({ collaboratorId, collaboratorName }: LeaderI
               onClick={handleGenerate}
               disabled={isLoading}
             >
-              {isLoading ? <span className="spinner" /> : <span>✦</span>}
-              {isLoading ? 'Generando…' : 'Generar preguntas'}
+              {isLoading ? <span className="spinner" /> : <Sparkles size={13} />}
+              <span>{isLoading ? 'Generando…' : 'Generar preguntas'}</span>
             </button>
           )}
           {error && <p style={{ marginTop: 10, fontSize: 12, color: 'var(--amber-700)' }}>{error}</p>}
@@ -76,7 +76,7 @@ export function LeaderInsightPanel({ collaboratorId, collaboratorName }: LeaderI
         {questions.length > 0 && (
           <>
             <hr className="ai-rule" style={{ margin: 0 }} />
-            <div style={{ padding: 14, display: 'grid', gap: 10 }}>
+            <div className="anim-stagger" style={{ padding: 14, display: 'grid', gap: 10 }}>
               {questions.map((q, i) => (
                 <div key={i} className="insight-q">
                   <div className="insight-q__num">{i + 1}</div>
@@ -93,8 +93,9 @@ export function LeaderInsightPanel({ collaboratorId, collaboratorName }: LeaderI
               ))}
             </div>
             <div style={{ padding: '0 14px 14px' }}>
-              <button type="button" className="ui-btn ui-btn--ghost ui-btn--block ui-btn--sm" onClick={handleGenerate}>
-                <Sparkles size={13} /> Generar otras preguntas
+              <button type="button" className="ui-btn ui-btn--ghost ui-btn--block ui-btn--sm" onClick={handleGenerate} disabled={isLoading}>
+                {isLoading ? <span className="spinner" /> : <RefreshCw size={13} />}
+                <span>{isLoading ? 'Generando…' : 'Generar otras preguntas'}</span>
               </button>
             </div>
           </>

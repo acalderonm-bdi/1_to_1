@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, Search, Calendar, CheckSquare, Sparkles, AlertTriangle, type LucideIcon } from 'lucide-react'
+import { Bell, Search, Calendar, CheckSquare, Sparkles, AlertTriangle, Menu, type LucideIcon } from 'lucide-react'
 import { useRealtimeNotifications } from '@/hooks/use-realtime-notifications'
+import { useAppShell } from '@/components/layout/app-shell'
 import { formatRelative } from '@/lib/utils/dates'
 import { ROLE_LABELS } from '@/lib/constants'
 
@@ -29,6 +30,7 @@ function pickIcon(notifType?: string | null) {
 
 export function Header({ userId, userName, userRole, breadcrumbs = ['Inicio'] }: HeaderProps) {
   const { notifications, unreadCount, markAllRead, markRead } = useRealtimeNotifications(userId)
+  const { openDrawer, openCmdK } = useAppShell()
   const router = useRouter()
   const [openNotif, setOpenNotif] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -55,7 +57,16 @@ export function Header({ userId, userName, userRole, breadcrumbs = ['Inicio'] }:
 
   return (
     <header className="app-header">
-      <div className="app-header__breadcrumb">
+      <button
+        type="button"
+        className="app-header__burger"
+        onClick={openDrawer}
+        aria-label="Abrir navegación"
+      >
+        <Menu size={18} />
+      </button>
+
+      <div className="app-header__breadcrumb u-truncate">
         {breadcrumbs.map((b, i) => (
           <span key={i} className={i === breadcrumbs.length - 1 ? 'app-header__breadcrumb-current' : undefined}>
             {i > 0 && <span className="app-header__sep" style={{ marginRight: 8 }}>/</span>}
@@ -66,11 +77,25 @@ export function Header({ userId, userName, userRole, breadcrumbs = ['Inicio'] }:
 
       <div className="app-header__spacer" />
 
-      <div className="app-header__search" role="button" tabIndex={0} aria-label="Buscar">
+      <button
+        type="button"
+        className="app-header__search u-hide-mobile"
+        onClick={openCmdK}
+        aria-label="Abrir búsqueda y comandos"
+      >
         <Search size={14} />
         <span>Buscar persona, 1:1, acuerdo…</span>
         <kbd>⌘K</kbd>
-      </div>
+      </button>
+
+      <button
+        type="button"
+        className="app-header__icon-btn u-show-mobile"
+        onClick={openCmdK}
+        aria-label="Buscar"
+      >
+        <Search size={18} />
+      </button>
 
       <div ref={ref} style={{ position: 'relative' }}>
         <button
@@ -126,13 +151,13 @@ export function Header({ userId, userName, userRole, breadcrumbs = ['Inicio'] }:
         )}
       </div>
 
-      <div className="app-header__user-chip" tabIndex={0} role="button" aria-label="Tu perfil">
+      <button type="button" className="app-header__user-chip" aria-label="Tu perfil">
         <div className="app-header__user-avatar">{initials}</div>
         <div className="app-header__user-text">
           <strong>{userName}</strong>
           <span>{ROLE_LABELS[userRole] ?? userRole}</span>
         </div>
-      </div>
+      </button>
     </header>
   )
 }

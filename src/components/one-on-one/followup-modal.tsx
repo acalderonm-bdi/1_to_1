@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Loader2 } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { reportAgreementFollowup } from '@/lib/actions/agreements'
 import { AGREEMENT_LABELS } from '@/lib/constants'
 
@@ -42,16 +42,22 @@ export function FollowupModal({ agreements, oneOnOneId, open, onClose }: Followu
 
   return (
     <div
+      className="anim-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Seguimiento de acuerdos anteriores"
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)',
-        backdropFilter: 'blur(4px)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 24,
+        position: 'fixed', inset: 0, background: 'color-mix(in oklab, black 38%, transparent)',
+        backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+        zIndex: 200, display: 'grid', placeItems: 'center', padding: 24,
       }}
       onClick={onClose}
     >
       <div
+        className="anim-scale-in"
         style={{
-          background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-c)',
-          boxShadow: 'var(--shadow-lg)', width: '100%', maxWidth: 720, maxHeight: '90vh', overflow: 'auto',
+          background: 'var(--bg-card)', borderRadius: 'var(--r-xl)', border: '1px solid var(--border-c)',
+          boxShadow: 'var(--shadow-popover)', width: '100%', maxWidth: 720, maxHeight: '90vh', overflow: 'auto',
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -100,10 +106,13 @@ export function FollowupModal({ agreements, oneOnOneId, open, onClose }: Followu
           ))}
         </div>
         <div className="modal-foot">
-          <button type="button" className="ui-btn ui-btn--ghost" onClick={onClose}>Cancelar</button>
+          <button type="button" className="ui-btn ui-btn--ghost" onClick={onClose}>
+            <span>Cancelar</span>
+          </button>
           <button type="button" className="ui-btn ui-btn--accent" onClick={handleSubmit} disabled={isPending || !allDecided}>
-            {isPending && <Loader2 size={14} className="animate-spin" />}
-            Continuar al VoBo
+            {isPending ? <span className="spinner" /> : null}
+            <span>{isPending ? 'Guardando…' : 'Continuar al VoBo'}</span>
+            {!isPending && <ArrowRight size={13} />}
           </button>
         </div>
       </div>

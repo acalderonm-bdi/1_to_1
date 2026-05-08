@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AlertTriangle, Calendar, Check, X } from 'lucide-react'
+import { EmptyState } from '@/components/shared/empty-state'
 
 interface Participant { full_name: string; email: string }
 interface DisputeRow {
@@ -42,13 +43,11 @@ export default async function DisputasPage() {
 
       {disputes.length === 0 ? (
         <div className="ui-card">
-          <div className="empty">
-            <div className="empty__icon" style={{ background: 'var(--green-50)', color: 'var(--green-700)' }}>
-              <Check />
-            </div>
-            <h3 className="empty__title">Sin disputas activas</h3>
-            <p className="empty__desc">Todas las 1:1s tienen VoBos consistentes entre líder y colaborador.</p>
-          </div>
+          <EmptyState
+            illustration="success"
+            title="Sin disputas activas"
+            description="Todas las 1:1s tienen VoBos consistentes entre líder y colaborador. Buen pulso organizacional."
+          />
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 14 }} className="anim-stagger">

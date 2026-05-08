@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertCircle, ArrowRight } from 'lucide-react'
+import { AlertCircle, ArrowRight, Calendar, Sparkles, ShieldCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
@@ -54,15 +54,15 @@ export default function LoginPage() {
   return (
     <div className="auth-screen">
       <div className="auth-screen__brand-side">
-        <div className="auth-screen__brand-mark-row">
+        <div className="auth-screen__brand-mark-row anim-fade-in-down" style={{ animationDelay: '0ms' }}>
           <div className="sidebar__brand-mark" style={{ width: 40, height: 40, fontSize: 19 }}>1</div>
           <div>
             <div className="sidebar__brand-name" style={{ color: 'white', fontSize: 20 }}>1to1</div>
-            <div className="sidebar__brand-tag">B-Drive</div>
+            <div className="sidebar__brand-tag">B-Drive · Sistema interno</div>
           </div>
         </div>
 
-        <div className="auth-screen__quote">
+        <div className="auth-screen__quote anim-fade-in-up" style={{ animationDelay: '120ms' }}>
           <div className="auth-screen__quote-mark">&ldquo;</div>
           <p>
             Las mejores 1:1 son las que se preparan con tiempo, se conducen
@@ -70,10 +70,63 @@ export default function LoginPage() {
             existe para que esa práctica sea consistente.
           </p>
           <cite>— Equipo de Arquitectura Humana</cite>
+
+          <div
+            style={{
+              marginTop: 36,
+              display: 'grid',
+              gap: 14,
+              maxWidth: 420,
+            }}
+          >
+            {[
+              { Icon: Calendar, label: 'Cadencias automáticas', hint: 'Sincronía con Google Calendar' },
+              { Icon: Sparkles, label: 'Insights con IA', hint: 'Sugerencias contextuales en cada 1:1' },
+              { Icon: ShieldCheck, label: 'Privacidad por diseño', hint: 'Minutas privadas, VoBo bilateral' },
+            ].map(({ Icon, label, hint }, i) => (
+              <div
+                key={label}
+                className="anim-fade-in-up"
+                style={{
+                  animationDelay: `${200 + i * 80}ms`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 14px',
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 'var(--r-md)',
+                  backdropFilter: 'blur(6px)',
+                }}
+              >
+                <span
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    background: 'linear-gradient(135deg, color-mix(in oklab, var(--accent-500) 30%, transparent), color-mix(in oklab, var(--accent-700) 18%, transparent))',
+                    display: 'grid',
+                    placeItems: 'center',
+                    color: 'var(--accent-300)',
+                    flexShrink: 0,
+                    border: '1px solid rgba(255,255,255,0.10)',
+                  }}
+                >
+                  <Icon size={15} />
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 500, color: 'white', letterSpacing: '-0.005em' }}>{label}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-on-dark-muted)', marginTop: 2 }}>{hint}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div
+          className="anim-fade-in"
           style={{
+            animationDelay: '440ms',
             position: 'relative',
             zIndex: 1,
             display: 'flex',
@@ -87,12 +140,13 @@ export default function LoginPage() {
           <span>B-Drive · Sistema interno · {new Date().getFullYear()}</span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <span
+              className="anim-pulse-ring"
               style={{
-                width: 6,
-                height: 6,
+                width: 8,
+                height: 8,
                 borderRadius: 999,
-                background: 'var(--green-500)',
-                boxShadow: '0 0 10px var(--green-500)',
+                background: 'var(--lime-400)',
+                boxShadow: '0 0 0 0 color-mix(in oklab, var(--lime-400) 50%, transparent)',
               }}
             />
             Operativo
@@ -102,6 +156,9 @@ export default function LoginPage() {
 
       <div className="auth-screen__form-side">
         <div className="auth-card anim-fade-in-up">
+          <div className="page__eyebrow" style={{ color: 'var(--accent-600)' }}>
+            <ShieldCheck size={12} /> Acceso corporativo
+          </div>
           <h1 className="auth-card__title">Bienvenida</h1>
           <p className="auth-card__subtitle">
             Ingresa con tu cuenta corporativa para continuar.
@@ -163,9 +220,9 @@ export default function LoginPage() {
                   <AlertCircle size={13} /> {error}
                 </div>
               )}
-              <button type="submit" className="ui-btn ui-btn--primary ui-btn--lg ui-btn--block" disabled={loading}>
+              <button type="submit" className="ui-btn ui-btn--accent ui-btn--lg ui-btn--block" disabled={loading}>
                 {loading ? <span className="spinner" /> : null}
-                {loading ? 'Iniciando sesión…' : 'Iniciar sesión'}
+                <span>{loading ? 'Iniciando sesión…' : 'Iniciar sesión'}</span>
                 {!loading && <ArrowRight size={14} />}
               </button>
             </form>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Check, X, Loader2 } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { submitVobo } from '@/lib/actions/vobos'
 
 interface VoboButtonProps {
@@ -48,7 +48,7 @@ export function VoboButton({ oneOnOneId, userVobo, onVobo, partnerName }: VoboBu
             </div>
           </div>
           <button type="button" className="ui-btn ui-btn--ghost ui-btn--sm" onClick={() => setMyVobo(null)}>
-            Cambiar
+            <span>Cambiar</span>
           </button>
         </div>
       </div>
@@ -66,8 +66,8 @@ export function VoboButton({ oneOnOneId, userVobo, onVobo, partnerName }: VoboBu
           onClick={() => handleVobo(true)}
           disabled={isPending}
         >
-          {isPending ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
-          Sí, se realizó
+          {isPending ? <span className="spinner" /> : <Check size={15} />}
+          <span>Sí, se realizó</span>
         </button>
         <button
           type="button"
@@ -76,7 +76,7 @@ export function VoboButton({ oneOnOneId, userVobo, onVobo, partnerName }: VoboBu
           disabled={isPending}
         >
           <X size={15} />
-          No se realizó
+          <span>No se realizó</span>
         </button>
       </div>
     </div>

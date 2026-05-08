@@ -5,6 +5,7 @@ import { Calendar, Clock, Video, MapPin, ChevronLeft, MoreHorizontal, ArrowRight
 import { STATUS_LABELS } from '@/lib/constants'
 import { AgendaList } from '@/components/one-on-one/agenda-list'
 import { DetailInteraction } from '@/components/one-on-one/detail-interaction'
+import { EmptyState } from '@/components/shared/empty-state'
 
 const STATUS_TONE: Record<string, string> = {
   agendada: 'blue', realizada: 'green', no_realizada: 'red', en_disputa: 'orange',
@@ -162,8 +163,8 @@ export default async function OneOnOneDetailPage({ params }: { params: { id: str
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {meeting.meet_link && (
-              <a href={meeting.meet_link} target="_blank" rel="noreferrer" className="ui-btn ui-btn--accent">
-                <Video size={14} /> Unirse a Meet
+              <a href={meeting.meet_link} target="_blank" rel="noreferrer" className="ui-btn ui-btn--lime">
+                <Video size={14} /> <span>Unirse a Meet</span>
               </a>
             )}
             <button type="button" className="ui-btn ui-btn--ghost ui-btn--icon" aria-label="Más opciones">
@@ -208,14 +209,11 @@ export default async function OneOnOneDetailPage({ params }: { params: { id: str
 
         {!isPastMeeting && (
           <div className="ui-card" style={{ padding: 0 }}>
-            <div className="empty">
-              <div className="empty__icon"><Clock /></div>
-              <h3 className="empty__title">Aún no es hora</h3>
-              <p className="empty__desc">
-                La minuta y los acuerdos estarán disponibles después de la reunión.
-                Mientras tanto, agreguen los temas que quieran tratar en la agenda.
-              </p>
-            </div>
+            <EmptyState
+              illustration="meetings"
+              title="Aún no es hora"
+              description="La minuta y los acuerdos estarán disponibles después de la reunión. Mientras tanto, agreguen los temas que quieran tratar en la agenda."
+            />
           </div>
         )}
       </div>

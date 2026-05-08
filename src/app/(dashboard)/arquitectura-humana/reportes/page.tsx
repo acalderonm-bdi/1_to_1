@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { FileText, Sparkles } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
+import { EmptyState } from '@/components/shared/empty-state'
 
 const SEVERITY_TONE: Record<string, string> = { info: 'blue', warning: 'amber', critical: 'red' }
 const SEVERITY_LABELS: Record<string, string> = { info: 'Informativo', warning: 'Atención', critical: 'Crítico' }
@@ -32,13 +33,11 @@ export default async function ReportesPage() {
 
       {reports.length === 0 ? (
         <div className="ui-card">
-          <div className="empty">
-            <div className="empty__icon"><FileText /></div>
-            <h3 className="empty__title">Sin reportes por ahora</h3>
-            <p className="empty__desc">
-              Aparecerán aquí cuando el asistente detecte patrones organizacionales relevantes.
-            </p>
-          </div>
+          <EmptyState
+            illustration="sparkles"
+            title="Sin reportes por ahora"
+            description="Aparecerán aquí cuando el asistente detecte patrones organizacionales relevantes — frecuencia de cumplimiento, áreas con cadencia caída, acuerdos olvidados."
+          />
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 14 }} className="anim-stagger">

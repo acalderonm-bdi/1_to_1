@@ -18,22 +18,30 @@ export function AgendaList({ oneOnOneId, initialItems, currentUserId, authorMap 
   const [isPending, startTransition] = useTransition()
 
   async function handleAdd() {
-    if (!newItem.trim()) return
+    const text = newItem.trim()
+    if (!text) return
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const optimistic: AgendaItem = { id: tempId, content: text, author_id: currentUserId }
+    setItems(prev => [...prev, optimistic])
+    setNewItem('')
     const supabase = createClient()
     const { data, error } = await supabase
       .from('agenda_items')
-      .insert({ one_on_one_id: oneOnOneId, author_id: currentUserId, content: newItem.trim() })
+      .insert({ one_on_one_id: oneOnOneId, author_id: currentUserId, content: text })
       .select().single()
     if (!error && data) {
-      setItems(prev => [...prev, data as AgendaItem])
-      setNewItem('')
+      setItems(prev => prev.map(i => i.id === tempId ? (data as AgendaItem) : i))
+    } else {
+      setItems(prev => prev.filter(i => i.id !== tempId))
     }
   }
 
   async function handleDelete(itemId: string) {
-    const supabase = createClient()
-    await supabase.from('agenda_items').delete().eq('id', itemId)
+    const previous = items
     setItems(prev => prev.filter(i => i.id !== itemId))
+    const supabase = createClient()
+    const { error } = await supabase.from('agenda_items').delete().eq('id', itemId)
+    if (error) setItems(previous)
   }
 
   return (
@@ -89,11 +97,11 @@ export function AgendaList({ oneOnOneId, initialItems, currentUserId, authorMap 
         />
         <button
           type="button"
-          className="ui-btn ui-btn--primary"
+          className="ui-btn ui-btn--accent"
           onClick={() => startTransition(handleAdd)}
           disabled={isPending || !newItem.trim()}
         >
-          <Plus size={14} /> Agregar
+          <Plus size={14} /> <span>Agregar</span>
         </button>
       </div>
     </div>

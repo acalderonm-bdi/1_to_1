@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Network } from 'lucide-react'
+import { EmptyState } from '@/components/shared/empty-state'
 
 interface User { id: string; full_name: string; email: string; department_id?: string | null }
 interface Relation {
@@ -49,11 +50,11 @@ export default async function EstructuraPage() {
 
       {relations.length === 0 ? (
         <div className="ui-card">
-          <div className="empty">
-            <div className="empty__icon"><Network /></div>
-            <h3 className="empty__title">Sin relaciones configuradas</h3>
-            <p className="empty__desc">Aún no hay relaciones líder ↔ colaborador en el sistema.</p>
-          </div>
+          <EmptyState
+            illustration="list"
+            title="Sin relaciones configuradas"
+            description="Aún no hay relaciones líder ↔ colaborador en el sistema. Configúralas desde Usuarios."
+          />
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 14 }}>

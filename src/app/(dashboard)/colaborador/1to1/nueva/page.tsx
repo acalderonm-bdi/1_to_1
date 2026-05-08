@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { MeetingForm } from '@/components/one-on-one/meeting-form'
-import { Users, CalendarPlus } from 'lucide-react'
+import { CalendarPlus } from 'lucide-react'
+import { EmptyState } from '@/components/shared/empty-state'
 
 export default async function NuevaOneOnOnePage() {
   const supabase = createClient()
@@ -53,14 +54,16 @@ export default async function NuevaOneOnOnePage() {
 
       {counterparts.length === 0 ? (
         <div className="ui-card" style={{ maxWidth: 560 }}>
-          <div className="empty">
-            <div className="empty__icon"><Users /></div>
-            <h3 className="empty__title">Sin relaciones configuradas</h3>
-            <p className="empty__desc">
-              Pide a Arquitectura Humana que configure tu relación con tu líder o
-              colaboradores antes de poder agendar una 1:1.
-            </p>
-          </div>
+          <EmptyState
+            illustration="meetings"
+            title="Sin relaciones configuradas"
+            description="Pide a Arquitectura Humana que configure tu relación con tu líder o colaboradores antes de poder agendar una 1:1."
+            action={
+              <a href="mailto:arquitectura.humana@b-drive.com.mx" className="ui-btn ui-btn--outline">
+                <span>Solicitar configuración</span>
+              </a>
+            }
+          />
         </div>
       ) : (
         <MeetingForm

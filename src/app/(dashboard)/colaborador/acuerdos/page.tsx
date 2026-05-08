@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { CheckSquare, Calendar } from 'lucide-react'
 import { AGREEMENT_LABELS } from '@/lib/constants'
+import { EmptyState } from '@/components/shared/empty-state'
 
 const STATUS_TONE: Record<string, string> = {
   pendiente: 'amber',
@@ -83,13 +84,11 @@ export default async function AcuerdosPage() {
         </div>
         <div className="ui-card__body" style={{ display: 'grid', gap: 10 }}>
           {agreements.length === 0 ? (
-            <div className="empty">
-              <div className="empty__icon"><CheckSquare /></div>
-              <h3 className="empty__title">Sin acuerdos registrados</h3>
-              <p className="empty__desc">
-                Aparecerán aquí los compromisos que se generen al cerrar tus 1:1s.
-              </p>
-            </div>
+            <EmptyState
+              illustration="list"
+              title="Sin acuerdos registrados"
+              description="Aparecerán aquí los compromisos que se generen al cerrar tus 1:1s."
+            />
           ) : (
             agreements.map(a => (
               <div key={a.id} className="agreement">

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Plus, Calendar, Loader2, ChevronDown, Sparkles } from 'lucide-react'
+import { Plus, Calendar, ChevronDown, Sparkles } from 'lucide-react'
 import { createAgreement, updateAgreementStatus } from '@/lib/actions/agreements'
 import { AGREEMENT_LABELS } from '@/lib/constants'
 import type { ExtractedAgreement } from '@/types/domain'
@@ -34,8 +34,20 @@ export function AgreementList({
   const [showAdd, setShowAdd] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   async function handleAdd(desc: string, responsibleId: string, dueDate: string | null = null, aiGenerated = false, confidence?: number) {
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const optimistic: Agreement = {
+      id: tempId,
+      description: desc,
+      responsible_id: responsibleId,
+      due_date: dueDate,
+      status: 'pendiente',
+      ai_generated: aiGenerated,
+    }
+    setAgreements(prev => [...prev, optimistic])
+    setErrorMsg(null)
     const result = await createAgreement({
       oneOnOneId,
       description: desc,
@@ -45,16 +57,20 @@ export function AgreementList({
       aiConfidence: confidence ?? null,
     })
     if (result.success && result.data) {
-      setAgreements(prev => [...prev, result.data as Agreement])
+      setAgreements(prev => prev.map(a => a.id === tempId ? (result.data as Agreement) : a))
+    } else {
+      setAgreements(prev => prev.filter(a => a.id !== tempId))
+      setErrorMsg(result.error ?? 'No se pudo guardar el acuerdo')
     }
   }
 
   async function handleAddManual() {
     if (!newDesc.trim()) return
-    startTransition(async () => {
-      await handleAdd(newDesc.trim(), newResponsible, newDueDate || null)
-      setNewDesc(''); setNewDueDate(''); setShowAdd(false)
-    })
+    const desc = newDesc.trim()
+    const responsibleId = newResponsible
+    const dueDate = newDueDate || null
+    setNewDesc(''); setNewDueDate(''); setShowAdd(false)
+    startTransition(() => { void handleAdd(desc, responsibleId, dueDate) })
   }
 
   async function handleAcceptSuggestion(s: ExtractedAgreement) {
@@ -65,12 +81,19 @@ export function AgreementList({
   }
 
   async function handleStatusChange(agreementId: string, status: string) {
-    await updateAgreementStatus({
+    setOpenMenuId(null)
+    const previous = agreements.find(a => a.id === agreementId)
+    if (!previous) return
+    setAgreements(prev => prev.map(a => a.id === agreementId ? { ...a, status } : a))
+    setErrorMsg(null)
+    const result = await updateAgreementStatus({
       agreementId,
       status: status as 'pendiente' | 'cumplido' | 'parcial' | 'no_cumplido',
     })
-    setAgreements(prev => prev.map(a => a.id === agreementId ? { ...a, status } : a))
-    setOpenMenuId(null)
+    if (!result.success) {
+      setAgreements(prev => prev.map(a => a.id === agreementId ? { ...a, status: previous.status } : a))
+      setErrorMsg(result.error ?? 'No se pudo cambiar el estado')
+    }
   }
 
   function responsibleInfo(id: string, idx: number) {
@@ -79,69 +102,86 @@ export function AgreementList({
     return { name: p.name, initials, color: AV_BY_INDEX[idx % AV_BY_INDEX.length] }
   }
 
+  function formatDueDate(iso: string) {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return iso
+    return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
+  }
+
   return (
     <div style={{ display: 'grid', gap: 10 }}>
       {extractedSuggestions && extractedSuggestions.length > 0 && (
-        <div className="ai-card anim-fade-in" style={{ padding: 16, display: 'grid', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="ai-card anim-fade-in" style={{ padding: 18, display: 'grid', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span className="ai-chip">IA</span>
-            <span style={{ fontSize: 12.5, fontWeight: 500, letterSpacing: '-0.005em' }}>
+            <span style={{ fontSize: 13, fontWeight: 500, letterSpacing: '-0.005em' }}>
               Extraje {extractedSuggestions.length} acuerdo{extractedSuggestions.length !== 1 ? 's' : ''} —
-              confirma cuáles agregar
+              <span className="u-muted"> confirma cuáles agregar</span>
             </span>
           </div>
-          {extractedSuggestions.map((s, i) => (
-            <div
-              key={i}
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 10,
-                padding: 12,
-                borderRadius: 8,
-                background: 'var(--bg-card)',
-                border: '1px solid var(--ai-border)',
-              }}
-            >
-              <p style={{ flex: 1, fontSize: 13.5, lineHeight: 1.55, margin: 0 }}>{s.description}</p>
-              <button
-                type="button"
-                className="ui-btn ui-btn--accent ui-btn--sm"
-                onClick={() => { handleAcceptSuggestion(s); onSuggestionsUsed?.() }}
+          <div className="anim-stagger" style={{ display: 'grid', gap: 8 }}>
+            {extractedSuggestions.map((s, i) => (
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                  padding: '12px 14px',
+                  borderRadius: 'var(--r-md)',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--ai-border)',
+                  boxShadow: 'var(--shadow-xs)',
+                }}
               >
-                <Plus size={12} /> Agregar
-              </button>
-            </div>
-          ))}
+                <Sparkles size={14} style={{ color: 'var(--accent-500)', flexShrink: 0, marginTop: 3 }} />
+                <p style={{ flex: 1, fontSize: 13.5, lineHeight: 1.55, margin: 0 }}>{s.description}</p>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn--accent ui-btn--sm"
+                  onClick={() => { void handleAcceptSuggestion(s); onSuggestionsUsed?.() }}
+                >
+                  <Plus size={12} /> <span>Agregar</span>
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
       {agreements.length === 0 && !extractedSuggestions?.length && (
         <div
           style={{
-            padding: 32,
+            padding: '28px 20px',
             textAlign: 'center',
             border: '1px dashed var(--border-strong)',
-            borderRadius: 8,
+            borderRadius: 'var(--r-md)',
             color: 'var(--text-muted)',
             background: 'var(--bg-subtle)',
           }}
         >
-          <Sparkles size={20} style={{ color: 'var(--accent-600)', opacity: 0.6, marginBottom: 6 }} />
-          <div style={{ fontSize: 13.5, marginBottom: 6, fontWeight: 500, color: 'var(--text-c)' }}>
+          <Sparkles size={22} style={{ color: 'var(--accent-500)', opacity: 0.7, marginBottom: 8 }} />
+          <div style={{ fontSize: 14, marginBottom: 6, fontWeight: 600, color: 'var(--text-c)', letterSpacing: '-0.008em' }}>
             Aún no hay acuerdos
           </div>
-          <div style={{ fontSize: 12.5, maxWidth: 400, margin: '0 auto', lineHeight: 1.55 }}>
+          <div style={{ fontSize: 12.5, maxWidth: 420, margin: '0 auto', lineHeight: 1.6 }}>
             Cuando termines la minuta, presiona <strong>Extraer acuerdos con IA</strong> o
             agrégalos manualmente.
           </div>
         </div>
       )}
 
+      {errorMsg && (
+        <div className="ui-field-error" role="alert" style={{ padding: '8px 12px', background: 'var(--red-50)', border: '1px solid var(--red-200)', borderRadius: 'var(--r-sm)' }}>
+          {errorMsg}
+        </div>
+      )}
+
       {agreements.map((a, idx) => {
         const r = responsibleInfo(a.responsible_id, idx)
+        const isOptimistic = a.id.startsWith('temp-')
         return (
-          <div key={a.id} className="agreement anim-fade-in">
+          <div key={a.id} className="agreement anim-fade-in" style={{ opacity: isOptimistic ? 0.7 : 1 }}>
             <div className="agreement__head">
               <p className="agreement__desc">{a.description}</p>
               <div style={{ position: 'relative' }}>
@@ -149,6 +189,7 @@ export function AgreementList({
                   type="button"
                   className={`status-select status-select--${a.status}`}
                   onClick={() => setOpenMenuId(openMenuId === a.id ? null : a.id)}
+                  disabled={isOptimistic}
                 >
                   {AGREEMENT_LABELS[a.status]}
                   <ChevronDown size={11} />
@@ -162,12 +203,15 @@ export function AgreementList({
                         onClick={() => handleStatusChange(a.id, k)}
                         style={{
                           display: 'block', width: '100%', textAlign: 'left',
-                          background: 'transparent', border: 'none', padding: '7px 10px',
+                          background: a.status === k ? 'var(--bg-subtle)' : 'transparent',
+                          border: 'none', padding: '7px 10px',
                           borderRadius: 5, fontSize: 12.5, cursor: 'pointer',
                           color: 'var(--text-c)',
+                          fontFamily: 'inherit',
+                          fontWeight: a.status === k ? 600 : 400,
                         }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-muted)'}
+                        onMouseLeave={e => e.currentTarget.style.background = a.status === k ? 'var(--bg-subtle)' : 'transparent'}
                       >
                         {label}
                       </button>
@@ -181,8 +225,18 @@ export function AgreementList({
                 <span className={`avatar avatar--sm ${r.color}`}>{r.initials}</span>
                 <span style={{ marginLeft: 2 }}>{r.name}</span>
               </span>
-              {a.due_date && <span className="agreement__meta-item"><Calendar size={13} /> {a.due_date}</span>}
+              {a.due_date && (
+                <span className="agreement__meta-item">
+                  <Calendar size={13} /> {formatDueDate(a.due_date)}
+                </span>
+              )}
               {a.ai_generated && <span className="ai-chip">IA</span>}
+              {isOptimistic && (
+                <span className="agreement__meta-item u-muted">
+                  <span className="spinner" style={{ width: 11, height: 11 }} />
+                  Guardando…
+                </span>
+              )}
             </div>
           </div>
         )
@@ -195,7 +249,7 @@ export function AgreementList({
           onClick={() => setShowAdd(true)}
           style={{ alignSelf: 'flex-start' }}
         >
-          <Plus size={13} /> Agregar acuerdo manualmente
+          <Plus size={13} /> <span>Agregar acuerdo manualmente</span>
         </button>
       ) : (
         <div className="ui-card anim-fade-in" style={{ padding: 14, display: 'grid', gap: 10 }}>
@@ -219,7 +273,7 @@ export function AgreementList({
               className="ui-btn ui-btn--ghost ui-btn--sm"
               onClick={() => { setShowAdd(false); setNewDesc(''); setNewDueDate('') }}
             >
-              Cancelar
+              <span>Cancelar</span>
             </button>
             <button
               type="button"
@@ -227,8 +281,8 @@ export function AgreementList({
               onClick={handleAddManual}
               disabled={isPending || !newDesc.trim()}
             >
-              {isPending ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
-              Guardar
+              {isPending ? <span className="spinner" /> : <Plus size={13} />}
+              <span>Guardar</span>
             </button>
           </div>
         </div>

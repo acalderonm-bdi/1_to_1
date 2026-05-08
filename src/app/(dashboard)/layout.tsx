@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
-import { Sidebar } from '@/components/layout/sidebar'
-import { Header } from '@/components/layout/header'
+import { AppShell } from '@/components/layout/app-shell'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
@@ -22,17 +21,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const currentPath = headersList.get('x-pathname') ?? '/'
 
   return (
-    <div className="app">
-      <Sidebar
-        role={profile.role as 'collaborator' | 'leader' | 'hr'}
-        currentPath={currentPath}
-        userName={profile.full_name}
-        userEmail={profile.email}
-      />
-      <div className="app-main">
-        <Header userId={user.id} userName={profile.full_name} userRole={profile.role} />
-        {children}
-      </div>
-    </div>
+    <AppShell
+      role={profile.role as 'collaborator' | 'leader' | 'hr'}
+      currentPath={currentPath}
+      userId={user.id}
+      userName={profile.full_name}
+      userEmail={profile.email}
+    >
+      {children}
+    </AppShell>
   )
 }

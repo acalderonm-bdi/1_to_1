@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { Grid } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { EmptyState } from '@/components/shared/empty-state'
 
 export default async function MapaCalorPage() {
   const supabase = createClient()
@@ -73,6 +74,15 @@ export default async function MapaCalorPage() {
         </div>
       </div>
 
+      {metrics.length === 0 ? (
+        <div className="ui-card">
+          <EmptyState
+            illustration="search"
+            title="Sin datos por ahora"
+            description="Cuando los líderes registren sus 1:1s en este periodo, el mapa se poblará con métricas por área."
+          />
+        </div>
+      ) : (
       <div className="heatmap-grid anim-stagger">
         {metrics.map(d => {
           const t = tone(d.compliance_rate)
@@ -108,6 +118,7 @@ export default async function MapaCalorPage() {
           )
         })}
       </div>
+      )}
     </div>
   )
 }

@@ -116,9 +116,11 @@ export function DetailInteraction({
                 Tienes {pendingPrevAgreements.length} acuerdo{pendingPrevAgreements.length !== 1 ? 's' : ''} pendientes de la sesión anterior.
                 Reporta su estado antes de confirmar esta reunión.
               </p>
-              <button type="button" className="ui-btn ui-btn--accent" onClick={() => setShowFollowup(true)}>
-                Revisar acuerdos anteriores
-              </button>
+              <div className="vobo__buttons">
+                <button type="button" className="ui-btn ui-btn--accent" onClick={() => setShowFollowup(true)}>
+                  <span>Revisar acuerdos anteriores</span>
+                </button>
+              </div>
             </div>
           ) : (
             <VoboButton

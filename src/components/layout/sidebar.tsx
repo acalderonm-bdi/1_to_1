@@ -3,10 +3,11 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Home, Calendar, CalendarPlus, CheckSquare, Users, Sparkles, LayoutDashboard,
-  Grid, FileText, AlertTriangle, Repeat, Network, UsersRound, Settings, LogOut,
+  Home, CalendarPlus, CheckSquare, Users, Sparkles, LayoutDashboard,
+  Grid, FileText, AlertTriangle, Repeat, Network, UsersRound, Settings, LogOut, X,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useAppShell } from '@/components/layout/app-shell'
 import type { UserRole } from '@/types/domain'
 
 interface NavItem {
@@ -59,6 +60,7 @@ interface SidebarProps {
 
 export function Sidebar({ role, currentPath, userName, userEmail }: SidebarProps) {
   const router = useRouter()
+  const { drawerOpen, closeDrawer } = useAppShell()
   const items = NAV_BY_ROLE[role] ?? []
 
   async function handleSignOut() {
@@ -75,13 +77,21 @@ export function Sidebar({ role, currentPath, userName, userEmail }: SidebarProps
     .join('') || '?'
 
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" data-open={drawerOpen} aria-label="Navegación principal">
       <div className="sidebar__brand">
-        <div className="sidebar__brand-mark">1</div>
+        <div className="sidebar__brand-mark" aria-hidden="true">1</div>
         <div>
           <div className="sidebar__brand-name">1to1</div>
           <div className="sidebar__brand-tag">B-Drive</div>
         </div>
+        <button
+          type="button"
+          className="sidebar__close"
+          onClick={closeDrawer}
+          aria-label="Cerrar navegación"
+        >
+          <X size={16} />
+        </button>
       </div>
 
       <div className="sidebar__section-label">Navegación</div>
@@ -97,7 +107,12 @@ export function Sidebar({ role, currentPath, userName, userEmail }: SidebarProps
           return (
             <div key={item.key}>
               {item.divider && <div className="sidebar__divider" aria-hidden="true" />}
-              <Link href={item.href} className="sidebar__link" data-active={isActive}>
+              <Link
+                href={item.href}
+                className="sidebar__link"
+                data-active={isActive}
+                onClick={closeDrawer}
+              >
                 <Icon size={16} />
                 <span>{item.label}</span>
                 {item.badge ? <span className="sidebar__link-badge">{item.badge}</span> : null}
@@ -113,7 +128,7 @@ export function Sidebar({ role, currentPath, userName, userEmail }: SidebarProps
           <div className="sidebar__user-name">{userName ?? 'Usuario'}</div>
           <div className="sidebar__user-role">{ROLE_LABEL[role]}</div>
         </div>
-        <button className="sidebar__user-action" onClick={handleSignOut} title="Cerrar sesión" type="button">
+        <button className="sidebar__user-action" onClick={handleSignOut} title="Cerrar sesión" type="button" aria-label="Cerrar sesión">
           <LogOut size={14} />
         </button>
       </div>

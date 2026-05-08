@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { TrendingUp, AlertTriangle, FileText, CheckSquare, ArrowRight, Calendar, Building2 } from 'lucide-react'
+import { EmptyState } from '@/components/shared/empty-state'
 
 export default async function ArquitecturaHumanaPage() {
   const supabase = createClient()
@@ -116,44 +117,68 @@ export default async function ArquitecturaHumanaPage() {
           </Link>
         </div>
         <div className="ui-card__body" style={{ display: 'grid', gap: 14 }}>
-          {metrics.map(d => {
-            const rate = d.compliance_rate ?? 0
-            const tone = complianceTone(rate)
-            const fillTone = tone === 'orange' ? 'amber' : tone
-            return (
-              <div
-                key={d.department_id}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '180px 1fr 60px',
-                  alignItems: 'center',
-                  gap: 16,
-                }}
-              >
-                <span style={{ fontSize: 13.5, fontWeight: 500, letterSpacing: '-0.005em' }}>
-                  {d.department_name}
-                </span>
-                <div className="progress-bar">
+          {metrics.length === 0 ? (
+            <EmptyState
+              illustration="list"
+              title="Sin métricas registradas"
+              description="Cuando los líderes empiecen a registrar sus 1:1s, las métricas de cumplimiento por área aparecerán aquí."
+            />
+          ) : (
+            <div className="anim-stagger" style={{ display: 'grid', gap: 14 }}>
+              {metrics.map(d => {
+                const rate = d.compliance_rate ?? 0
+                const tone = complianceTone(rate)
+                const fillTone = tone === 'orange' ? 'amber' : tone
+                return (
                   <div
-                    className={`progress-bar__fill progress-bar__fill--${fillTone}`}
-                    style={{ width: `${rate}%` }}
-                  />
-                </div>
-                <span
-                  className="u-tabular"
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 500,
-                    textAlign: 'right',
-                    fontFamily: 'var(--font-serif)',
-                    letterSpacing: '-0.012em',
-                  }}
-                >
-                  {rate}%
-                </span>
-              </div>
-            )
-          })}
+                    key={d.department_id}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(140px, 200px) 1fr auto',
+                      alignItems: 'center',
+                      gap: 16,
+                      padding: '4px 0',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          width: 8, height: 8, borderRadius: 999,
+                          background: `var(--${tone === 'orange' ? 'orange' : tone}-500)`,
+                          boxShadow: `0 0 0 3px color-mix(in oklab, var(--${tone === 'orange' ? 'orange' : tone}-500) 18%, transparent)`,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span className="u-truncate" style={{ fontSize: 13.5, fontWeight: 500, letterSpacing: '-0.005em' }}>
+                        {d.department_name}
+                      </span>
+                    </div>
+                    <div className="progress-bar">
+                      <div
+                        className={`progress-bar__fill progress-bar__fill--${fillTone}`}
+                        style={{ width: `${rate}%` }}
+                      />
+                    </div>
+                    <span
+                      className="u-tabular"
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 500,
+                        textAlign: 'right',
+                        fontFamily: 'var(--font-serif)',
+                        letterSpacing: '-0.012em',
+                        minWidth: 56,
+                        color: `var(--${tone === 'orange' ? 'orange' : tone}-700)`,
+                      }}
+                    >
+                      {rate}%
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

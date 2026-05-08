@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { Save, Loader2 } from 'lucide-react'
+import { useEffect, useState, useTransition } from 'react'
+import { Save, Sparkles, Check } from 'lucide-react'
 import { saveMinute } from '@/lib/actions/minutes'
 import type { ExtractedAgreement } from '@/types/domain'
 
@@ -23,12 +23,20 @@ export function MinuteEditor({ oneOnOneId, initialContent, onAgreementsExtracted
   const [aiError, setAiError] = useState('')
   const [hasExtracted, setHasExtracted] = useState(false)
 
+  const dirty = content !== initialContent
+
+  useEffect(() => {
+    if (savedMsg) {
+      const t = setTimeout(() => setSavedMsg(''), 2200)
+      return () => clearTimeout(t)
+    }
+  }, [savedMsg])
+
   async function handleSave() {
     startSave(async () => {
       const result = await saveMinute({ oneOnOneId, rawContent: content })
       if (result.success) {
         setSavedMsg('Guardado')
-        setTimeout(() => setSavedMsg(''), 2000)
       }
     })
   }
@@ -57,6 +65,8 @@ export function MinuteEditor({ oneOnOneId, initialContent, onAgreementsExtracted
     }
   }
 
+  const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0
+
   return (
     <div>
       <textarea
@@ -64,22 +74,34 @@ export function MinuteEditor({ oneOnOneId, initialContent, onAgreementsExtracted
         placeholder="Escribe lo que pasó en la reunión. Compromisos, decisiones, temas pendientes…"
         value={content}
         onChange={e => setContent(e.target.value)}
-        style={{ minHeight: 180, fontSize: 13.5, lineHeight: 1.6 }}
+        style={{ minHeight: 200, fontSize: 13.5, lineHeight: 1.65, fontFamily: 'var(--font-sans)' }}
       />
-      {aiError && <p style={{ fontSize: 12, color: 'var(--amber-700)', marginTop: 6 }}>{aiError}</p>}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
-        <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
-          {content.length} caracteres{savedMsg && ` · ${savedMsg}`}
+      {aiError && (
+        <p style={{ fontSize: 12, color: 'var(--amber-700)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Sparkles size={12} /> {aiError}
+        </p>
+      )}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <span>{wordCount} {wordCount === 1 ? 'palabra' : 'palabras'} · {content.length} car.</span>
+          {savedMsg && (
+            <span className="anim-fade-in" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--green-700)', fontWeight: 500 }}>
+              <Check size={12} /> {savedMsg}
+            </span>
+          )}
+          {dirty && !savedMsg && !isSaving && (
+            <span style={{ color: 'var(--amber-700)' }}>· sin guardar</span>
+          )}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button
             type="button"
             className="ui-btn ui-btn--ghost ui-btn--sm"
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={isSaving || !dirty}
           >
-            {isSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
-            Guardar
+            {isSaving ? <span className="spinner" /> : <Save size={13} />}
+            <span>{isSaving ? 'Guardando…' : 'Guardar'}</span>
           </button>
           <button
             type="button"
@@ -87,8 +109,8 @@ export function MinuteEditor({ oneOnOneId, initialContent, onAgreementsExtracted
             onClick={handleExtract}
             disabled={isExtracting || !content.trim()}
           >
-            {isExtracting ? <span className="spinner" /> : <span>✦</span>}
-            {isExtracting ? 'Procesando…' : (hasExtracted ? 'Reextraer acuerdos' : 'Extraer acuerdos con IA')}
+            {isExtracting ? <span className="spinner" /> : <Sparkles size={13} />}
+            <span>{isExtracting ? 'Procesando…' : (hasExtracted ? 'Reextraer acuerdos' : 'Extraer acuerdos con IA')}</span>
           </button>
         </div>
       </div>

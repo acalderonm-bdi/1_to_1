@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   User, Lock, Bell, Calendar, Plug, Palette, Building2, Shield,
   Sparkles, CreditCard, FileText, ChevronRight,
@@ -45,7 +45,7 @@ export function SettingsShell({ role, user }: SettingsShellProps) {
   const [active, setActive] = useState(sections[0]!.key)
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 32, alignItems: 'flex-start' }}>
+    <div className="settings-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 220px) 1fr', gap: 32, alignItems: 'flex-start' }}>
       <nav className="settings-nav">
         <div className="settings-nav__group">Personal</div>
         {PERSONAL_SECTIONS.map(s => {
@@ -470,9 +470,34 @@ function IntegracionesSection() {
 }
 
 function AparienciaSection() {
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('light')
-  const [density, setDensity] = useState<'compact' | 'cozy' | 'comfortable'>('comfortable')
-  const [accent, setAccent] = useState('blue')
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
+    if (typeof window === 'undefined') return 'light'
+    try { return (localStorage.getItem('theme') as 'light' | 'dark' | 'system' | null) ?? 'system' } catch { return 'light' }
+  })
+  const [density, setDensity] = useState<'compact' | 'cozy' | 'comfortable'>(() => {
+    if (typeof window === 'undefined') return 'comfortable'
+    try { return (localStorage.getItem('density') as 'compact' | 'cozy' | 'comfortable' | null) ?? 'comfortable' } catch { return 'comfortable' }
+  })
+  const [accent, setAccent] = useState('indigo')
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const resolved = theme === 'system'
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : theme
+    document.documentElement.setAttribute('data-theme', resolved)
+    try { localStorage.setItem('theme', theme) } catch {}
+  }, [theme])
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    if (density === 'comfortable') {
+      document.documentElement.removeAttribute('data-density')
+    } else {
+      document.documentElement.setAttribute('data-density', density)
+    }
+    try { localStorage.setItem('density', density) } catch {}
+  }, [density])
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -512,7 +537,8 @@ function AparienciaSection() {
             <label className="ui-label">Color de acento</label>
             <div style={{ display: 'flex', gap: 10 }}>
               {[
-                { key: 'blue', color: '#2563eb' },
+                { key: 'indigo', color: '#4f46e5' },
+                { key: 'lime', color: '#65a30d' },
                 { key: 'violet', color: '#7c3aed' },
                 { key: 'green', color: '#16a34a' },
                 { key: 'amber', color: '#d97706' },
