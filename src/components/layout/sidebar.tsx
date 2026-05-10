@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import {
   Home, CalendarPlus, CheckSquare, Users, Sparkles, LayoutDashboard,
   Grid3x3, FileText, AlertTriangle, Repeat, Network, UsersRound, Settings, LogOut,
@@ -81,13 +81,13 @@ function detectSection(path: string, fallback: Section): Section {
 
 interface SidebarProps {
   role: UserRole
-  currentPath: string
   userName?: string
   userEmail?: string
 }
 
-export function Sidebar({ role, currentPath, userName, userEmail }: SidebarProps) {
+export function Sidebar({ role, userName, userEmail }: SidebarProps) {
   const router = useRouter()
+  const currentPath = usePathname() ?? '/'
   const sections = accessibleSections(role)
   const currentSection = detectSection(currentPath, sections[0] ?? 'collaborator')
   const items = NAV_BY_SECTION[currentSection] ?? []

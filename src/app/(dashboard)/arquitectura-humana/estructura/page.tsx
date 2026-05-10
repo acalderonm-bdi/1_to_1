@@ -63,7 +63,7 @@ export default async function EstructuraPage() {
         <p className="text-sm text-muted-foreground mt-1.5">
           {totalRelations === 0
             ? 'Aún no hay relaciones líder ↔ colaborador activas en el sistema.'
-            : `${totalLeaders} líderes · ${totalRelations} relaciones activas en ${orderedDepts.length} áreas.`}
+            : `${totalLeaders} ${totalLeaders === 1 ? 'líder' : 'líderes'} · ${totalRelations} ${totalRelations === 1 ? 'relación' : 'relaciones'} activas en ${orderedDepts.length} ${orderedDepts.length === 1 ? 'área' : 'áreas'}.`}
         </p>
       </div>
 
@@ -88,7 +88,7 @@ export default async function EstructuraPage() {
                 <CardHeader>
                   <CardTitle>{getDept(deptId)}</CardTitle>
                   <CardDescription>
-                    {leaderGroups.length} líder{leaderGroups.length === 1 ? '' : 'es'} · {deptRelations} relación{deptRelations === 1 ? '' : 'es'}
+                    {leaderGroups.length} {leaderGroups.length === 1 ? 'líder' : 'líderes'} · {deptRelations} {deptRelations === 1 ? 'relación' : 'relaciones'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4">

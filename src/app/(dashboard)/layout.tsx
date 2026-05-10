@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
@@ -18,14 +17,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const profile = rawProfile as { role: string; full_name: string; email: string } | null
   if (!profile) redirect('/login')
 
-  const headersList = headers()
-  const currentPath = headersList.get('x-pathname') ?? '/'
-
   return (
     <div className="min-h-screen flex bg-background text-foreground">
       <Sidebar
         role={profile.role as 'collaborator' | 'leader' | 'hr'}
-        currentPath={currentPath}
         userName={profile.full_name}
         userEmail={profile.email}
       />

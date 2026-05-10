@@ -50,7 +50,7 @@ export default async function MapaCalorPage() {
         <div className="flex items-center gap-4 px-3.5 py-2 border rounded-md bg-card text-[11.5px] text-muted-foreground shrink-0">
           {LEGEND.map(l => (
             <span key={l.tone} className="inline-flex items-center gap-1.5">
-              <span className={cn('size-2 rounded-sm', l.dot)} />
+              <span className={cn('size-2.5 rounded-sm', l.dot)} />
               {l.label}
             </span>
           ))}
