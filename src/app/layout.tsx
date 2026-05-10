@@ -1,18 +1,20 @@
 import type { Metadata } from 'next'
-import { Inter, Source_Serif_4 } from 'next/font/google'
+import { Inter, JetBrains_Mono } from 'next/font/google'
+import { Toaster } from '@/components/ui/toaster'
+import { ThemeProvider } from '@/components/theme/theme-provider'
 import './globals.css'
 
-const inter = Inter({
+const sans = Inter({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
-  variable: '--font-inter',
+  variable: '--font-geist-sans',
   display: 'swap',
 })
 
-const sourceSerif = Source_Serif_4({
+const mono = JetBrains_Mono({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-source-serif',
+  weight: ['400', '500'],
+  variable: '--font-geist-mono',
   display: 'swap',
 })
 
@@ -23,8 +25,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${inter.variable} ${sourceSerif.variable}`}>
-      <body className={inter.className}>{children}</body>
+    <html lang="es" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
+      <body className="font-sans antialiased bg-background text-foreground">
+        <ThemeProvider>
+          {children}
+          <Toaster />
+        </ThemeProvider>
+      </body>
     </html>
   )
 }

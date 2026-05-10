@@ -4,6 +4,10 @@ import { useState, useTransition } from 'react'
 import { Loader2 } from 'lucide-react'
 import { reportAgreementFollowup } from '@/lib/actions/agreements'
 import { AGREEMENT_LABELS } from '@/lib/constants'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card } from '@/components/ui/card'
+import { cn } from '@/lib/utils/cn'
 
 interface PendingAgreement { id: string; description: string; due_date: string | null }
 interface FollowupModalProps {
@@ -11,6 +15,13 @@ interface FollowupModalProps {
   oneOnOneId: string
   open: boolean
   onClose: () => void
+}
+
+const STATUS_TONE: Record<string, string> = {
+  pendiente: 'border-warning/40 bg-warning-muted text-warning',
+  cumplido: 'border-success/40 bg-success-muted text-success',
+  parcial: 'border-brand/40 bg-brand-muted text-brand',
+  no_cumplido: 'border-destructive/40 bg-destructive/10 text-destructive',
 }
 
 export function FollowupModal({ agreements, oneOnOneId, open, onClose }: FollowupModalProps) {
@@ -38,73 +49,70 @@ export function FollowupModal({ agreements, oneOnOneId, open, onClose }: Followu
 
   if (!open) return null
 
-  const allDecided = Object.values(statuses).every(s => s !== 'pendiente' || true)
-
   return (
     <div
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)',
-        backdropFilter: 'blur(4px)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 24,
-      }}
+      className="fixed inset-0 z-50 grid place-items-center p-6 bg-black/40 backdrop-blur-[2px] anim-fade-in"
       onClick={onClose}
     >
       <div
-        style={{
-          background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-c)',
-          boxShadow: 'var(--shadow-lg)', width: '100%', maxWidth: 720, maxHeight: '90vh', overflow: 'auto',
-        }}
+        className="bg-popover border rounded-lg w-full max-w-[720px] max-h-[90vh] overflow-auto anim-scale-in"
         onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        style={{ boxShadow: 'var(--shadow-popover)' }}
       >
-        <div style={{ padding: '22px 24px 8px' }}>
-          <h2 className="font-serif" style={{ fontSize: 22, fontWeight: 500, margin: 0, letterSpacing: '-0.01em' }}>
-            Antes de confirmar — seguimiento de acuerdos anteriores
-          </h2>
-          <p style={{ fontSize: 13.5, color: 'var(--text-muted)', margin: '6px 0 0' }}>
+        <div className="px-6 py-5 border-b">
+          <h2 className="text-xl font-medium tracking-tight">Antes de confirmar — seguimiento de acuerdos anteriores</h2>
+          <p className="text-[13px] text-muted-foreground mt-1.5">
             Quedaron {agreements.length} acuerdo{agreements.length !== 1 ? 's' : ''} pendiente{agreements.length !== 1 ? 's' : ''} de la 1:1 anterior. ¿Cómo quedaron?
           </p>
         </div>
-        <div style={{ padding: '16px 24px', display: 'grid', gap: 12 }}>
+
+        <div className="px-6 py-5 grid gap-3">
           {agreements.map(a => (
-            <div key={a.id} className="agreement">
-              <p className="agreement__desc" style={{ marginBottom: 10 }}>{a.description}</p>
+            <Card key={a.id} className="px-4 py-3.5">
+              <p className="text-[13.5px] leading-relaxed mb-2.5">{a.description}</p>
               {a.due_date && (
-                <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 8 }}>
-                  Vencía: {a.due_date}
-                </div>
+                <div className="text-[11.5px] text-muted-foreground mb-2.5">Vencía: {a.due_date}</div>
               )}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-                {Object.entries(AGREEMENT_LABELS).map(([k, label]) => (
-                  <button
-                    key={k}
-                    type="button"
-                    className={`status-select status-select--${k}`}
-                    style={statuses[a.id] === k
-                      ? { boxShadow: '0 0 0 2px currentColor', cursor: 'pointer' }
-                      : { opacity: 0.55, cursor: 'pointer' }}
-                    onClick={() => setStatuses(prev => ({ ...prev, [a.id]: k }))}
-                  >
-                    {label}
-                  </button>
-                ))}
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {Object.entries(AGREEMENT_LABELS).map(([k, label]) => {
+                  const active = statuses[a.id] === k
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setStatuses(prev => ({ ...prev, [a.id]: k }))}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11.5px] font-medium transition-all',
+                        STATUS_TONE[k] ?? 'border-border bg-secondary text-muted-foreground',
+                        active ? 'ring-2 ring-current ring-offset-1 ring-offset-background' : 'opacity-60 hover:opacity-100',
+                      )}
+                    >
+                      <span className="size-1.5 rounded-full bg-current" />
+                      {label}
+                    </button>
+                  )
+                })}
               </div>
               {statuses[a.id] && statuses[a.id] !== 'cumplido' && (
-                <input
-                  className="ui-input"
+                <Input
                   placeholder="Justificación (opcional)"
                   value={justifications[a.id] ?? ''}
                   onChange={e => setJustifications(prev => ({ ...prev, [a.id]: e.target.value }))}
-                  style={{ fontSize: 12.5 }}
+                  className="text-[12.5px]"
                 />
               )}
-            </div>
+            </Card>
           ))}
         </div>
-        <div className="modal-foot">
-          <button type="button" className="ui-btn ui-btn--ghost" onClick={onClose}>Cancelar</button>
-          <button type="button" className="ui-btn ui-btn--accent" onClick={handleSubmit} disabled={isPending || !allDecided}>
-            {isPending && <Loader2 size={14} className="animate-spin" />}
+
+        <div className="flex justify-end gap-2 px-6 py-4 border-t">
+          <Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button>
+          <Button type="button" variant="brand" onClick={handleSubmit} disabled={isPending}>
+            {isPending && <Loader2 className="size-3.5 animate-spin" />}
             Continuar al VoBo
-          </button>
+          </Button>
         </div>
       </div>
     </div>

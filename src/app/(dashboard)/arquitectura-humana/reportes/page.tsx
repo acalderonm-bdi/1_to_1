@@ -1,9 +1,50 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { FileText, Sparkles } from 'lucide-react'
+import { FileText, AlertTriangle, Repeat, MessageSquareWarning, CheckSquare, Building2, Sparkles } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { EmptyState } from '@/components/shared/empty-state'
+import { cn } from '@/lib/utils/cn'
 
-const SEVERITY_TONE: Record<string, string> = { info: 'blue', warning: 'amber', critical: 'red' }
 const SEVERITY_LABELS: Record<string, string> = { info: 'Informativo', warning: 'Atención', critical: 'Crítico' }
+const SEVERITY_VARIANT: Record<string, 'brand' | 'warning' | 'destructive'> = {
+  info: 'brand',
+  warning: 'warning',
+  critical: 'destructive',
+}
+const SEVERITY_BORDER: Record<string, string> = {
+  info: 'border-l-brand',
+  warning: 'border-l-warning',
+  critical: 'border-l-destructive',
+}
+
+type Category = 'cumplimiento' | 'cadencia' | 'disputa' | 'acuerdos' | 'engagement' | 'general'
+const CATEGORY_LABELS: Record<Category, string> = {
+  cumplimiento: 'Cumplimiento',
+  cadencia: 'Cadencia',
+  disputa: 'Disputa',
+  acuerdos: 'Acuerdos',
+  engagement: 'Engagement',
+  general: 'Patrón',
+}
+const CATEGORY_ICONS: Record<Category, typeof FileText> = {
+  cumplimiento: AlertTriangle,
+  cadencia: Repeat,
+  disputa: MessageSquareWarning,
+  acuerdos: CheckSquare,
+  engagement: FileText,
+  general: FileText,
+}
+
+function categorize(title: string, content: string): Category {
+  const text = `${title} ${content}`.toLowerCase()
+  if (/disputa|vobo|contradictori/.test(text)) return 'disputa'
+  if (/acuerdo|compromiso|incumpl/.test(text)) return 'acuerdos'
+  if (/cadencia|frecuencia|ritmo|periodicidad/.test(text)) return 'cadencia'
+  if (/cumplimiento|no.realizad|baja.tasa/.test(text)) return 'cumplimiento'
+  if (/engagement|participaci|interés|asistenc/.test(text)) return 'engagement'
+  return 'general'
+}
 
 export default async function ReportesPage() {
   const supabase = createClient()
@@ -13,58 +54,76 @@ export default async function ReportesPage() {
   const { data: rawReports } = await supabase
     .from('ai_reports').select('*').order('created_at', { ascending: false }).limit(50)
   const reports = (rawReports ?? []) as Array<{
-    id: string; title: string; content: string; severity: string;
+    id: string; title: string; content: string; severity: string; scope_type: string; scope_id: string;
     reviewed: boolean; created_at: string
   }>
 
+  const unreviewedCount = reports.filter(r => !r.reviewed).length
+
   return (
-    <div className="page">
-      <div className="page__head">
+    <div className="max-w-[1240px] mx-auto px-8 py-8 anim-fade-in">
+      <div className="flex items-start justify-between gap-6 mb-8">
         <div>
-          <span className="page__eyebrow"><Sparkles size={12} /> Asistente IA</span>
-          <h1 className="page__title">Reportes del asistente</h1>
-          <p className="page__subtitle">
-            Patrones detectados automáticamente que merecen tu atención.
+          <h1 className="text-[28px] font-medium tracking-tight">Reportes del asistente</h1>
+          <p className="text-sm text-muted-foreground mt-1.5 max-w-xl">
+            {reports.length === 0
+              ? 'El asistente publicará aquí los patrones organizacionales que detecte.'
+              : `${unreviewedCount} sin revisar de ${reports.length} totales · patrones detectados automáticamente.`}
           </p>
         </div>
-        <span className="ai-chip">Generado por IA</span>
+        <Badge variant="brand"><Sparkles className="size-3" /> Generado por IA</Badge>
       </div>
 
       {reports.length === 0 ? (
-        <div className="ui-card">
-          <div className="empty">
-            <div className="empty__icon"><FileText /></div>
-            <h3 className="empty__title">Sin reportes por ahora</h3>
-            <p className="empty__desc">
-              Aparecerán aquí cuando el asistente detecte patrones organizacionales relevantes.
-            </p>
-          </div>
-        </div>
+        <Card>
+          <CardContent className="p-0">
+            <EmptyState
+              icon={FileText}
+              title="Sin reportes por ahora"
+              description="Aparecerán aquí cuando el asistente detecte patrones organizacionales relevantes."
+            />
+          </CardContent>
+        </Card>
       ) : (
-        <div style={{ display: 'grid', gap: 14 }} className="anim-stagger">
-          {reports.map(r => (
-            <div key={r.id} className="ui-card" style={{ opacity: r.reviewed ? 0.7 : 1 }}>
-              <div className="ui-card__head">
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <span className={`ui-badge ui-badge--${SEVERITY_TONE[r.severity] ?? 'slate'}`}>
-                      {SEVERITY_LABELS[r.severity]}
-                    </span>
-                    {r.reviewed && <span className="ui-badge ui-badge--slate ui-badge--plain">Revisado</span>}
+        <div className="grid gap-3.5 anim-stagger">
+          {reports.map(r => {
+            const cat = categorize(r.title, r.content)
+            const CatIcon = CATEGORY_ICONS[cat]
+            return (
+              <Card
+                key={r.id}
+                className={cn(
+                  'border-l-2 transition-opacity',
+                  SEVERITY_BORDER[r.severity] ?? 'border-l-border',
+                  r.reviewed && 'opacity-65'
+                )}
+              >
+                <div className="flex items-start justify-between gap-3 px-6 py-5">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <Badge variant={SEVERITY_VARIANT[r.severity] ?? 'muted'}>
+                        {SEVERITY_LABELS[r.severity]}
+                      </Badge>
+                      <Badge variant="muted" className="text-[10.5px]">
+                        <CatIcon className="size-3" /> {CATEGORY_LABELS[cat]}
+                      </Badge>
+                      {r.scope_type === 'organization' && (
+                        <Badge variant="muted" className="text-[10.5px]">
+                          <Building2 className="size-3" /> Organización
+                        </Badge>
+                      )}
+                      {r.reviewed && <Badge variant="muted" className="text-[10.5px]">Revisado</Badge>}
+                    </div>
+                    <h3 className="text-[16.5px] font-medium tracking-tight">{r.title}</h3>
+                    <p className="text-[13.5px] leading-relaxed mt-2.5">{r.content}</p>
                   </div>
-                  <h3 className="font-serif" style={{ fontSize: 18, letterSpacing: '-0.012em', fontWeight: 500, margin: 0 }}>
-                    {r.title}
-                  </h3>
+                  <span className="text-[11.5px] text-muted-foreground/70 whitespace-nowrap shrink-0">
+                    {new Date(r.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
+                  </span>
                 </div>
-                <span style={{ fontSize: 11.5, color: 'var(--text-subtle)', whiteSpace: 'nowrap' }}>
-                  {new Date(r.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
-                </span>
-              </div>
-              <div className="ui-card__body">
-                <p style={{ fontSize: 13.5, lineHeight: 1.65, color: 'var(--text-c)', margin: 0 }}>{r.content}</p>
-              </div>
-            </div>
-          ))}
+              </Card>
+            )
+          })}
         </div>
       )}
     </div>

@@ -5,6 +5,12 @@ import { Plus, Calendar, Loader2, ChevronDown, Sparkles } from 'lucide-react'
 import { createAgreement, updateAgreementStatus } from '@/lib/actions/agreements'
 import { AGREEMENT_LABELS } from '@/lib/constants'
 import type { ExtractedAgreement } from '@/types/domain'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { InitialsAvatar } from '@/components/shared/initials-avatar'
+import { cn } from '@/lib/utils/cn'
 
 interface Agreement {
   id: string; description: string; responsible_id: string;
@@ -22,7 +28,12 @@ interface AgreementListProps {
   onSuggestionsUsed?: () => void
 }
 
-const AV_BY_INDEX = ['av-blue', 'av-violet', 'av-green', 'av-amber']
+const STATUS_VARIANT: Record<string, 'warning' | 'success' | 'brand' | 'destructive'> = {
+  pendiente: 'warning',
+  cumplido: 'success',
+  parcial: 'brand',
+  no_cumplido: 'destructive',
+}
 
 export function AgreementList({
   oneOnOneId, initialAgreements, participants, extractedSuggestions, onSuggestionsUsed,
@@ -73,165 +84,123 @@ export function AgreementList({
     setOpenMenuId(null)
   }
 
-  function responsibleInfo(id: string, idx: number) {
-    const p = id === participants.leader.id ? participants.leader : participants.collaborator
-    const initials = p.name.split(' ').map(s => s[0]).slice(0, 2).join('')
-    return { name: p.name, initials, color: AV_BY_INDEX[idx % AV_BY_INDEX.length] }
+  function responsibleName(id: string) {
+    return id === participants.leader.id ? participants.leader.name : participants.collaborator.name
   }
 
   return (
-    <div style={{ display: 'grid', gap: 10 }}>
+    <div className="grid gap-2.5">
       {extractedSuggestions && extractedSuggestions.length > 0 && (
-        <div className="ai-card anim-fade-in" style={{ padding: 16, display: 'grid', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="ai-chip">IA</span>
-            <span style={{ fontSize: 12.5, fontWeight: 500, letterSpacing: '-0.005em' }}>
-              Extraje {extractedSuggestions.length} acuerdo{extractedSuggestions.length !== 1 ? 's' : ''} —
-              confirma cuáles agregar
+        <Card className="p-4 grid gap-2.5 border-brand/40 bg-brand-muted/40 anim-fade-in">
+          <div className="flex items-center gap-2">
+            <Badge variant="brand" className="text-[10.5px]"><Sparkles className="size-3" /> IA</Badge>
+            <span className="text-[12.5px] font-medium">
+              Extraje {extractedSuggestions.length} acuerdo{extractedSuggestions.length !== 1 ? 's' : ''} — confirma cuáles agregar
             </span>
           </div>
           {extractedSuggestions.map((s, i) => (
-            <div
-              key={i}
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 10,
-                padding: 12,
-                borderRadius: 8,
-                background: 'var(--bg-card)',
-                border: '1px solid var(--ai-border)',
-              }}
-            >
-              <p style={{ flex: 1, fontSize: 13.5, lineHeight: 1.55, margin: 0 }}>{s.description}</p>
-              <button
-                type="button"
-                className="ui-btn ui-btn--accent ui-btn--sm"
+            <div key={i} className="flex items-start gap-2.5 p-3 rounded-md border bg-background">
+              <p className="flex-1 text-[13.5px] leading-relaxed m-0">{s.description}</p>
+              <Button
+                type="button" size="sm" variant="brand"
                 onClick={() => { handleAcceptSuggestion(s); onSuggestionsUsed?.() }}
               >
-                <Plus size={12} /> Agregar
-              </button>
+                <Plus className="size-3" /> Agregar
+              </Button>
             </div>
           ))}
-        </div>
+        </Card>
       )}
 
       {agreements.length === 0 && !extractedSuggestions?.length && (
-        <div
-          style={{
-            padding: 32,
-            textAlign: 'center',
-            border: '1px dashed var(--border-strong)',
-            borderRadius: 8,
-            color: 'var(--text-muted)',
-            background: 'var(--bg-subtle)',
-          }}
-        >
-          <Sparkles size={20} style={{ color: 'var(--accent-600)', opacity: 0.6, marginBottom: 6 }} />
-          <div style={{ fontSize: 13.5, marginBottom: 6, fontWeight: 500, color: 'var(--text-c)' }}>
-            Aún no hay acuerdos
-          </div>
-          <div style={{ fontSize: 12.5, maxWidth: 400, margin: '0 auto', lineHeight: 1.55 }}>
-            Cuando termines la minuta, presiona <strong>Extraer acuerdos con IA</strong> o
-            agrégalos manualmente.
+        <div className="p-8 text-center border border-dashed rounded-md text-muted-foreground bg-secondary/30">
+          <Sparkles className="mx-auto size-5 mb-2 text-brand/60" />
+          <div className="text-[13.5px] mb-1.5 font-medium text-foreground">Aún no hay acuerdos</div>
+          <div className="text-[12.5px] max-w-md mx-auto leading-relaxed">
+            Cuando termines la minuta, presiona <strong>Extraer acuerdos con IA</strong> o agrégalos manualmente.
           </div>
         </div>
       )}
 
-      {agreements.map((a, idx) => {
-        const r = responsibleInfo(a.responsible_id, idx)
-        return (
-          <div key={a.id} className="agreement anim-fade-in">
-            <div className="agreement__head">
-              <p className="agreement__desc">{a.description}</p>
-              <div style={{ position: 'relative' }}>
-                <button
-                  type="button"
-                  className={`status-select status-select--${a.status}`}
-                  onClick={() => setOpenMenuId(openMenuId === a.id ? null : a.id)}
+      {agreements.map(a => (
+        <Card key={a.id} className="px-4 py-3 anim-fade-in">
+          <div className="flex items-start gap-3">
+            <p className="flex-1 text-[13.5px] leading-relaxed m-0">{a.description}</p>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setOpenMenuId(openMenuId === a.id ? null : a.id)}
+                className="inline-flex items-center gap-1"
+              >
+                <Badge variant={STATUS_VARIANT[a.status] ?? 'muted'} className="cursor-pointer">
+                  {AGREEMENT_LABELS[a.status]} <ChevronDown className="size-3 opacity-60" />
+                </Badge>
+              </button>
+              {openMenuId === a.id && (
+                <div
+                  className="absolute top-full right-0 mt-1 min-w-[160px] rounded-md border bg-popover py-1 z-20 anim-scale-in origin-top-right"
+                  style={{ boxShadow: 'var(--shadow-popover)' }}
                 >
-                  {AGREEMENT_LABELS[a.status]}
-                  <ChevronDown size={11} />
-                </button>
-                {openMenuId === a.id && (
-                  <div className="popover" style={{ top: 'calc(100% + 4px)', right: 0, padding: 4, minWidth: 160 }}>
-                    {Object.entries(AGREEMENT_LABELS).map(([k, label]) => (
-                      <button
-                        key={k}
-                        type="button"
-                        onClick={() => handleStatusChange(a.id, k)}
-                        style={{
-                          display: 'block', width: '100%', textAlign: 'left',
-                          background: 'transparent', border: 'none', padding: '7px 10px',
-                          borderRadius: 5, fontSize: 12.5, cursor: 'pointer',
-                          color: 'var(--text-c)',
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="agreement__meta">
-              <span className="agreement__meta-item">
-                <span className={`avatar avatar--sm ${r.color}`}>{r.initials}</span>
-                <span style={{ marginLeft: 2 }}>{r.name}</span>
-              </span>
-              {a.due_date && <span className="agreement__meta-item"><Calendar size={13} /> {a.due_date}</span>}
-              {a.ai_generated && <span className="ai-chip">IA</span>}
+                  {Object.entries(AGREEMENT_LABELS).map(([k, label]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => handleStatusChange(a.id, k)}
+                      className="block w-full text-left px-3 py-1.5 text-[12.5px] hover:bg-secondary transition-colors"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        )
-      })}
+          <div className="flex flex-wrap gap-3 mt-2 text-[12px] text-muted-foreground items-center">
+            <span className="inline-flex items-center gap-1.5">
+              <InitialsAvatar name={responsibleName(a.responsible_id)} size="sm" />
+              {responsibleName(a.responsible_id)}
+            </span>
+            {a.due_date && (
+              <span className="inline-flex items-center gap-1"><Calendar className="size-3" /> {a.due_date}</span>
+            )}
+            {a.ai_generated && <Badge variant="brand" className="text-[10.5px]"><Sparkles className="size-3" /> IA</Badge>}
+          </div>
+        </Card>
+      ))}
 
       {!showAdd ? (
-        <button
-          type="button"
-          className="ui-btn ui-btn--ghost ui-btn--sm"
-          onClick={() => setShowAdd(true)}
-          style={{ alignSelf: 'flex-start' }}
-        >
-          <Plus size={13} /> Agregar acuerdo manualmente
-        </button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setShowAdd(true)} className="self-start">
+          <Plus className="size-3.5" /> Agregar acuerdo manualmente
+        </Button>
       ) : (
-        <div className="ui-card anim-fade-in" style={{ padding: 14, display: 'grid', gap: 10 }}>
-          <input
-            className="ui-input"
+        <Card className="p-4 grid gap-2.5 anim-fade-in">
+          <Input
             placeholder="Descripción del acuerdo…"
             value={newDesc}
             onChange={e => setNewDesc(e.target.value)}
             autoFocus
           />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <select className="ui-select" value={newResponsible} onChange={e => setNewResponsible(e.target.value)}>
+          <div className="grid grid-cols-2 gap-2.5">
+            <select
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+              value={newResponsible}
+              onChange={e => setNewResponsible(e.target.value)}
+            >
               <option value={participants.leader.id}>{participants.leader.name}</option>
               <option value={participants.collaborator.id}>{participants.collaborator.name}</option>
             </select>
-            <input className="ui-input" type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)} />
+            <Input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)} />
           </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              className="ui-btn ui-btn--ghost ui-btn--sm"
-              onClick={() => { setShowAdd(false); setNewDesc(''); setNewDueDate('') }}
-            >
+          <div className="flex gap-2 justify-end">
+            <Button type="button" variant="ghost" size="sm" onClick={() => { setShowAdd(false); setNewDesc(''); setNewDueDate('') }}>
               Cancelar
-            </button>
-            <button
-              type="button"
-              className="ui-btn ui-btn--accent ui-btn--sm"
-              onClick={handleAddManual}
-              disabled={isPending || !newDesc.trim()}
-            >
-              {isPending ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+            </Button>
+            <Button type="button" variant="brand" size="sm" onClick={handleAddManual} disabled={isPending || !newDesc.trim()}>
+              {isPending ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />}
               Guardar
-            </button>
+            </Button>
           </div>
-        </div>
+        </Card>
       )}
     </div>
   )

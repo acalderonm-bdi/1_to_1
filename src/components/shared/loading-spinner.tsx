@@ -1,23 +1,11 @@
-export function LoadingSpinner({ className }: { className?: string }) {
+import { Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils/cn'
+
+export function LoadingSpinner({ className, size = 'md' }: { className?: string; size?: 'sm' | 'md' | 'lg' }) {
+  const px = size === 'sm' ? 'size-4' : size === 'lg' ? 'size-6' : 'size-5'
   return (
-    <div
-      className={className}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '64px 24px',
-      }}
-    >
-      <span
-        className="spinner"
-        style={{
-          width: 22,
-          height: 22,
-          borderWidth: 2.5,
-          color: 'var(--text-subtle)',
-        }}
-      />
+    <div className={cn('flex items-center justify-center py-12', className)} aria-label="Cargando" role="status">
+      <Loader2 className={cn(px, 'animate-spin text-muted-foreground')} />
     </div>
   )
 }

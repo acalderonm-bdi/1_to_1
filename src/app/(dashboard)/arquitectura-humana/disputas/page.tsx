@@ -1,8 +1,14 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { AlertTriangle, Calendar, Check, X } from 'lucide-react'
+import { Calendar, Check, X, ArrowRight, AlertTriangle } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/shared/empty-state'
+import { InitialsAvatar } from '@/components/shared/initials-avatar'
 
-interface Participant { full_name: string; email: string }
+interface Participant { id: string; full_name: string; email: string }
 interface DisputeRow {
   id: string; scheduled_at: string; modality: string
   leader: Participant | Participant[] | null
@@ -19,8 +25,8 @@ export default async function DisputasPage() {
     .from('one_on_ones')
     .select(`
       id, scheduled_at, modality,
-      leader:users!one_on_ones_leader_id_fkey(full_name, email),
-      collaborator:users!one_on_ones_collaborator_id_fkey(full_name, email),
+      leader:users!one_on_ones_leader_id_fkey(id, full_name, email),
+      collaborator:users!one_on_ones_collaborator_id_fkey(id, full_name, email),
       vobos(user_id, confirmed)
     `)
     .eq('status', 'en_disputa')
@@ -29,95 +35,86 @@ export default async function DisputasPage() {
   const disputes = (raw ?? []) as DisputeRow[]
 
   return (
-    <div className="page">
-      <div className="page__head">
-        <div>
-          <span className="page__eyebrow"><AlertTriangle size={12} /> Requieren revisión</span>
-          <h1 className="page__title">Disputas</h1>
-          <p className="page__subtitle">
-            1:1s con VoBos contradictorios donde líder y colaborador no concuerdan sobre si la reunión se realizó.
-          </p>
-        </div>
+    <div className="max-w-[1240px] mx-auto px-8 py-8 anim-fade-in">
+      <div className="mb-8">
+        <h1 className="text-[28px] font-medium tracking-tight">Disputas</h1>
+        <p className="text-sm text-muted-foreground mt-1.5 max-w-xl">
+          1:1s con VoBos contradictorios donde líder y colaborador no concuerdan sobre si la reunión se realizó.
+        </p>
       </div>
 
       {disputes.length === 0 ? (
-        <div className="ui-card">
-          <div className="empty">
-            <div className="empty__icon" style={{ background: 'var(--green-50)', color: 'var(--green-700)' }}>
-              <Check />
-            </div>
-            <h3 className="empty__title">Sin disputas activas</h3>
-            <p className="empty__desc">Todas las 1:1s tienen VoBos consistentes entre líder y colaborador.</p>
-          </div>
-        </div>
+        <Card>
+          <CardContent className="p-0">
+            <EmptyState
+              icon={Check}
+              title="Sin disputas activas"
+              description="Todas las 1:1s tienen VoBos consistentes entre líder y colaborador."
+            />
+          </CardContent>
+        </Card>
       ) : (
-        <div style={{ display: 'grid', gap: 14 }} className="anim-stagger">
+        <div className="grid gap-3.5 anim-stagger">
           {disputes.map(d => {
             const leader = Array.isArray(d.leader) ? d.leader[0] : d.leader
             const collab = Array.isArray(d.collaborator) ? d.collaborator[0] : d.collaborator
             const vobos = d.vobos ?? []
+            const leaderVobo = vobos.find(v => v.user_id === leader?.id)
+            const collabVobo = vobos.find(v => v.user_id === collab?.id)
             return (
-              <div
-                key={d.id}
-                className="ui-card"
-                style={{
-                  borderColor: 'var(--orange-200)',
-                  background: 'linear-gradient(180deg, var(--orange-50), var(--bg-card))',
-                }}
-              >
-                <div className="ui-card__head" style={{ borderBottom: '1px solid var(--orange-200)' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      <span className="ui-badge ui-badge--orange">En disputa</span>
-                    </div>
-                    <h3 className="font-serif" style={{ fontSize: 19, letterSpacing: '-0.014em', fontWeight: 500, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Calendar size={16} style={{ color: 'var(--text-muted)' }} />
-                      {new Date(d.scheduled_at).toLocaleDateString('es-MX', {
-                        weekday: 'long', day: 'numeric', month: 'long',
-                      })}
-                    </h3>
-                  </div>
-                </div>
-                <div className="ui-card__body">
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 18 }}>
+              <Card key={d.id} className="border-l-2 border-l-warning">
+                <div className="flex items-center justify-between gap-3 px-6 py-4 border-b">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="inline-flex items-center justify-center size-8 rounded-md bg-warning-muted text-warning shrink-0">
+                      <AlertTriangle className="size-4" />
+                    </span>
                     <div>
-                      <div style={{ fontSize: 10.5, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.10em', fontWeight: 600, marginBottom: 4 }}>
-                        Líder
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <Badge variant="warning">En disputa</Badge>
                       </div>
-                      <div style={{ fontSize: 13.5, fontWeight: 500 }}>{leader?.full_name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{leader?.email}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 10.5, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.10em', fontWeight: 600, marginBottom: 4 }}>
-                        Colaborador
-                      </div>
-                      <div style={{ fontSize: 13.5, fontWeight: 500 }}>{collab?.full_name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{collab?.email}</div>
+                      <h3 className="text-[15.5px] font-medium tracking-tight inline-flex items-center gap-1.5">
+                        <Calendar className="size-3.5 text-muted-foreground" />
+                        {new Date(d.scheduled_at).toLocaleDateString('es-MX', {
+                          weekday: 'long', day: 'numeric', month: 'long',
+                        })}
+                      </h3>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    {vobos.map(v => (
-                      <span
-                        key={v.user_id}
-                        style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 6,
-                          padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500,
-                          background: v.confirmed ? 'var(--green-50)' : 'var(--red-50)',
-                          color: v.confirmed ? 'var(--green-700)' : 'var(--red-700)',
-                          border: `1px solid ${v.confirmed ? 'var(--green-200)' : 'var(--red-200)'}`,
-                        }}
-                      >
-                        {v.confirmed ? <Check size={13}/> : <X size={13}/>}
-                        {v.confirmed ? 'Confirmó realizada' : 'Indicó no realizada'}
-                      </span>
-                    ))}
-                  </div>
+                  <Button asChild variant="brand" size="sm">
+                    <Link href={`/lider/1to1/${d.id}`}>Resolver disputa <ArrowRight className="size-3" /></Link>
+                  </Button>
                 </div>
-              </div>
+                <CardContent className="grid grid-cols-2 gap-6">
+                  <ParticipantBlock role="Líder" name={leader?.full_name} email={leader?.email} vobo={leaderVobo} />
+                  <ParticipantBlock role="Colaborador" name={collab?.full_name} email={collab?.email} vobo={collabVobo} />
+                </CardContent>
+              </Card>
             )
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+function ParticipantBlock({
+  role, name, email, vobo,
+}: { role: string; name?: string; email?: string; vobo?: { confirmed: boolean } }) {
+  return (
+    <div className="flex items-start gap-3">
+      <InitialsAvatar name={name} size="md" />
+      <div className="min-w-0 flex-1">
+        <div className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground font-medium mb-0.5">{role}</div>
+        <div className="text-[13.5px] font-medium truncate">{name ?? '—'}</div>
+        <div className="text-[12px] text-muted-foreground truncate mb-2">{email ?? ''}</div>
+        {vobo === undefined ? (
+          <Badge variant="muted">Sin VoBo</Badge>
+        ) : vobo.confirmed ? (
+          <Badge variant="success"><Check className="size-3" /> Confirmó realizada</Badge>
+        ) : (
+          <Badge variant="destructive"><X className="size-3" /> Indicó no realizada</Badge>
+        )}
+      </div>
     </div>
   )
 }

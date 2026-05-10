@@ -3,6 +3,8 @@
 import { useState, useTransition } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 interface AgendaItem { id: string; content: string; author_id: string }
 interface AgendaListProps {
@@ -37,19 +39,9 @@ export function AgendaList({ oneOnOneId, initialItems, currentUserId, authorMap 
   }
 
   return (
-    <div style={{ display: 'grid', gap: 8 }}>
+    <div className="grid gap-2">
       {items.length === 0 && (
-        <div
-          style={{
-            fontSize: 13,
-            color: 'var(--text-muted)',
-            padding: '16px 12px',
-            textAlign: 'center',
-            border: '1px dashed var(--border-strong)',
-            borderRadius: 'var(--r-md)',
-            background: 'var(--bg-subtle)',
-          }}
-        >
+        <div className="text-[13px] text-muted-foreground py-4 px-4 text-center border border-dashed rounded-md bg-secondary/30">
           Aún no hay temas. Agrega el primero abajo.
         </div>
       )}
@@ -57,44 +49,40 @@ export function AgendaList({ oneOnOneId, initialItems, currentUserId, authorMap 
         const isMine = item.author_id === currentUserId
         const authorName = authorMap[item.author_id] ?? 'Tú'
         return (
-          <div key={item.id} className="agenda-item anim-fade-in">
-            <div className="agenda-item__bullet" />
-            <div className="agenda-item__text">
+          <div
+            key={item.id}
+            className="flex items-start gap-3 px-3.5 py-2.5 rounded-md border bg-secondary/30 hover:bg-background hover:border-border anim-fade-in"
+          >
+            <span className="size-3 mt-1 rounded-full border border-border shrink-0" aria-hidden="true" />
+            <div className="flex-1 min-w-0 text-[13.5px] leading-relaxed">
               {item.content}
-              <div className="agenda-item__author">
+              <div className="text-[11px] text-muted-foreground mt-0.5">
                 Sugerido por {isMine ? 'ti' : authorName.split(' ')[0]}
               </div>
             </div>
             {isMine && (
               <button
-                onClick={() => handleDelete(item.id)}
-                className="ui-btn ui-btn--ghost ui-btn--icon"
-                style={{ width: 28, height: 28, padding: 4 }}
-                aria-label="Eliminar"
                 type="button"
+                onClick={() => handleDelete(item.id)}
+                aria-label="Eliminar"
+                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-secondary transition-colors"
               >
-                <Trash2 size={13} />
+                <Trash2 className="size-3.5" />
               </button>
             )}
           </div>
         )
       })}
-      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-        <input
-          className="ui-input"
+      <div className="flex gap-2 mt-1">
+        <Input
           placeholder="Agregar tema…"
           value={newItem}
           onChange={e => setNewItem(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); startTransition(handleAdd) } }}
         />
-        <button
-          type="button"
-          className="ui-btn ui-btn--primary"
-          onClick={() => startTransition(handleAdd)}
-          disabled={isPending || !newItem.trim()}
-        >
-          <Plus size={14} /> Agregar
-        </button>
+        <Button type="button" onClick={() => startTransition(handleAdd)} disabled={isPending || !newItem.trim()}>
+          <Plus className="size-3.5" /> Agregar
+        </Button>
       </div>
     </div>
   )

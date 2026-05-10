@@ -4,6 +4,12 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Calendar, Clock, Video, MapPin, AlertCircle } from 'lucide-react'
 import { scheduleOneOnOne } from '@/lib/actions/one-on-ones'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { InitialsAvatar } from '@/components/shared/initials-avatar'
+import { cn } from '@/lib/utils/cn'
 
 interface Person { id: string; full_name: string; email: string }
 interface MeetingFormProps {
@@ -47,120 +53,128 @@ export function MeetingForm({ counterparts, currentRole, currentUserId }: Meetin
 
   const counterpartLabel = currentRole === 'leader' ? 'Colaborador' : 'Líder'
   const minDate = new Date().toISOString().split('T')[0]
-
   const counterpart = counterparts.find(p => p.id === counterpartId)
-  const initials = counterpart?.full_name.split(' ').map(p => p[0]).slice(0, 2).join('') ?? ''
 
   return (
-    <div className="ui-card" style={{ maxWidth: 600 }}>
-      <div className="ui-card__head">
-        <div>
-          <h3 className="ui-card__title">
-            <Calendar size={15} /> Detalles de la reunión
-          </h3>
-          <p className="ui-card__desc">Define cuándo, cuánto tiempo y dónde se realizará</p>
-        </div>
-      </div>
-      <form onSubmit={handleSubmit} className="ui-card__body" style={{ display: 'grid', gap: 18 }}>
-        <div>
-          <label className="ui-label">{counterpartLabel}</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {counterpart && (
-              <div className={`avatar avatar--md av-blue`} aria-hidden="true">
-                {initials}
-              </div>
-            )}
-            <select
-              className="ui-select"
-              value={counterpartId}
-              onChange={e => setCounterpartId(e.target.value)}
-              required
-              style={{ flex: 1 }}
-            >
-              {counterparts.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+    <Card className="max-w-[600px]">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar className="size-4 text-muted-foreground" /> Detalles de la reunión
+        </CardTitle>
+        <CardDescription>Define cuándo, cuánto tiempo y dónde se realizará.</CardDescription>
+      </CardHeader>
+      <form onSubmit={handleSubmit}>
+        <CardContent className="grid gap-5">
           <div>
-            <label className="ui-label">
-              <Calendar size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: '-2px' }} />
-              Fecha
-            </label>
-            <input className="ui-input" type="date" value={date} onChange={e => setDate(e.target.value)} required min={minDate} />
-          </div>
-          <div>
-            <label className="ui-label">
-              <Clock size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: '-2px' }} />
-              Hora
-            </label>
-            <input className="ui-input" type="time" value={time} onChange={e => setTime(e.target.value)} />
-          </div>
-        </div>
-
-        <div>
-          <label className="ui-label">Duración</label>
-          <div className="segmented" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
-            {(['15', '30', '45', '60'] as const).map(d => (
-              <button
-                key={d}
-                type="button"
-                data-active={duration === d}
-                onClick={() => setDuration(d)}
+            <Label className="mb-1.5 block">{counterpartLabel}</Label>
+            <div className="flex items-center gap-3">
+              {counterpart && <InitialsAvatar name={counterpart.full_name} size="md" />}
+              <select
+                className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                value={counterpartId}
+                onChange={e => setCounterpartId(e.target.value)}
+                required
               >
-                {d === '60' ? '1 hora' : `${d} min`}
-              </button>
-            ))}
+                {counterparts.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+              </select>
+            </div>
           </div>
-        </div>
 
-        <div>
-          <label className="ui-label">Modalidad</label>
-          <div className="segmented" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
-            <button
-              type="button"
-              data-active={modality === 'virtual'}
-              onClick={() => setModality('virtual')}
-              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-            >
-              <Video size={13} /> Virtual (Meet)
-            </button>
-            <button
-              type="button"
-              data-active={modality === 'presencial'}
-              onClick={() => setModality('presencial')}
-              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-            >
-              <MapPin size={13} /> Presencial
-            </button>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="meeting-date" className="mb-1.5 block">
+                <span className="inline-flex items-center gap-1.5"><Calendar className="size-3" /> Fecha</span>
+              </Label>
+              <Input id="meeting-date" type="date" value={date} onChange={e => setDate(e.target.value)} required min={minDate} />
+            </div>
+            <div>
+              <Label htmlFor="meeting-time" className="mb-1.5 block">
+                <span className="inline-flex items-center gap-1.5"><Clock className="size-3" /> Hora</span>
+              </Label>
+              <Input id="meeting-time" type="time" value={time} onChange={e => setTime(e.target.value)} />
+            </div>
           </div>
-        </div>
 
-        {modality === 'presencial' && (
-          <div className="anim-fade-in">
-            <label className="ui-label">Ubicación</label>
-            <input className="ui-input" value={location} onChange={e => setLocation(e.target.value)} placeholder="Sala de juntas A" />
-            <p className="ui-field-hint">Indica dónde se reunirán dentro de la oficina.</p>
+          <div>
+            <Label className="mb-1.5 block">Duración</Label>
+            <Segmented<'15' | '30' | '45' | '60'>
+              value={duration}
+              options={[
+                { value: '15', label: '15 min' },
+                { value: '30', label: '30 min' },
+                { value: '45', label: '45 min' },
+                { value: '60', label: '1 hora' },
+              ]}
+              onChange={setDuration}
+              cols={4}
+            />
           </div>
-        )}
 
-        {error && (
-          <div className="ui-field-error" role="alert">
-            <AlertCircle size={13} /> {error}
+          <div>
+            <Label className="mb-1.5 block">Modalidad</Label>
+            <Segmented<'virtual' | 'presencial'>
+              value={modality}
+              options={[
+                { value: 'virtual', label: <span className="inline-flex items-center justify-center gap-1.5"><Video className="size-3.5" /> Virtual (Meet)</span> },
+                { value: 'presencial', label: <span className="inline-flex items-center justify-center gap-1.5"><MapPin className="size-3.5" /> Presencial</span> },
+              ]}
+              onChange={setModality}
+              cols={2}
+            />
           </div>
-        )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
-          <button type="button" className="ui-btn ui-btn--outline" onClick={() => router.back()}>
-            Cancelar
-          </button>
-          <button type="submit" className="ui-btn ui-btn--primary" disabled={isPending}>
-            {isPending && <Loader2 size={14} className="animate-spin" />}
+          {modality === 'presencial' && (
+            <div className="anim-fade-in">
+              <Label htmlFor="meeting-loc" className="mb-1.5 block">Ubicación</Label>
+              <Input id="meeting-loc" value={location} onChange={e => setLocation(e.target.value)} placeholder="Sala de juntas A" />
+              <p className="text-[11.5px] text-muted-foreground mt-1.5">Indica dónde se reunirán dentro de la oficina.</p>
+            </div>
+          )}
+
+          {error && (
+            <div role="alert" className="flex items-center gap-2 text-[12.5px] text-destructive">
+              <AlertCircle className="size-3.5" /> {error}
+            </div>
+          )}
+        </CardContent>
+        <div className="flex justify-end gap-2 px-6 py-4 border-t">
+          <Button type="button" variant="outline" onClick={() => router.back()}>Cancelar</Button>
+          <Button type="submit" disabled={isPending}>
+            {isPending && <Loader2 className="size-3.5 animate-spin" />}
             Agendar reunión
-          </button>
+          </Button>
         </div>
       </form>
+    </Card>
+  )
+}
+
+function Segmented<T extends string>({
+  value, options, onChange, cols = 3,
+}: {
+  value: T
+  options: Array<{ value: T; label: React.ReactNode }>
+  onChange: (v: T) => void
+  cols?: number
+}) {
+  return (
+    <div
+      className="grid gap-0.5 p-0.5 rounded-md border bg-secondary/50"
+      style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
+    >
+      {options.map(o => (
+        <button
+          key={String(o.value)}
+          type="button"
+          onClick={() => onChange(o.value)}
+          className={cn(
+            'text-[12.5px] font-medium rounded px-2 py-1.5 transition-colors',
+            o.value === value ? 'bg-background text-foreground shadow-[0_0_0_1px_hsl(var(--border))]' : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   )
 }

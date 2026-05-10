@@ -1,8 +1,19 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { Calendar, CheckSquare, Plus, ArrowRight, Video, MapPin, Sparkles, CalendarPlus } from 'lucide-react'
+import {
+  Calendar, CheckSquare, Plus, ArrowRight, Video, MapPin, Sparkles,
+  CalendarPlus, AlertCircle, Clock,
+} from 'lucide-react'
 import { STATUS_LABELS, AGREEMENT_LABELS } from '@/lib/constants'
+import { formatCount } from '@/lib/utils/format'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/shared/empty-state'
+import { cn } from '@/lib/utils/cn'
+
+const MONTHS = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC']
 
 export default async function ColaboradorPage() {
   const supabase = createClient()
@@ -14,7 +25,7 @@ export default async function ColaboradorPage() {
 
   const { data: rawUpcoming } = await supabase
     .from('one_on_ones')
-    .select('id, scheduled_at, modality, location, meet_link, status, leader_id')
+    .select('id, scheduled_at, modality, location, meet_link, status, leader_id, collaborator_id')
     .or(`leader_id.eq.${user.id},collaborator_id.eq.${user.id}`)
     .eq('status', 'agendada')
     .gte('scheduled_at', new Date().toISOString())
@@ -23,14 +34,42 @@ export default async function ColaboradorPage() {
 
   const upcoming = (rawUpcoming ?? []) as Array<{
     id: string; scheduled_at: string; modality: string; location: string | null;
-    meet_link: string | null; status: string; leader_id: string
+    meet_link: string | null; status: string; leader_id: string; collaborator_id: string
   }>
 
-  const leaderIds = Array.from(new Set(upcoming.map(m => m.leader_id)))
-  let leaderMap: Record<string, string> = {}
-  if (leaderIds.length > 0) {
-    const { data: leaders } = await supabase.from('users').select('id, full_name').in('id', leaderIds)
-    leaderMap = Object.fromEntries((leaders ?? []).map(l => [l.id, (l as { full_name: string }).full_name]))
+  // Resolver "otra parte" dinámicamente: si yo soy líder, muestro al colaborador, y viceversa.
+  const otherIds = Array.from(new Set(
+    upcoming.map(m => m.leader_id === user.id ? m.collaborator_id : m.leader_id)
+  ))
+  let userMap: Record<string, string> = {}
+  if (otherIds.length > 0) {
+    const { data: others } = await supabase.from('users').select('id, full_name').in('id', otherIds)
+    userMap = Object.fromEntries((others ?? []).map(u => [u.id, (u as { full_name: string }).full_name]))
+  }
+  const otherPartyName = (m: { leader_id: string; collaborator_id: string }) => {
+    const otherId = m.leader_id === user.id ? m.collaborator_id : m.leader_id
+    return userMap[otherId] ?? 'tu contraparte'
+  }
+
+  // 1:1s pasadas todavía agendadas (sin VoBo del usuario actual).
+  const { data: rawPending } = await supabase
+    .from('one_on_ones')
+    .select('id, scheduled_at, modality, location, status, leader_id, collaborator_id, vobos(user_id, confirmed)')
+    .or(`leader_id.eq.${user.id},collaborator_id.eq.${user.id}`)
+    .eq('status', 'agendada')
+    .lt('scheduled_at', new Date().toISOString())
+    .order('scheduled_at', { ascending: false })
+    .limit(8)
+  const pendingMeetings = ((rawPending ?? []) as Array<{
+    id: string; scheduled_at: string; modality: string; location: string | null; status: string;
+    leader_id: string; collaborator_id: string; vobos: Array<{ user_id: string; confirmed: boolean }> | null
+  }>).filter(m => !(m.vobos ?? []).some(v => v.user_id === user.id))
+
+  const pendingOtherIds = pendingMeetings.map(m => m.leader_id === user.id ? m.collaborator_id : m.leader_id)
+  const missingIds = pendingOtherIds.filter(id => !userMap[id])
+  if (missingIds.length > 0) {
+    const { data: extras } = await supabase.from('users').select('id, full_name').in('id', Array.from(new Set(missingIds)))
+    ;(extras ?? []).forEach(u => { userMap[u.id] = (u as { full_name: string }).full_name })
   }
 
   const { data: rawAgreements } = await supabase
@@ -55,7 +94,6 @@ export default async function ColaboradorPage() {
     .eq('status', 'cumplido')
 
   const firstName = profile?.full_name.split(' ')[0] ?? 'equipo'
-  const MONTHS = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC']
   const today = new Date()
   const isOverdue = (dueIso: string | null) => dueIso ? new Date(dueIso) < today : false
 
@@ -65,154 +103,254 @@ export default async function ColaboradorPage() {
   }
 
   return (
-    <div className="page">
-      <div className="page__head">
+    <div className="max-w-[1240px] mx-auto px-8 py-8 anim-fade-in">
+      {/* Page head */}
+      <div className="flex items-end justify-between gap-6 mb-8">
         <div>
-          <span className="page__eyebrow"><Sparkles size={12} /> Tu espacio personal</span>
-          <h1 className="page__title">Hola, {firstName}</h1>
-          <p className="page__subtitle">
-            Aquí está un resumen de tus próximas 1:1s y los compromisos que tienes abiertos.
+          <h1 className="text-[28px] font-medium tracking-tight">Hola, {firstName}</h1>
+          <p className="text-sm text-muted-foreground mt-1.5 max-w-xl">
+            Resumen de tus próximas 1:1s y los compromisos que tienes abiertos.
           </p>
         </div>
-        <div className="page__actions">
-          <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--primary">
-            <Plus size={14} /> Agendar 1:1
+        <Button asChild>
+          <Link href="/colaborador/1to1/nueva">
+            <Plus className="size-3.5" /> Agendar 1:1
           </Link>
-        </div>
+        </Button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }} className="anim-stagger">
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--blue"><Calendar /></div>
-          <div className="kpi__label">Próximas 1:1s</div>
-          <div className="kpi__value u-tabular">{upcoming.length}</div>
-          <div className="kpi__delta">agendadas</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--green"><CheckSquare /></div>
-          <div className="kpi__label">Acuerdos cumplidos</div>
-          <div className="kpi__value u-tabular">{completedAgreements ?? 0}</div>
-          <div className="kpi__delta">en total</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--violet"><Sparkles /></div>
-          <div className="kpi__label">1:1s realizadas</div>
-          <div className="kpi__value u-tabular">{realizedCount ?? 0}</div>
-          <div className="kpi__delta">tu historial</div>
-        </div>
+      {/* KPIs */}
+      <div className="grid grid-cols-3 gap-4 mb-6 anim-stagger">
+        <Kpi
+          label="Próximas 1:1s"
+          value={upcoming.length}
+          icon={Calendar}
+          hint="agendadas"
+          empty={upcoming.length === 0}
+        />
+        <Kpi
+          label="Acuerdos cumplidos"
+          value={completedAgreements ?? 0}
+          icon={CheckSquare}
+          hint="en total"
+          empty={(completedAgreements ?? 0) === 0}
+        />
+        <Kpi
+          label="1:1s realizadas"
+          value={realizedCount ?? 0}
+          icon={Sparkles}
+          hint="tu historial"
+          empty={(realizedCount ?? 0) === 0}
+        />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
-        <div className="ui-card">
-          <div className="ui-card__head">
-            <div>
-              <h3 className="ui-card__title">
-                <Calendar size={15} /> Próximas reuniones
-              </h3>
-              <p className="ui-card__desc">
-                {upcoming.length === 0 ? 'Sin reuniones próximas' : `${upcoming.length} agendada${upcoming.length === 1 ? '' : 's'}`}
-              </p>
-            </div>
-          </div>
-          <div className="ui-card__body ui-card__body--flush">
-            {upcoming.length === 0 ? (
-              <div className="empty">
-                <div className="empty__icon"><CalendarPlus /></div>
-                <h3 className="empty__title">Sin reuniones próximas</h3>
-                <p className="empty__desc">Agenda tu próxima 1:1 con tu líder para mantener el ritmo de tus conversaciones.</p>
-                <div className="empty__action">
-                  <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--accent ui-btn--sm">
-                    <Plus size={13} /> Agendar 1:1
-                  </Link>
+      {/* Pendientes de confirmar — solo si hay */}
+      {pendingMeetings.length > 0 && (
+        <Card className="mb-6 border-l-2 border-l-warning anim-fade-in-up">
+          <CardHeader className="border-b">
+            <div className="flex items-start gap-3">
+              <span className="inline-flex items-center justify-center size-8 rounded-md bg-warning-muted text-warning shrink-0">
+                <Clock className="size-4" />
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <CardTitle>Pendientes de confirmar</CardTitle>
+                  <Badge variant="warning" className="text-[10.5px]">
+                    <AlertCircle className="size-3" /> Acción pendiente
+                  </Badge>
                 </div>
+                <CardDescription className="mt-1">
+                  {pendingMeetings.length === 1
+                    ? '1 reunión ya pasó. Confirma si se realizó para mantener el registro transparente.'
+                    : `${pendingMeetings.length} reuniones ya pasaron. Confirma si se realizaron para mantener el registro transparente.`}
+                </CardDescription>
               </div>
-            ) : (
-              upcoming.map(m => {
-                const d = new Date(m.scheduled_at)
-                const day = d.getDate().toString().padStart(2, '0')
-                const month = MONTHS[d.getMonth()]
-                const time = d.toTimeString().slice(0, 5)
-                return (
-                  <div key={m.id} className="up-row">
-                    <div className="up-row__date">
-                      <div className="up-row__date-day">{day}</div>
-                      <div className="up-row__date-month">{month}</div>
-                      <div className="up-row__date-time">{time}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 500, fontSize: 14, letterSpacing: '-0.005em' }}>
-                        1:1 con {leaderMap[m.leader_id] ?? 'líder'}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 5, fontSize: 12, color: 'var(--text-muted)' }}>
-                        {m.modality === 'virtual' ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                            <Video size={12} /> Virtual
-                          </span>
-                        ) : (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                            <MapPin size={12} /> {m.location ?? 'Presencial'}
-                          </span>
-                        )}
-                        <span className="ui-badge ui-badge--blue">{STATUS_LABELS[m.status]}</span>
-                      </div>
-                    </div>
-                    <Link href={`/colaborador/1to1/${m.id}`} className="ui-btn ui-btn--outline ui-btn--sm">
-                      Ver <ArrowRight size={12} />
-                    </Link>
-                  </div>
-                )
-              })
-            )}
-          </div>
-        </div>
-
-        <div className="ui-card">
-          <div className="ui-card__head">
-            <div>
-              <h3 className="ui-card__title">
-                <CheckSquare size={15} /> Acuerdos pendientes
-              </h3>
-              <p className="ui-card__desc">Compromisos que tienes abiertos</p>
             </div>
-            <Link href="/colaborador/acuerdos" className="ui-btn ui-btn--ghost ui-btn--sm">
-              Ver todos <ArrowRight size={11} />
-            </Link>
-          </div>
-          <div className="ui-card__body ui-card__body--flush">
-            {pendingAgreements.length === 0 ? (
-              <div className="empty">
-                <div className="empty__icon" style={{ background: 'var(--green-50)', color: 'var(--green-700)' }}>
-                  <CheckSquare />
-                </div>
-                <h3 className="empty__title">¡Estás al día!</h3>
-                <p className="empty__desc">No tienes acuerdos pendientes. Sigue así.</p>
-              </div>
-            ) : (
-              pendingAgreements.map(a => {
-                const overdue = isOverdue(a.due_date)
-                return (
-                  <div
-                    key={a.id}
-                    style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-c)' }}
-                  >
-                    <div style={{ fontSize: 13.5, lineHeight: 1.5 }}>{a.description}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
-                      <span className={`ui-badge ${overdue ? 'ui-badge--red' : 'ui-badge--amber'}`}>
-                        {overdue ? 'Vencido' : AGREEMENT_LABELS[a.status]}
-                      </span>
-                      {a.due_date && (
-                        <span style={{ fontSize: 11.5, color: overdue ? 'var(--red-700)' : 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          <Calendar size={11} /> Vence {formatDueDate(a.due_date)}
-                        </span>
+          </CardHeader>
+          <div className="divide-y">
+            {pendingMeetings.map(m => {
+              const d = new Date(m.scheduled_at)
+              const day = d.getDate().toString().padStart(2, '0')
+              const month = MONTHS[d.getMonth()]
+              const time = d.toTimeString().slice(0, 5)
+              const otherId = m.leader_id === user.id ? m.collaborator_id : m.leader_id
+              const otherName = userMap[otherId] ?? 'tu contraparte'
+              const partnerVobo = (m.vobos ?? []).find(v => v.user_id !== user.id)
+              const detailHref = m.leader_id === user.id ? `/lider/1to1/${m.id}` : `/colaborador/1to1/${m.id}`
+              return (
+                <div key={m.id} className="grid grid-cols-[80px_1fr_auto] gap-4 items-center px-6 py-3.5">
+                  <DateChip day={day} month={month} time={time} />
+                  <div>
+                    <div className="text-sm font-medium tracking-tight">1:1 con {otherName}</div>
+                    <div className="flex items-center gap-3 mt-1 text-[12px] text-muted-foreground">
+                      <ModalityChip modality={m.modality} location={m.location} />
+                      {partnerVobo !== undefined && (
+                        <Badge variant={partnerVobo.confirmed ? 'success' : 'destructive'} className="text-[10.5px]">
+                          {otherName.split(' ')[0]} {partnerVobo.confirmed ? 'confirmó' : 'indicó no'}
+                        </Badge>
                       )}
                     </div>
                   </div>
-                )
-              })
+                  <Button asChild size="sm" variant="brand">
+                    <Link href={detailHref}>Confirmar <ArrowRight className="size-3" /></Link>
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Próximas reuniones + Acuerdos pendientes */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="size-4 text-muted-foreground" /> Próximas reuniones
+            </CardTitle>
+            <CardDescription>
+              {upcoming.length === 0 ? 'Sin reuniones próximas' : `${upcoming.length} agendada${upcoming.length === 1 ? '' : 's'}`}
+            </CardDescription>
+          </CardHeader>
+          <div>
+            {upcoming.length === 0 ? (
+              <EmptyState
+                icon={CalendarPlus}
+                title="Sin reuniones próximas"
+                description="Agenda tu próxima 1:1 con tu líder para mantener el ritmo."
+                action={
+                  <Button asChild size="sm" variant="brand">
+                    <Link href="/colaborador/1to1/nueva"><Plus className="size-3.5" /> Agendar 1:1</Link>
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="divide-y">
+                {upcoming.map(m => {
+                  const d = new Date(m.scheduled_at)
+                  const day = d.getDate().toString().padStart(2, '0')
+                  const month = MONTHS[d.getMonth()]
+                  const time = d.toTimeString().slice(0, 5)
+                  return (
+                    <div key={m.id} className="grid grid-cols-[80px_1fr_auto] gap-4 items-center px-6 py-3.5">
+                      <DateChip day={day} month={month} time={time} />
+                      <div>
+                        <div className="text-sm font-medium tracking-tight">1:1 con {otherPartyName(m)}</div>
+                        <div className="flex items-center gap-3 mt-1 text-[12px] text-muted-foreground">
+                          <ModalityChip modality={m.modality} location={m.location} />
+                          <Badge variant="muted" className="text-[10.5px]">{STATUS_LABELS[m.status]}</Badge>
+                        </div>
+                      </div>
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/colaborador/1to1/${m.id}`}>Ver <ArrowRight className="size-3" /></Link>
+                      </Button>
+                    </div>
+                  )
+                })}
+              </div>
             )}
           </div>
-        </div>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex-row items-start justify-between space-y-0 gap-3">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <CheckSquare className="size-4 text-muted-foreground" /> Acuerdos pendientes
+              </CardTitle>
+              <CardDescription>Compromisos que tienes abiertos</CardDescription>
+            </div>
+            <Button asChild size="sm" variant="ghost">
+              <Link href="/colaborador/acuerdos">Ver todos <ArrowRight className="size-3" /></Link>
+            </Button>
+          </CardHeader>
+          <div>
+            {pendingAgreements.length === 0 ? (
+              <EmptyState
+                icon={CheckSquare}
+                title="Estás al día"
+                description="No tienes acuerdos pendientes."
+              />
+            ) : (
+              <div className="divide-y">
+                {pendingAgreements.map(a => {
+                  const overdue = isOverdue(a.due_date)
+                  return (
+                    <div key={a.id} className="px-6 py-3.5">
+                      <div className="text-[13.5px] leading-relaxed">{a.description}</div>
+                      <div className="flex items-center gap-2.5 mt-2">
+                        <Badge variant={overdue ? 'destructive' : 'warning'} className="text-[10.5px]">
+                          {overdue ? 'Vencido' : AGREEMENT_LABELS[a.status]}
+                        </Badge>
+                        {a.due_date && (
+                          <span className={cn(
+                            'inline-flex items-center gap-1 text-[11.5px]',
+                            overdue ? 'text-destructive' : 'text-muted-foreground'
+                          )}>
+                            <Calendar className="size-3" /> Vence {formatDueDate(a.due_date)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </Card>
       </div>
     </div>
   )
+}
+
+// ----------------------------------------------------------------
+// Sub-components colocados en el archivo (no se reutilizan fuera).
+// ----------------------------------------------------------------
+
+function Kpi({
+  label, value, icon: Icon, hint, empty,
+}: {
+  label: string
+  value: number
+  icon: React.ComponentType<{ className?: string }>
+  hint: string
+  empty: boolean
+}) {
+  return (
+    <Card className="px-5 py-4 flex flex-col gap-1.5 relative">
+      <div className="flex items-center justify-between">
+        <span className="text-[12px] text-muted-foreground">{label}</span>
+        <span className={cn(
+          'inline-flex items-center justify-center size-7 rounded-md',
+          empty ? 'bg-secondary text-muted-foreground' : 'bg-secondary text-foreground'
+        )}>
+          <Icon className="size-3.5" />
+        </span>
+      </div>
+      <div className={cn(
+        'font-mono-numeric text-[28px] font-medium leading-none mt-1 tracking-tight',
+        empty ? 'text-muted-foreground/70' : 'text-foreground'
+      )}>
+        {empty ? '—' : formatCount(value)}
+      </div>
+      <div className="text-[11.5px] text-muted-foreground mt-0.5">{hint}</div>
+    </Card>
+  )
+}
+
+function DateChip({ day, month, time }: { day: string; month: string; time: string }) {
+  return (
+    <div className="text-center border-r pr-3 leading-tight">
+      <div className="text-[22px] font-medium tracking-tight font-mono-numeric leading-none">{day}</div>
+      <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground mt-1 font-medium">{month}</div>
+      <div className="text-[11px] text-muted-foreground mt-0.5 font-mono-numeric">{time}</div>
+    </div>
+  )
+}
+
+function ModalityChip({ modality, location }: { modality: string; location: string | null }) {
+  if (modality === 'virtual') {
+    return <span className="inline-flex items-center gap-1"><Video className="size-3" /> Virtual</span>
+  }
+  return <span className="inline-flex items-center gap-1"><MapPin className="size-3" /> {location ?? 'Presencial'}</span>
 }

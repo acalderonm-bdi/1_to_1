@@ -1,13 +1,18 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { CheckSquare, Calendar } from 'lucide-react'
+import { CheckSquare, Calendar, Sparkles } from 'lucide-react'
 import { AGREEMENT_LABELS } from '@/lib/constants'
+import { formatCount } from '@/lib/utils/format'
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { EmptyState } from '@/components/shared/empty-state'
+import { cn } from '@/lib/utils/cn'
 
-const STATUS_TONE: Record<string, string> = {
-  pendiente: 'amber',
-  cumplido: 'green',
-  parcial: 'blue',
-  no_cumplido: 'red',
+const STATUS_VARIANT: Record<string, 'warning' | 'success' | 'brand' | 'destructive'> = {
+  pendiente: 'warning',
+  cumplido: 'success',
+  parcial: 'brand',
+  no_cumplido: 'destructive',
 }
 
 export default async function AcuerdosPage() {
@@ -38,80 +43,80 @@ export default async function AcuerdosPage() {
   }
 
   return (
-    <div className="page">
-      <div className="page__head">
+    <div className="max-w-[1240px] mx-auto px-8 py-8 anim-fade-in">
+      <div className="mb-8">
+        <h1 className="text-[28px] font-medium tracking-tight">Mis acuerdos</h1>
+        <p className="text-sm text-muted-foreground mt-1.5">
+          {counts.total} compromiso{counts.total === 1 ? '' : 's'} en total — {counts.pendiente} pendiente{counts.pendiente === 1 ? '' : 's'}.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-4 gap-4 mb-6 anim-stagger">
+        <KpiTile label="Total" value={counts.total} empty={counts.total === 0} icon={CheckSquare} />
+        <KpiTile label="Pendientes" value={counts.pendiente} empty={counts.pendiente === 0} icon={CheckSquare} />
+        <KpiTile label="Cumplidos" value={counts.cumplido} empty={counts.cumplido === 0} icon={CheckSquare} />
+        <KpiTile label="No cumplidos" value={counts.no_cumplido} empty={counts.no_cumplido === 0} icon={CheckSquare} />
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CheckSquare className="size-4 text-muted-foreground" /> Todos los acuerdos
+          </CardTitle>
+          <CardDescription>Ordenados por fecha de creación, más recientes primero.</CardDescription>
+        </CardHeader>
         <div>
-          <span className="page__eyebrow"><CheckSquare size={12} /> Compromisos</span>
-          <h1 className="page__title">Mis acuerdos</h1>
-          <p className="page__subtitle">
-            {counts.total} compromiso{counts.total === 1 ? '' : 's'} en total — {counts.pendiente} pendiente{counts.pendiente === 1 ? '' : 's'}.
-          </p>
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }} className="anim-stagger">
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--blue"><CheckSquare /></div>
-          <div className="kpi__label">Total</div>
-          <div className="kpi__value u-tabular">{counts.total}</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--amber"><CheckSquare /></div>
-          <div className="kpi__label">Pendientes</div>
-          <div className="kpi__value u-tabular">{counts.pendiente}</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--green"><CheckSquare /></div>
-          <div className="kpi__label">Cumplidos</div>
-          <div className="kpi__value u-tabular">{counts.cumplido}</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--red"><CheckSquare /></div>
-          <div className="kpi__label">No cumplidos</div>
-          <div className="kpi__value u-tabular">{counts.no_cumplido}</div>
-        </div>
-      </div>
-
-      <div className="ui-card">
-        <div className="ui-card__head">
-          <div>
-            <h3 className="ui-card__title">
-              <CheckSquare size={15} /> Todos los acuerdos
-            </h3>
-            <p className="ui-card__desc">Ordenados por fecha de creación, más recientes primero</p>
-          </div>
-        </div>
-        <div className="ui-card__body" style={{ display: 'grid', gap: 10 }}>
           {agreements.length === 0 ? (
-            <div className="empty">
-              <div className="empty__icon"><CheckSquare /></div>
-              <h3 className="empty__title">Sin acuerdos registrados</h3>
-              <p className="empty__desc">
-                Aparecerán aquí los compromisos que se generen al cerrar tus 1:1s.
-              </p>
-            </div>
+            <EmptyState
+              icon={CheckSquare}
+              title="Sin acuerdos registrados"
+              description="Aparecerán aquí los compromisos que se generen al cerrar tus 1:1s."
+            />
           ) : (
-            agreements.map(a => (
-              <div key={a.id} className="agreement">
-                <div className="agreement__head">
-                  <p className="agreement__desc">{a.description}</p>
-                  <span className={`ui-badge ui-badge--${STATUS_TONE[a.status] ?? 'slate'}`}>
-                    {AGREEMENT_LABELS[a.status]}
-                  </span>
+            <div className="divide-y">
+              {agreements.map(a => (
+                <div key={a.id} className="px-6 py-3.5">
+                  <div className="flex items-start gap-3">
+                    <p className="flex-1 text-[13.5px] leading-relaxed">{a.description}</p>
+                    <Badge variant={STATUS_VARIANT[a.status] ?? 'muted'}>
+                      {AGREEMENT_LABELS[a.status]}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-3 mt-2 text-[12px] text-muted-foreground items-center">
+                    {a.due_date && (
+                      <span className="inline-flex items-center gap-1"><Calendar className="size-3" /> Vence {formatDueDate(a.due_date)}</span>
+                    )}
+                    {a.ai_generated && <Badge variant="brand" className="text-[10.5px]"><Sparkles className="size-3" /> IA</Badge>}
+                  </div>
                 </div>
-                <div className="agreement__meta">
-                  {a.due_date && (
-                    <span className="agreement__meta-item">
-                      <Calendar size={13} /> Vence {formatDueDate(a.due_date)}
-                    </span>
-                  )}
-                  {a.ai_generated && <span className="ai-chip">IA</span>}
-                </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
-      </div>
+      </Card>
     </div>
+  )
+}
+
+function KpiTile({
+  label, value, empty, icon: Icon,
+}: {
+  label: string; value: number; empty: boolean; icon: React.ComponentType<{ className?: string }>
+}) {
+  return (
+    <Card className="px-5 py-4 flex flex-col gap-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[12px] text-muted-foreground">{label}</span>
+        <span className="inline-flex items-center justify-center size-7 rounded-md bg-secondary text-muted-foreground">
+          <Icon className="size-3.5" />
+        </span>
+      </div>
+      <div className={cn(
+        'font-mono-numeric text-[28px] font-medium leading-none mt-1 tracking-tight',
+        empty ? 'text-muted-foreground/70' : 'text-foreground'
+      )}>
+        {empty ? '—' : formatCount(value)}
+      </div>
+    </Card>
   )
 }

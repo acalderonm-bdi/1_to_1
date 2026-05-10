@@ -2,6 +2,13 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Users, Calendar, TrendingUp, Plus, ArrowRight, UserPlus } from 'lucide-react'
+import { formatPct, formatCount } from '@/lib/utils/format'
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { EmptyState } from '@/components/shared/empty-state'
+import { InitialsAvatar } from '@/components/shared/initials-avatar'
+import { cn } from '@/lib/utils/cn'
 
 export default async function LiderPage() {
   const supabase = createClient()
@@ -21,7 +28,6 @@ export default async function LiderPage() {
     collaborator_id: string
     users: { id: string; full_name: string; email: string } | Array<{ id: string; full_name: string; email: string }> | null
   }>
-
   const collaboratorIds = relations.map(r => r.collaborator_id)
 
   const startOfMonth = new Date()
@@ -55,131 +61,140 @@ export default async function LiderPage() {
   }
 
   const firstName = profile?.full_name.split(' ')[0] ?? 'Líder'
-  const AV_COLORS = ['av-blue', 'av-violet', 'av-pink', 'av-green', 'av-amber', 'av-orange', 'av-teal', 'av-rose']
+  const hasMeetings = total > 0
+  const hasTeam = collaboratorIds.length > 0
 
-  const complianceTone =
-    compliance >= 80 ? 'green' :
-    compliance >= 60 ? 'amber' :
-    compliance >= 40 ? 'orange' : 'red'
+  const compTone: 'neutral' | 'success' | 'warning' | 'destructive' =
+    !hasMeetings ? 'neutral' :
+    compliance >= 80 ? 'success' :
+    compliance >= 60 ? 'warning' :
+    'destructive'
+
+  const compBarColor =
+    compTone === 'success' ? 'bg-success' :
+    compTone === 'warning' ? 'bg-warning' :
+    compTone === 'destructive' ? 'bg-destructive' :
+    'bg-muted-foreground/40'
 
   return (
-    <div className="page">
-      <div className="page__head">
+    <div className="max-w-[1240px] mx-auto px-8 py-8 anim-fade-in">
+      <div className="flex items-end justify-between gap-6 mb-8">
         <div>
-          <span className="page__eyebrow"><Users size={12} /> Equipo a tu cargo</span>
-          <h1 className="page__title">Hola, {firstName}</h1>
-          <p className="page__subtitle">
+          <h1 className="text-[28px] font-medium tracking-tight">Hola, {firstName}</h1>
+          <p className="text-sm text-muted-foreground mt-1.5 max-w-xl">
             Resumen de tu equipo y cumplimiento de cadencia este mes.
           </p>
         </div>
-        <div className="page__actions">
-          <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--primary">
-            <Plus size={14} /> Agendar 1:1
+        <Button asChild>
+          <Link href="/colaborador/1to1/nueva">
+            <Plus className="size-3.5" /> Agendar 1:1
           </Link>
-        </div>
+        </Button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }} className="anim-stagger">
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--blue"><Users /></div>
-          <div className="kpi__label">Colaboradores</div>
-          <div className="kpi__value u-tabular">{collaboratorIds.length}</div>
-          <div className="kpi__delta">a tu cargo</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--violet"><Calendar /></div>
-          <div className="kpi__label">1:1s este mes</div>
-          <div className="kpi__value u-tabular">{total}</div>
-          <div className="kpi__delta">{realized} realizadas</div>
-        </div>
-        <div className="kpi">
-          <div className={`kpi__icon kpi__icon--${complianceTone}`}><TrendingUp /></div>
-          <div className="kpi__label">Cumplimiento</div>
-          <div className="kpi__value u-tabular">{compliance}%</div>
-          <div style={{ marginTop: 8 }}>
-            <div className="progress-bar">
-              <div
-                className={`progress-bar__fill progress-bar__fill--${complianceTone === 'orange' ? 'amber' : complianceTone}`}
-                style={{ width: `${compliance}%` }}
-              />
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-3 gap-4 mb-7 anim-stagger">
+        <Kpi
+          label="Colaboradores" value={formatCount(collaboratorIds.length, { hasData: hasTeam })}
+          empty={!hasTeam} icon={Users} hint="a tu cargo"
+        />
+        <Kpi
+          label="1:1s este mes" value={formatCount(total, { hasData: hasMeetings })}
+          empty={!hasMeetings} icon={Calendar} hint={`${realized} realizadas`}
+        />
+        <Kpi
+          label="Cumplimiento" value={formatPct(compliance, { hasData: hasMeetings })}
+          empty={!hasMeetings} icon={TrendingUp} hint=""
+          extra={
+            hasMeetings ? (
+              <div className="mt-2 h-1 rounded-full bg-secondary overflow-hidden">
+                <div className={cn('h-full rounded-full transition-[width]', compBarColor)} style={{ width: `${compliance}%` }} />
+              </div>
+            ) : null
+          }
+        />
       </div>
 
-      <div className="ui-card">
-        <div className="ui-card__head">
+      <Card>
+        <CardHeader className="flex-row items-start justify-between space-y-0">
           <div>
-            <h3 className="ui-card__title">
-              <Users size={15} /> Mi equipo
-            </h3>
-            <p className="ui-card__desc">Próximas 1:1s con cada colaborador</p>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="size-4 text-muted-foreground" /> Mi equipo
+            </CardTitle>
+            <CardDescription>Próximas 1:1s con cada colaborador.</CardDescription>
           </div>
-          <Link href="/lider/equipo" className="ui-btn ui-btn--ghost ui-btn--sm">
-            Ver todos <ArrowRight size={11} />
-          </Link>
-        </div>
-        <div className="ui-card__body ui-card__body--flush">
+          <Button asChild size="sm" variant="ghost">
+            <Link href="/lider/equipo">Ver todos <ArrowRight className="size-3" /></Link>
+          </Button>
+        </CardHeader>
+        <div>
           {relations.length === 0 ? (
-            <div className="empty">
-              <div className="empty__icon"><UserPlus /></div>
-              <h3 className="empty__title">Sin colaboradores asignados</h3>
-              <p className="empty__desc">
-                Contacta a Arquitectura Humana para que configure tu relación con tu equipo.
-              </p>
-            </div>
+            <EmptyState
+              icon={UserPlus}
+              title="Sin colaboradores asignados"
+              description="Contacta a Arquitectura Humana para que configure tu relación con tu equipo."
+            />
           ) : (
-            relations.map((rel, idx) => {
-              const collab = Array.isArray(rel.users) ? rel.users[0] : rel.users
-              if (!collab) return null
-              const next = upcomingMap[rel.collaborator_id]
-              const initials = collab.full_name.split(' ').map(p => p[0]).slice(0, 2).join('')
-              return (
-                <div
-                  key={rel.collaborator_id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 14,
-                    padding: '14px 24px',
-                    borderBottom: '1px solid var(--border-c)',
-                  }}
-                >
-                  <div className={`avatar avatar--md ${AV_COLORS[idx % AV_COLORS.length]}`}>{initials}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 500, fontSize: 14, letterSpacing: '-0.005em' }}>
-                      {collab.full_name}
+            <div className="divide-y">
+              {relations.map(rel => {
+                const collab = Array.isArray(rel.users) ? rel.users[0] : rel.users
+                if (!collab) return null
+                const next = upcomingMap[rel.collaborator_id]
+                return (
+                  <div key={rel.collaborator_id} className="flex items-center gap-3.5 px-6 py-3.5">
+                    <InitialsAvatar name={collab.full_name} size="md" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium tracking-tight truncate">{collab.full_name}</div>
+                      <div className="text-[12px] text-muted-foreground truncate">{collab.email}</div>
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {collab.email}
+                    <div className="text-right shrink-0">
+                      {next ? (
+                        <>
+                          <div className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground font-medium">Próxima</div>
+                          <div className="text-[13px] font-medium font-mono-numeric mt-0.5">
+                            {new Date(next.scheduled_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
+                          </div>
+                        </>
+                      ) : (
+                        <Badge variant="muted">Sin agendar</Badge>
+                      )}
                     </div>
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={next ? `/lider/1to1/${next.id}` : '/colaborador/1to1/nueva'}>
+                        {next ? 'Ver' : 'Agendar'} <ArrowRight className="size-3" />
+                      </Link>
+                    </Button>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    {next ? (
-                      <>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
-                          Próxima
-                        </div>
-                        <div style={{ fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-serif)', letterSpacing: '-0.008em' }}>
-                          {new Date(next.scheduled_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
-                        </div>
-                      </>
-                    ) : (
-                      <span className="ui-badge ui-badge--slate">Sin agendar</span>
-                    )}
-                  </div>
-                  <Link
-                    href={next ? `/lider/1to1/${next.id}` : '/colaborador/1to1/nueva'}
-                    className="ui-btn ui-btn--outline ui-btn--sm"
-                  >
-                    {next ? 'Ver' : 'Agendar'} <ArrowRight size={12} />
-                  </Link>
-                </div>
-              )
-            })
+                )
+              })}
+            </div>
           )}
         </div>
-      </div>
+      </Card>
     </div>
+  )
+}
+
+function Kpi({
+  label, value, icon: Icon, hint, empty, extra,
+}: {
+  label: string; value: string; icon: React.ComponentType<{ className?: string }>; hint: string; empty: boolean; extra?: React.ReactNode
+}) {
+  return (
+    <Card className="px-5 py-4 flex flex-col gap-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[12px] text-muted-foreground">{label}</span>
+        <span className="inline-flex items-center justify-center size-7 rounded-md bg-secondary text-muted-foreground">
+          <Icon className="size-3.5" />
+        </span>
+      </div>
+      <div className={cn(
+        'font-mono-numeric text-[28px] font-medium leading-none mt-1 tracking-tight',
+        empty ? 'text-muted-foreground/70' : 'text-foreground'
+      )}>
+        {value}
+      </div>
+      {hint && <div className="text-[11.5px] text-muted-foreground mt-0.5">{hint}</div>}
+      {extra}
+    </Card>
   )
 }

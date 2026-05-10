@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Save, Loader2 } from 'lucide-react'
+import { Save, Loader2, Sparkles } from 'lucide-react'
 import { saveMinute } from '@/lib/actions/minutes'
 import type { ExtractedAgreement } from '@/types/domain'
+import { Textarea } from '@/components/ui/textarea'
+import { Button } from '@/components/ui/button'
 
 interface MinuteEditorProps {
   oneOnOneId: string
@@ -44,9 +46,8 @@ export function MinuteEditor({ oneOnOneId, initialContent, onAgreementsExtracted
         body: JSON.stringify({ oneOnOneId, rawContent: content }),
       })
       const data = await res.json() as { agreements: ExtractedAgreement[]; error?: string }
-      if (data.error && !data.agreements.length) {
-        setAiError(data.error)
-      } else {
+      if (data.error && !data.agreements.length) setAiError(data.error)
+      else {
         onAgreementsExtracted(data.agreements)
         setHasExtracted(true)
       }
@@ -59,37 +60,26 @@ export function MinuteEditor({ oneOnOneId, initialContent, onAgreementsExtracted
 
   return (
     <div>
-      <textarea
-        className="ui-textarea"
+      <Textarea
         placeholder="Escribe lo que pasó en la reunión. Compromisos, decisiones, temas pendientes…"
         value={content}
         onChange={e => setContent(e.target.value)}
-        style={{ minHeight: 180, fontSize: 13.5, lineHeight: 1.6 }}
+        className="min-h-[180px] text-[13.5px] leading-relaxed"
       />
-      {aiError && <p style={{ fontSize: 12, color: 'var(--amber-700)', marginTop: 6 }}>{aiError}</p>}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
-        <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+      {aiError && <p className="text-[12px] text-warning mt-1.5">{aiError}</p>}
+      <div className="flex items-center justify-between mt-3">
+        <div className="text-[11.5px] text-muted-foreground">
           {content.length} caracteres{savedMsg && ` · ${savedMsg}`}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            type="button"
-            className="ui-btn ui-btn--ghost ui-btn--sm"
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            {isSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+        <div className="flex gap-2">
+          <Button type="button" variant="ghost" size="sm" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
             Guardar
-          </button>
-          <button
-            type="button"
-            className="ui-btn ui-btn--accent ui-btn--sm"
-            onClick={handleExtract}
-            disabled={isExtracting || !content.trim()}
-          >
-            {isExtracting ? <span className="spinner" /> : <span>✦</span>}
+          </Button>
+          <Button type="button" variant="brand" size="sm" onClick={handleExtract} disabled={isExtracting || !content.trim()}>
+            {isExtracting ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
             {isExtracting ? 'Procesando…' : (hasExtracted ? 'Reextraer acuerdos' : 'Extraer acuerdos con IA')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

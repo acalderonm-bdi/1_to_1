@@ -2,9 +2,16 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Users, Calendar } from 'lucide-react'
 import { AGREEMENT_LABELS } from '@/lib/constants'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { EmptyState } from '@/components/shared/empty-state'
+import { InitialsAvatar } from '@/components/shared/initials-avatar'
 
-const STATUS_TONE: Record<string, string> = {
-  pendiente: 'amber', cumplido: 'green', parcial: 'blue', no_cumplido: 'red',
+const STATUS_VARIANT: Record<string, 'warning' | 'success' | 'brand' | 'destructive'> = {
+  pendiente: 'warning',
+  cumplido: 'success',
+  parcial: 'brand',
+  no_cumplido: 'destructive',
 }
 
 export default async function EquipoPage() {
@@ -40,79 +47,62 @@ export default async function EquipoPage() {
     })
   }
 
-  const AV_COLORS = ['av-blue', 'av-violet', 'av-pink', 'av-green', 'av-amber', 'av-orange', 'av-teal', 'av-rose']
-
   return (
-    <div className="page">
-      <div className="page__head">
-        <div>
-          <span className="page__eyebrow"><Users size={12} /> Tu equipo</span>
-          <h1 className="page__title">Mi equipo</h1>
-          <p className="page__subtitle">Acuerdos pendientes por persona y estado de cada conversación.</p>
-        </div>
+    <div className="max-w-[1240px] mx-auto px-8 py-8 anim-fade-in">
+      <div className="mb-8">
+        <h1 className="text-[28px] font-medium tracking-tight">Mi equipo</h1>
+        <p className="text-sm text-muted-foreground mt-1.5">Acuerdos pendientes por persona y estado de cada conversación.</p>
       </div>
 
       {relations.length === 0 ? (
-        <div className="ui-card">
-          <div className="empty">
-            <div className="empty__icon"><Users /></div>
-            <h3 className="empty__title">Sin colaboradores asignados</h3>
-            <p className="empty__desc">Contacta a Arquitectura Humana para configurar tu equipo.</p>
-          </div>
-        </div>
+        <Card>
+          <CardContent className="p-0">
+            <EmptyState
+              icon={Users}
+              title="Sin colaboradores asignados"
+              description="Contacta a Arquitectura Humana para configurar tu equipo."
+            />
+          </CardContent>
+        </Card>
       ) : (
-        <div style={{ display: 'grid', gap: 14 }} className="anim-stagger">
-          {relations.map((rel, idx) => {
+        <div className="grid gap-3.5 anim-stagger">
+          {relations.map(rel => {
             const collab = Array.isArray(rel.users) ? rel.users[0] : rel.users
             if (!collab) return null
             const pending = agreementsMap[rel.collaborator_id] ?? []
-            const initials = collab.full_name.split(' ').map(p => p[0]).slice(0, 2).join('')
             return (
-              <div key={rel.collaborator_id} className="ui-card">
-                <div className="ui-card__head">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div className={`avatar avatar--lg ${AV_COLORS[idx % AV_COLORS.length]}`}>{initials}</div>
-                    <div>
-                      <h3 className="ui-card__title">{collab.full_name}</h3>
-                      <p className="ui-card__desc">{collab.email}</p>
+              <Card key={rel.collaborator_id}>
+                <CardHeader className="flex-row items-center justify-between space-y-0">
+                  <div className="flex items-center gap-3">
+                    <InitialsAvatar name={collab.full_name} size="lg" />
+                    <div className="min-w-0">
+                      <CardTitle>{collab.full_name}</CardTitle>
+                      <CardDescription>{collab.email}</CardDescription>
                     </div>
                   </div>
-                  <span className={`ui-badge ui-badge--${pending.length > 0 ? 'amber' : 'green'}`}>
+                  <Badge variant={pending.length > 0 ? 'warning' : 'success'}>
                     {pending.length} pendiente{pending.length !== 1 ? 's' : ''}
-                  </span>
-                </div>
+                  </Badge>
+                </CardHeader>
                 {pending.length > 0 && (
-                  <div className="ui-card__body" style={{ display: 'grid', gap: 10 }}>
+                  <CardContent className="grid gap-2.5">
                     {pending.map((a, i) => (
                       <div
                         key={i}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          fontSize: 13,
-                          padding: '10px 12px',
-                          borderRadius: 'var(--r-md)',
-                          background: 'var(--bg-subtle)',
-                          border: '1px solid var(--border-c)',
-                        }}
+                        className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-md border bg-secondary/30 text-[13px]"
                       >
-                        <span style={{ color: 'var(--text-c)', flex: 1, lineHeight: 1.5 }}>{a.description}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11.5, color: 'var(--text-muted)', flexShrink: 0 }}>
+                        <span className="flex-1 leading-relaxed">{a.description}</span>
+                        <div className="flex items-center gap-2.5 text-[11.5px] text-muted-foreground shrink-0">
                           {a.due_date && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              <Calendar size={11} /> {a.due_date}
-                            </span>
+                            <span className="inline-flex items-center gap-1"><Calendar className="size-3" /> {a.due_date}</span>
                           )}
-                          <span className={`ui-badge ui-badge--${STATUS_TONE[a.status] ?? 'slate'}`}>
-                            {AGREEMENT_LABELS[a.status]}
-                          </span>
+                          <Badge variant={STATUS_VARIANT[a.status] ?? 'muted'}>{AGREEMENT_LABELS[a.status]}</Badge>
                         </div>
                       </div>
                     ))}
-                  </div>
+                  </CardContent>
                 )}
-              </div>
+              </Card>
             )
           })}
         </div>

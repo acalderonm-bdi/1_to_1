@@ -22,16 +22,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const currentPath = headersList.get('x-pathname') ?? '/'
 
   return (
-    <div className="app">
+    <div className="min-h-screen flex bg-background text-foreground">
       <Sidebar
         role={profile.role as 'collaborator' | 'leader' | 'hr'}
         currentPath={currentPath}
         userName={profile.full_name}
         userEmail={profile.email}
       />
-      <div className="app-main">
+      <div className="flex-1 min-w-0 flex flex-col">
         <Header userId={user.id} userName={profile.full_name} userRole={profile.role} />
-        {children}
+        <main className="flex-1 min-w-0">{children}</main>
       </div>
     </div>
   )

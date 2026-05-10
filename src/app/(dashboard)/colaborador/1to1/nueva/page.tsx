@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { MeetingForm } from '@/components/one-on-one/meeting-form'
-import { Users, CalendarPlus } from 'lucide-react'
+import { Users } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/shared/empty-state'
 
 export default async function NuevaOneOnOnePage() {
   const supabase = createClient()
@@ -40,28 +42,24 @@ export default async function NuevaOneOnOnePage() {
   }
 
   return (
-    <div className="page">
-      <div className="page__head">
-        <div>
-          <span className="page__eyebrow"><CalendarPlus size={12} /> Nueva 1:1</span>
-          <h1 className="page__title">Agenda una reunión uno a uno</h1>
-          <p className="page__subtitle">
-            Crea la próxima reunión con la persona indicada y define los detalles importantes.
-          </p>
-        </div>
+    <div className="max-w-[1240px] mx-auto px-8 py-8 anim-fade-in">
+      <div className="mb-8">
+        <h1 className="text-[28px] font-medium tracking-tight">Agenda una reunión uno a uno</h1>
+        <p className="text-sm text-muted-foreground mt-1.5 max-w-xl">
+          Crea la próxima reunión con la persona indicada y define los detalles importantes.
+        </p>
       </div>
 
       {counterparts.length === 0 ? (
-        <div className="ui-card" style={{ maxWidth: 560 }}>
-          <div className="empty">
-            <div className="empty__icon"><Users /></div>
-            <h3 className="empty__title">Sin relaciones configuradas</h3>
-            <p className="empty__desc">
-              Pide a Arquitectura Humana que configure tu relación con tu líder o
-              colaboradores antes de poder agendar una 1:1.
-            </p>
-          </div>
-        </div>
+        <Card className="max-w-[560px]">
+          <CardContent className="p-0">
+            <EmptyState
+              icon={Users}
+              title="Sin relaciones configuradas"
+              description="Pide a Arquitectura Humana que configure tu relación con tu líder o colaboradores antes de poder agendar una 1:1."
+            />
+          </CardContent>
+        </Card>
       ) : (
         <MeetingForm
           counterparts={counterparts}

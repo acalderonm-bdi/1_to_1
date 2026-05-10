@@ -1,12 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Lock, Eye } from 'lucide-react'
+import { Lock, Eye, Shield } from 'lucide-react'
 import { MinuteEditor } from './minute-editor'
 import { AgreementList } from './agreement-list'
 import { VoboButton } from './vobo-button'
 import { FollowupModal } from './followup-modal'
 import type { ExtractedAgreement } from '@/types/domain'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 interface Agreement {
   id: string; description: string; responsible_id: string;
@@ -47,29 +50,22 @@ export function DetailInteraction({
       />
 
       {/* Minuta */}
-      <div className="ui-card anim-fade-in-up">
-        <div className="ui-card__head">
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <h3 className="ui-card__title">Minuta</h3>
-              <span className="ui-badge ui-badge--slate ui-badge--plain" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <Lock size={11} /> Privado
-              </span>
-            </div>
-            <p className="ui-card__desc">
-              Lo que conversaron. Solo lo ven {participants.leader.name.split(' ')[0]} y {participants.collaborator.name.split(' ')[0]}.
-            </p>
+      <Card className="anim-fade-in-up">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CardTitle>Minuta</CardTitle>
+            <Badge variant="muted" className="text-[10.5px]"><Lock className="size-3" /> Privado</Badge>
           </div>
-        </div>
-        <div className="ui-card__body" style={{ paddingTop: 12 }}>
-          <div className="privacy-banner" style={{ marginBottom: 14 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"
-              strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
+          <CardDescription>
+            Lo que conversaron. Solo lo ven {participants.leader.name.split(' ')[0]} y {participants.collaborator.name.split(' ')[0]}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-start gap-2.5 p-3 rounded-md border border-dashed bg-secondary/30 text-[12.5px] text-muted-foreground mb-4 leading-relaxed">
+            <Shield className="size-4 mt-0.5 shrink-0" />
             <div>
-              <strong>Esta minuta es privada.</strong>{' '}
-              <span>RH no tiene acceso al contenido — solo a los acuerdos estructurados que decidas guardar.</span>
+              <strong className="text-foreground font-medium">Esta minuta es privada.</strong>{' '}
+              RH no tiene acceso al contenido — solo a los acuerdos estructurados que decidas guardar.
             </div>
           </div>
           <MinuteEditor
@@ -78,23 +74,19 @@ export function DetailInteraction({
             participants={participants}
             onAgreementsExtracted={setExtractedSuggestions}
           />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Acuerdos */}
-      <div className="ui-card anim-fade-in-up">
-        <div className="ui-card__head">
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <h3 className="ui-card__title">Acuerdos</h3>
-              <span className="ui-badge ui-badge--blue ui-badge--plain" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <Eye size={11} /> Visible para RH
-              </span>
-            </div>
-            <p className="ui-card__desc">Compromisos estructurados que quedan registrados para seguimiento.</p>
+      <Card className="anim-fade-in-up">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CardTitle>Acuerdos</CardTitle>
+            <Badge variant="brand" className="text-[10.5px]"><Eye className="size-3" /> Visible para RH</Badge>
           </div>
-        </div>
-        <div className="ui-card__body">
+          <CardDescription>Compromisos estructurados que quedan registrados para seguimiento.</CardDescription>
+        </CardHeader>
+        <CardContent>
           <AgreementList
             oneOnOneId={oneOnOneId}
             initialAgreements={initialAgreements}
@@ -103,29 +95,25 @@ export function DetailInteraction({
             extractedSuggestions={extractedSuggestions}
             onSuggestionsUsed={() => setExtractedSuggestions([])}
           />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* VoBo */}
       {meetingStatus !== 'realizada' && meetingStatus !== 'no_realizada' && (
         <>
           {pendingPrevAgreements.length > 0 && !followupDone ? (
-            <div className="vobo">
-              <h3 className="vobo__title">Antes de dar VoBo</h3>
-              <p className="vobo__sub">
+            <Card className="p-6">
+              <h3 className="text-lg font-medium tracking-tight">Antes de dar VoBo</h3>
+              <p className="text-[13.5px] text-muted-foreground mt-1.5 mb-5 max-w-lg leading-relaxed">
                 Tienes {pendingPrevAgreements.length} acuerdo{pendingPrevAgreements.length !== 1 ? 's' : ''} pendientes de la sesión anterior.
                 Reporta su estado antes de confirmar esta reunión.
               </p>
-              <button type="button" className="ui-btn ui-btn--accent" onClick={() => setShowFollowup(true)}>
+              <Button type="button" variant="brand" onClick={() => setShowFollowup(true)}>
                 Revisar acuerdos anteriores
-              </button>
-            </div>
+              </Button>
+            </Card>
           ) : (
-            <VoboButton
-              oneOnOneId={oneOnOneId}
-              userVobo={voboValue}
-              partnerName={partnerName}
-            />
+            <VoboButton oneOnOneId={oneOnOneId} userVobo={voboValue} partnerName={partnerName} />
           )}
         </>
       )}

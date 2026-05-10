@@ -1,12 +1,22 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Network } from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/shared/empty-state'
+import { InitialsAvatar } from '@/components/shared/initials-avatar'
 
 interface User { id: string; full_name: string; email: string; department_id?: string | null }
 interface Relation {
   leader_id: string; collaborator_id: string
   leader: User | User[] | null
   collaborator: User | User[] | null
+}
+
+function pickLeader(r: Relation): User | null {
+  return Array.isArray(r.leader) ? (r.leader[0] ?? null) : r.leader
+}
+function pickCollab(r: Relation): User | null {
+  return Array.isArray(r.collaborator) ? (r.collaborator[0] ?? null) : r.collaborator
 }
 
 export default async function EstructuraPage() {
@@ -27,74 +37,93 @@ export default async function EstructuraPage() {
     .is('ended_at', null)
   const relations = (rawRels ?? []) as Relation[]
 
-  const byDept: Record<string, Relation[]> = {}
+  // Build: department -> leader -> [collaborators] (líder UNA vez por área)
+  type LeaderGroup = { leader: User; collaborators: User[] }
+  const byDept: Record<string, Record<string, LeaderGroup>> = {}
+
   relations.forEach(r => {
-    const leader = Array.isArray(r.leader) ? r.leader[0] : r.leader
-    const dept = leader?.department_id ?? 'sin'
-    if (!byDept[dept]) byDept[dept] = []
-    byDept[dept]!.push(r)
+    const leader = pickLeader(r)
+    const collab = pickCollab(r)
+    if (!leader || !collab) return
+    const deptId = leader.department_id ?? 'sin'
+    if (!byDept[deptId]) byDept[deptId] = {}
+    if (!byDept[deptId]![leader.id]) byDept[deptId]![leader.id] = { leader, collaborators: [] }
+    byDept[deptId]![leader.id]!.collaborators.push(collab)
   })
+
   const getDept = (id: string) => departments.find(d => d.id === id)?.name ?? 'Sin área'
-  const AV_COLORS = ['av-blue', 'av-violet', 'av-pink', 'av-green', 'av-amber', 'av-orange', 'av-teal', 'av-rose']
+  const orderedDepts = Object.keys(byDept).sort((a, b) => getDept(a).localeCompare(getDept(b)))
+  const totalLeaders = Object.values(byDept).reduce((acc, lg) => acc + Object.keys(lg).length, 0)
+  const totalRelations = relations.length
 
   return (
-    <div className="page">
-      <div className="page__head">
-        <div>
-          <span className="page__eyebrow"><Network size={12} /> Relaciones</span>
-          <h1 className="page__title">Estructura organizacional</h1>
-          <p className="page__subtitle">Relaciones líder ↔ colaborador activas, agrupadas por área.</p>
-        </div>
+    <div className="max-w-[1240px] mx-auto px-8 py-8 anim-fade-in">
+      <div className="mb-8">
+        <h1 className="text-[28px] font-medium tracking-tight">Estructura organizacional</h1>
+        <p className="text-sm text-muted-foreground mt-1.5">
+          {totalRelations === 0
+            ? 'Aún no hay relaciones líder ↔ colaborador activas en el sistema.'
+            : `${totalLeaders} líderes · ${totalRelations} relaciones activas en ${orderedDepts.length} áreas.`}
+        </p>
       </div>
 
-      {relations.length === 0 ? (
-        <div className="ui-card">
-          <div className="empty">
-            <div className="empty__icon"><Network /></div>
-            <h3 className="empty__title">Sin relaciones configuradas</h3>
-            <p className="empty__desc">Aún no hay relaciones líder ↔ colaborador en el sistema.</p>
-          </div>
-        </div>
+      {totalRelations === 0 ? (
+        <Card>
+          <CardContent className="p-0">
+            <EmptyState
+              icon={Network}
+              title="Sin relaciones configuradas"
+              description="Aún no hay relaciones líder ↔ colaborador en el sistema."
+            />
+          </CardContent>
+        </Card>
       ) : (
-        <div style={{ display: 'grid', gap: 14 }}>
-          {Object.entries(byDept).map(([deptId, rels]) => (
-            <div key={deptId} className="ui-card">
-              <div className="ui-card__head">
-                <div>
-                  <h3 className="ui-card__title">{getDept(deptId)}</h3>
-                  <p className="ui-card__desc">{rels.length} relación{rels.length !== 1 ? 'es' : ''} activa{rels.length !== 1 ? 's' : ''}</p>
-                </div>
-              </div>
-              <div className="ui-card__body">
-                {rels.map((rel, idx) => {
-                  const leader = Array.isArray(rel.leader) ? rel.leader[0] : rel.leader
-                  const collab = Array.isArray(rel.collaborator) ? rel.collaborator[0] : rel.collaborator
-                  const lInit = leader?.full_name.split(' ').map(p => p[0]).slice(0, 2).join('') ?? '?'
-                  const cInit = collab?.full_name.split(' ').map(p => p[0]).slice(0, 2).join('') ?? '?'
-                  return (
-                    <div key={`${rel.leader_id}-${rel.collaborator_id}`} style={{ marginBottom: idx < rels.length - 1 ? 16 : 0 }}>
-                      <div className="tree-row">
-                        <div className={`avatar avatar--sm ${AV_COLORS[(idx * 2) % AV_COLORS.length]}`}>{lInit}</div>
-                        <div>
-                          <div style={{ fontSize: 13.5, fontWeight: 500 }}>{leader?.full_name}</div>
-                          <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Líder</div>
-                        </div>
-                      </div>
-                      <div className="tree-node">
-                        <div className="tree-row">
-                          <div className={`avatar avatar--sm ${AV_COLORS[(idx * 2 + 1) % AV_COLORS.length]}`}>{cInit}</div>
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 500 }}>{collab?.full_name}</div>
-                            <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{collab?.email}</div>
+        <div className="grid gap-4">
+          {orderedDepts.map(deptId => {
+            const leaderGroups = Object.values(byDept[deptId]!)
+              .sort((a, b) => a.leader.full_name.localeCompare(b.leader.full_name))
+            const deptRelations = leaderGroups.reduce((acc, g) => acc + g.collaborators.length, 0)
+            return (
+              <Card key={deptId}>
+                <CardHeader>
+                  <CardTitle>{getDept(deptId)}</CardTitle>
+                  <CardDescription>
+                    {leaderGroups.length} líder{leaderGroups.length === 1 ? '' : 'es'} · {deptRelations} relación{deptRelations === 1 ? '' : 'es'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4">
+                  {leaderGroups.map(group => (
+                    <div key={group.leader.id}>
+                      <div className="flex items-center gap-3 px-2 py-1.5">
+                        <InitialsAvatar name={group.leader.full_name} size="md" className="bg-foreground text-background border-foreground" />
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium tracking-tight truncate">{group.leader.full_name}</div>
+                          <div className="text-[11.5px] text-muted-foreground">
+                            Líder · {group.collaborators.length} reporte{group.collaborators.length === 1 ? '' : 's'} directo{group.collaborators.length === 1 ? '' : 's'}
                           </div>
                         </div>
                       </div>
+                      <div className="ml-4 border-l border-border/80">
+                        {group.collaborators
+                          .slice()
+                          .sort((a, b) => a.full_name.localeCompare(b.full_name))
+                          .map(c => (
+                            <div key={c.id} className="relative flex items-center gap-3 px-4 py-1.5 ml-3">
+                              <span className="absolute left-[-1px] top-1/2 w-3 h-px bg-border/80" aria-hidden="true" />
+                              <InitialsAvatar name={c.full_name} size="sm" />
+                              <div className="min-w-0">
+                                <div className="text-[13px] font-medium truncate">{c.full_name}</div>
+                                <div className="text-[11px] text-muted-foreground truncate">{c.email}</div>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
                     </div>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
+                  ))}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
     </div>

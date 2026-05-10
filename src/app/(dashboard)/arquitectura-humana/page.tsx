@@ -1,7 +1,13 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { TrendingUp, AlertTriangle, FileText, CheckSquare, ArrowRight, Calendar, Building2 } from 'lucide-react'
+import { TrendingUp, AlertTriangle, FileText, CheckSquare, ArrowRight, Calendar } from 'lucide-react'
+import { formatPct, formatCount } from '@/lib/utils/format'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils/cn'
+
+type Tone = 'neutral' | 'success' | 'warning' | 'destructive' | 'brand'
 
 export default async function ArquitecturaHumanaPage() {
   const supabase = createClient()
@@ -39,123 +45,141 @@ export default async function ArquitecturaHumanaPage() {
   const pending = agreements.filter(a => a.status === 'pendiente').length
   const globalCompliance = totalMeetings > 0 ? Math.round((realized / totalMeetings) * 100) : 0
 
-  function complianceTone(rate: number) {
-    if (rate >= 80) return 'green'
-    if (rate >= 60) return 'amber'
-    if (rate >= 40) return 'orange'
-    return 'red'
+  const hasMeetingData = totalMeetings > 0
+
+  function rateToTone(rate: number, hasData: boolean): Tone {
+    if (!hasData) return 'neutral'
+    if (rate >= 80) return 'success'
+    if (rate >= 60) return 'warning'
+    return 'destructive'
   }
 
   return (
-    <div className="page">
-      <div className="page__head">
-        <div>
-          <span className="page__eyebrow"><Building2 size={12} /> Visión global</span>
-          <h1 className="page__title">Panel de Arquitectura Humana</h1>
-          <p className="page__subtitle">
-            Visibilidad organizacional del cumplimiento, acuerdos y salud de las conversaciones 1:1.
-          </p>
-        </div>
+    <div className="max-w-[1240px] mx-auto px-8 py-8 anim-fade-in">
+      <div className="mb-8">
+        <h1 className="text-[28px] font-medium tracking-tight">Panel de Arquitectura Humana</h1>
+        <p className="text-sm text-muted-foreground mt-1.5 max-w-2xl">
+          Visibilidad organizacional del cumplimiento, acuerdos y salud de las conversaciones 1:1.
+        </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 16 }} className="anim-stagger">
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--green"><TrendingUp /></div>
-          <div className="kpi__label">Cumplimiento</div>
-          <div className="kpi__value u-tabular">{globalCompliance}%</div>
-          <div className="kpi__delta kpi__delta--up">{realized}/{totalMeetings} realizadas</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--red"><Calendar /></div>
-          <div className="kpi__label">No realizadas</div>
-          <div className="kpi__value u-tabular">{missed}</div>
-          <div className="kpi__delta">este mes</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--orange"><AlertTriangle /></div>
-          <div className="kpi__label">En disputa</div>
-          <div className="kpi__value u-tabular">{disputed}</div>
-          <div className="kpi__delta">requieren revisión</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--violet"><FileText /></div>
-          <div className="kpi__label">Reportes IA</div>
-          <div className="kpi__value u-tabular">{unreviewedReports ?? 0}</div>
-          <div className="kpi__delta">sin revisar</div>
-        </div>
+      <div className="grid grid-cols-4 gap-4 mb-4 anim-stagger">
+        <Kpi
+          label="Cumplimiento"
+          value={formatPct(globalCompliance, { hasData: hasMeetingData })}
+          icon={TrendingUp}
+          empty={!hasMeetingData}
+          tone={rateToTone(globalCompliance, hasMeetingData)}
+          hint={hasMeetingData ? `${realized}/${totalMeetings} realizadas` : 'Sin reuniones este mes'}
+        />
+        <Kpi
+          label="No realizadas"
+          value={hasMeetingData ? String(missed) : '—'}
+          icon={Calendar}
+          empty={!hasMeetingData || missed === 0}
+          tone={missed > 0 ? 'destructive' : 'neutral'}
+          hint="este mes"
+        />
+        <Kpi
+          label="En disputa"
+          value={hasMeetingData ? String(disputed) : '—'}
+          icon={AlertTriangle}
+          empty={disputed === 0}
+          tone={disputed > 0 ? 'warning' : 'neutral'}
+          hint="requieren revisión"
+        />
+        <Kpi
+          label="Reportes IA"
+          value={formatCount(unreviewedReports, { hasData: (unreviewedReports ?? 0) > 0 })}
+          icon={FileText}
+          empty={(unreviewedReports ?? 0) === 0}
+          tone={(unreviewedReports ?? 0) > 0 ? 'brand' : 'neutral'}
+          hint="sin revisar"
+        />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }} className="anim-stagger">
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--amber"><CheckSquare /></div>
-          <div className="kpi__label">Acuerdos pendientes</div>
-          <div className="kpi__value u-tabular">{pending}</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--green"><CheckSquare /></div>
-          <div className="kpi__label">Acuerdos cumplidos</div>
-          <div className="kpi__value u-tabular">{fulfilled}</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--blue"><CheckSquare /></div>
-          <div className="kpi__label">Total de acuerdos</div>
-          <div className="kpi__value u-tabular">{agreements.length}</div>
-        </div>
+      <div className="grid grid-cols-3 gap-4 mb-7 anim-stagger">
+        <Kpi label="Acuerdos pendientes" value={formatCount(pending, { hasData: pending > 0 })} icon={CheckSquare} empty={pending === 0} tone={pending > 0 ? 'warning' : 'neutral'} />
+        <Kpi label="Acuerdos cumplidos" value={formatCount(fulfilled, { hasData: fulfilled > 0 })} icon={CheckSquare} empty={fulfilled === 0} tone={fulfilled > 0 ? 'success' : 'neutral'} />
+        <Kpi label="Total de acuerdos" value={formatCount(agreements.length, { hasData: agreements.length > 0 })} icon={CheckSquare} empty={agreements.length === 0} tone="neutral" />
       </div>
 
-      <div className="ui-card">
-        <div className="ui-card__head">
+      <Card>
+        <CardHeader className="flex-row items-start justify-between space-y-0">
           <div>
-            <h3 className="ui-card__title">
-              <TrendingUp size={15} /> Cumplimiento por área
-            </h3>
-            <p className="ui-card__desc">Ordenado de menor a mayor cumplimiento</p>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="size-4 text-muted-foreground" /> Cumplimiento por área
+            </CardTitle>
+            <CardDescription>Ordenado de menor a mayor cumplimiento.</CardDescription>
           </div>
-          <Link href="/arquitectura-humana/mapa-calor" className="ui-btn ui-btn--ghost ui-btn--sm">
-            Ver mapa de calor <ArrowRight size={11} />
-          </Link>
-        </div>
-        <div className="ui-card__body" style={{ display: 'grid', gap: 14 }}>
+          <Button asChild size="sm" variant="ghost">
+            <Link href="/arquitectura-humana/mapa-calor">Ver mapa de calor <ArrowRight className="size-3" /></Link>
+          </Button>
+        </CardHeader>
+        <CardContent className="grid gap-3.5">
           {metrics.map(d => {
             const rate = d.compliance_rate ?? 0
-            const tone = complianceTone(rate)
-            const fillTone = tone === 'orange' ? 'amber' : tone
+            const areaHasData = (d.total_meetings ?? 0) > 0
+            const tone = rateToTone(rate, areaHasData)
+            const fillClass =
+              tone === 'success' ? 'bg-success' :
+              tone === 'warning' ? 'bg-warning' :
+              tone === 'destructive' ? 'bg-destructive' :
+              'bg-muted-foreground/30'
             return (
-              <div
-                key={d.department_id}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '180px 1fr 60px',
-                  alignItems: 'center',
-                  gap: 16,
-                }}
-              >
-                <span style={{ fontSize: 13.5, fontWeight: 500, letterSpacing: '-0.005em' }}>
-                  {d.department_name}
-                </span>
-                <div className="progress-bar">
-                  <div
-                    className={`progress-bar__fill progress-bar__fill--${fillTone}`}
-                    style={{ width: `${rate}%` }}
-                  />
+              <div key={d.department_id} className="grid grid-cols-[180px_1fr_60px] items-center gap-4">
+                <span className="text-[13.5px] font-medium tracking-tight truncate">{d.department_name}</span>
+                <div className="h-1 rounded-full bg-secondary overflow-hidden">
+                  {areaHasData && <div className={cn('h-full rounded-full transition-[width]', fillClass)} style={{ width: `${rate}%` }} />}
                 </div>
-                <span
-                  className="u-tabular"
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 500,
-                    textAlign: 'right',
-                    fontFamily: 'var(--font-serif)',
-                    letterSpacing: '-0.012em',
-                  }}
-                >
-                  {rate}%
+                <span className={cn(
+                  'text-right text-[14px] font-medium font-mono-numeric tabular-nums',
+                  !areaHasData && 'text-muted-foreground/70'
+                )}>
+                  {formatPct(rate, { hasData: areaHasData })}
                 </span>
               </div>
             )
           })}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
+  )
+}
+
+function Kpi({
+  label, value, icon: Icon, hint, empty, tone,
+}: {
+  label: string
+  value: string
+  icon: React.ComponentType<{ className?: string }>
+  hint?: string
+  empty: boolean
+  tone: Tone
+}) {
+  const iconBg =
+    empty ? 'bg-secondary text-muted-foreground' :
+    tone === 'success' ? 'bg-success-muted text-success' :
+    tone === 'warning' ? 'bg-warning-muted text-warning' :
+    tone === 'destructive' ? 'bg-destructive/10 text-destructive' :
+    tone === 'brand' ? 'bg-brand-muted text-brand' :
+    'bg-secondary text-foreground'
+
+  return (
+    <Card className="px-5 py-4 flex flex-col gap-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[12px] text-muted-foreground">{label}</span>
+        <span className={cn('inline-flex items-center justify-center size-7 rounded-md', iconBg)}>
+          <Icon className="size-3.5" />
+        </span>
+      </div>
+      <div className={cn(
+        'font-mono-numeric text-[28px] font-medium leading-none mt-1 tracking-tight',
+        empty ? 'text-muted-foreground/70' : 'text-foreground'
+      )}>
+        {value}
+      </div>
+      {hint && <div className="text-[11.5px] text-muted-foreground mt-0.5">{hint}</div>}
+    </Card>
   )
 }

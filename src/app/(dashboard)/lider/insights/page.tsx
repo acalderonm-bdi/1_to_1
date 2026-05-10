@@ -1,14 +1,16 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Sparkles } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { EmptyState } from '@/components/shared/empty-state'
 
-const CATEGORY_TONE: Record<string, string> = {
-  desempeño: 'blue', desarrollo: 'violet', bienestar: 'green',
-  seguimiento: 'amber', feedback: 'orange',
-}
 const CATEGORY_LABELS: Record<string, string> = {
-  desempeño: 'Desempeño', desarrollo: 'Desarrollo', bienestar: 'Bienestar',
-  seguimiento: 'Seguimiento', feedback: 'Feedback',
+  desempeño: 'Desempeño',
+  desarrollo: 'Desarrollo',
+  bienestar: 'Bienestar',
+  seguimiento: 'Seguimiento',
+  feedback: 'Feedback',
 }
 
 export default async function InsightsPage() {
@@ -29,71 +31,67 @@ export default async function InsightsPage() {
   }>
 
   return (
-    <div className="page">
-      <div className="page__head">
+    <div className="max-w-[1240px] mx-auto px-8 py-8 anim-fade-in">
+      <div className="flex items-start justify-between gap-6 mb-8">
         <div>
-          <span className="page__eyebrow"><Sparkles size={12} /> Asistente IA</span>
-          <h1 className="page__title">Insights del asistente</h1>
-          <p className="page__subtitle">
+          <h1 className="text-[28px] font-medium tracking-tight">Insights del asistente</h1>
+          <p className="text-sm text-muted-foreground mt-1.5 max-w-xl">
             Sugerencias contextuales para tus 1:1s, basadas en patrones de conversación y acuerdos.
           </p>
         </div>
-        <span className="ai-chip" style={{ fontSize: 11.5 }}>Asistente IA</span>
+        <Badge variant="brand"><Sparkles className="size-3" /> Asistente IA</Badge>
       </div>
 
       {insights.length === 0 ? (
-        <div className="ui-card">
-          <div className="empty">
-            <div className="empty__icon" style={{ background: 'var(--ai-tint)', color: 'var(--ai-text)' }}>
-              <Sparkles />
-            </div>
-            <h3 className="empty__title">Sin sugerencias por ahora</h3>
-            <p className="empty__desc">
-              Las sugerencias del asistente aparecerán después de tus próximas 1:1s.
-            </p>
-          </div>
-        </div>
+        <Card>
+          <CardContent className="p-0">
+            <EmptyState
+              icon={Sparkles}
+              title="Sin sugerencias por ahora"
+              description="Las sugerencias del asistente aparecerán después de tus próximas 1:1s."
+            />
+          </CardContent>
+        </Card>
       ) : (
-        <div style={{ display: 'grid', gap: 14 }} className="anim-stagger">
+        <div className="grid gap-3.5 anim-stagger">
           {insights.map(insight => {
             const collab = Array.isArray(insight.users) ? insight.users[0] : insight.users
             const content = insight.content as Record<string, unknown>
             return (
-              <div key={insight.id} className="ui-card ai-card">
-                <div className="ui-card__head" style={{ borderBottom: 'none' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      <span className="ai-chip">Sugerencia</span>
-                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                        {new Date(insight.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
-                      </span>
-                    </div>
-                    <h3 className="font-serif" style={{ fontSize: 20, letterSpacing: '-0.014em', fontWeight: 500, margin: 0 }}>
-                      Para {collab?.full_name?.split(' ')[0] ?? 'tu colaborador'}
-                    </h3>
+              <Card key={insight.id} className="border-brand/30 bg-brand-muted/20">
+                <CardContent className="px-5 py-4">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Badge variant="brand"><Sparkles className="size-3" /> Sugerencia</Badge>
+                    <span className="text-[12px] text-muted-foreground">
+                      {new Date(insight.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
+                    </span>
                   </div>
-                </div>
-                <div className="ui-card__body" style={{ display: 'grid', gap: 10 }}>
-                  {insight.type === 'suggested_questions' && Array.isArray(content['questions']) &&
-                    (content['questions'] as Array<{ question: string; rationale: string; category: string }>).map((q, i) => (
-                      <div key={i} className="insight-q">
-                        <div className="insight-q__num">{i + 1}</div>
-                        <div style={{ flex: 1 }}>
-                          <p className="insight-q__text">{q.question}</p>
-                          {q.rationale && <p className="insight-q__just">{q.rationale}</p>}
-                          <div className="insight-q__cat-row">
-                            <span className={`ui-badge ui-badge--${CATEGORY_TONE[q.category] ?? 'slate'}`}>
+                  <h3 className="text-lg font-medium tracking-tight">
+                    Para {collab?.full_name?.split(' ')[0] ?? 'tu colaborador'}
+                  </h3>
+
+                  <div className="grid gap-2.5 mt-4">
+                    {insight.type === 'suggested_questions' && Array.isArray(content['questions']) &&
+                      (content['questions'] as Array<{ question: string; rationale: string; category: string }>).map((q, i) => (
+                        <div key={i} className="flex gap-3 p-3 rounded-md border bg-background">
+                          <div className="size-6 rounded-full bg-brand-muted text-brand border border-brand/30 flex items-center justify-center text-[11px] font-medium font-mono-numeric shrink-0">
+                            {i + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13.5px] leading-relaxed m-0">{q.question}</p>
+                            {q.rationale && <p className="text-[12px] text-muted-foreground mt-1.5 leading-relaxed">{q.rationale}</p>}
+                            <Badge variant="muted" className="mt-2 text-[10.5px]">
                               {CATEGORY_LABELS[q.category] ?? q.category}
-                            </span>
+                            </Badge>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  {insight.type !== 'suggested_questions' && typeof content['description'] === 'string' && (
-                    <p style={{ fontSize: 13.5, lineHeight: 1.6 }}>{content['description'] as string}</p>
-                  )}
-                </div>
-              </div>
+                      ))}
+                    {insight.type !== 'suggested_questions' && typeof content['description'] === 'string' && (
+                      <p className="text-[13.5px] leading-relaxed">{content['description'] as string}</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             )
           })}
         </div>

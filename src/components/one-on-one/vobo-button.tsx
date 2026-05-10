@@ -3,6 +3,8 @@
 import { useState, useTransition } from 'react'
 import { Check, X, Loader2 } from 'lucide-react'
 import { submitVobo } from '@/lib/actions/vobos'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
 interface VoboButtonProps {
   oneOnOneId: string
@@ -27,58 +29,42 @@ export function VoboButton({ oneOnOneId, userVobo, onVobo, partnerName }: VoboBu
 
   if (myVobo !== null) {
     return (
-      <div className="vobo">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
-              width: 38, height: 38, borderRadius: '50%',
-              background: myVobo ? 'var(--green-100)' : 'var(--red-100)',
-              color: myVobo ? 'var(--green-700)' : 'var(--red-700)',
-              display: 'grid', placeItems: 'center'
-            }}>
-              {myVobo ? <Check size={18} /> : <X size={18} />}
-            </div>
+      <Card className="p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className={`inline-flex items-center justify-center size-9 rounded-full ${myVobo ? 'bg-success-muted text-success' : 'bg-destructive/10 text-destructive'}`}>
+              {myVobo ? <Check className="size-4" /> : <X className="size-4" />}
+            </span>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 14 }}>
+              <div className="text-sm font-medium">
                 {myVobo ? 'Confirmaste que sí se realizó' : 'Indicaste que no se realizó'}
               </div>
-              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>
+              <div className="text-[12.5px] text-muted-foreground mt-0.5">
                 {partnerName ? `Esperando confirmación de ${partnerName.split(' ')[0]}` : 'Confirmación registrada'}
               </div>
             </div>
           </div>
-          <button type="button" className="ui-btn ui-btn--ghost ui-btn--sm" onClick={() => setMyVobo(null)}>
-            Cambiar
-          </button>
+          <Button type="button" variant="ghost" size="sm" onClick={() => setMyVobo(null)}>Cambiar</Button>
         </div>
-      </div>
+      </Card>
     )
   }
 
   return (
-    <div className="vobo">
-      <h3 className="vobo__title">¿Esta reunión se realizó?</h3>
-      <p className="vobo__sub">Tu confirmación es independiente. Si hay contradicción, se levanta una disputa para revisión.</p>
-      <div className="vobo__buttons">
-        <button
-          type="button"
-          className="ui-btn ui-btn--success ui-btn--lg"
-          onClick={() => handleVobo(true)}
-          disabled={isPending}
-        >
-          {isPending ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+    <Card className="p-6">
+      <h3 className="text-lg font-medium tracking-tight">¿Esta reunión se realizó?</h3>
+      <p className="text-[13.5px] text-muted-foreground mt-1.5 mb-5 max-w-lg leading-relaxed">
+        Tu confirmación es independiente. Si hay contradicción, se levanta una disputa para revisión.
+      </p>
+      <div className="flex gap-2.5">
+        <Button type="button" size="lg" onClick={() => handleVobo(true)} disabled={isPending} className="bg-success hover:bg-success/90 text-white">
+          {isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
           Sí, se realizó
-        </button>
-        <button
-          type="button"
-          className="ui-btn ui-btn--danger-outline ui-btn--lg"
-          onClick={() => handleVobo(false)}
-          disabled={isPending}
-        >
-          <X size={15} />
-          No se realizó
-        </button>
+        </Button>
+        <Button type="button" size="lg" variant="outline" onClick={() => handleVobo(false)} disabled={isPending} className="text-destructive border-destructive/30 hover:bg-destructive/5">
+          <X className="size-4" /> No se realizó
+        </Button>
       </div>
-    </div>
+    </Card>
   )
 }

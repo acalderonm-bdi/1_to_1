@@ -2,8 +2,16 @@ import { redirect } from 'next/navigation'
 import { UsersRound } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { ROLE_LABELS } from '@/lib/constants'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { InitialsAvatar } from '@/components/shared/initials-avatar'
+import { cn } from '@/lib/utils/cn'
 
-const ROLE_TONE: Record<string, string> = { hr: 'blue', leader: 'violet', collaborator: 'slate' }
+const ROLE_VARIANT: Record<string, 'brand' | 'solid' | 'muted'> = {
+  hr: 'brand',
+  leader: 'solid',
+  collaborator: 'muted',
+}
 
 export default async function UsuariosPage() {
   const supabase = createClient()
@@ -18,7 +26,6 @@ export default async function UsuariosPage() {
     departments: { name: string } | Array<{ name: string }> | null
   }
   const users = (rawUsers ?? []) as Row[]
-  const AV = ['av-blue', 'av-violet', 'av-pink', 'av-green', 'av-amber', 'av-orange', 'av-teal', 'av-rose']
 
   const counts = {
     total: users.length,
@@ -28,69 +35,59 @@ export default async function UsuariosPage() {
   }
 
   return (
-    <div className="page">
-      <div className="page__head">
-        <div>
-          <span className="page__eyebrow"><UsersRound size={12} /> Directorio</span>
-          <h1 className="page__title">Usuarios</h1>
-          <p className="page__subtitle">{counts.total} usuarios en el sistema.</p>
-        </div>
+    <div className="max-w-[1240px] mx-auto px-8 py-8 anim-fade-in">
+      <div className="mb-8">
+        <h1 className="text-[28px] font-medium tracking-tight">Usuarios</h1>
+        <p className="text-sm text-muted-foreground mt-1.5">{counts.total} usuarios en el sistema.</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }} className="anim-stagger">
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--blue"><UsersRound /></div>
-          <div className="kpi__label">Total</div>
-          <div className="kpi__value u-tabular">{counts.total}</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--blue"><UsersRound /></div>
-          <div className="kpi__label">Arq. Humana</div>
-          <div className="kpi__value u-tabular">{counts.hr}</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--violet"><UsersRound /></div>
-          <div className="kpi__label">Líderes</div>
-          <div className="kpi__value u-tabular">{counts.leader}</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi__icon kpi__icon--green"><UsersRound /></div>
-          <div className="kpi__label">Colaboradores</div>
-          <div className="kpi__value u-tabular">{counts.collaborator}</div>
-        </div>
+      <div className="grid grid-cols-4 gap-4 mb-6 anim-stagger">
+        <KpiTile label="Total" value={counts.total} empty={counts.total === 0} />
+        <KpiTile label="Arq. Humana" value={counts.hr} empty={counts.hr === 0} />
+        <KpiTile label="Líderes" value={counts.leader} empty={counts.leader === 0} />
+        <KpiTile label="Colaboradores" value={counts.collaborator} empty={counts.collaborator === 0} />
       </div>
 
-      <div className="ui-card">
-        <div className="ui-card__body ui-card__body--flush">
-          {users.map((u, idx) => {
+      <Card>
+        <div className="divide-y">
+          {users.map(u => {
             const dept = Array.isArray(u.departments) ? u.departments[0] : u.departments
-            const initials = u.full_name.split(' ').map(p => p[0]).slice(0, 2).join('')
             return (
-              <div
-                key={u.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 14,
-                  padding: '14px 24px',
-                  borderBottom: idx < users.length - 1 ? '1px solid var(--border-c)' : 'none',
-                }}
-              >
-                <div className={`avatar avatar--md ${AV[idx % AV.length]}`}>{initials}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 500, letterSpacing: '-0.005em' }}>{u.full_name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div key={u.id} className="flex items-center gap-3.5 px-6 py-3.5">
+                <InitialsAvatar name={u.full_name} size="md" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium tracking-tight truncate">{u.full_name}</div>
+                  <div className="text-[12px] text-muted-foreground truncate">
                     {u.email} · {dept?.name ?? 'Sin área'}
                   </div>
                 </div>
-                <span className={`ui-badge ui-badge--${ROLE_TONE[u.role] ?? 'slate'}`}>
+                <Badge variant={ROLE_VARIANT[u.role] ?? 'muted'}>
                   {ROLE_LABELS[u.role] ?? u.role}
-                </span>
+                </Badge>
               </div>
             )
           })}
         </div>
-      </div>
+      </Card>
     </div>
+  )
+}
+
+function KpiTile({ label, value, empty }: { label: string; value: number; empty: boolean }) {
+  return (
+    <Card className="px-5 py-4 flex flex-col gap-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[12px] text-muted-foreground">{label}</span>
+        <span className="inline-flex items-center justify-center size-7 rounded-md bg-secondary text-muted-foreground">
+          <UsersRound className="size-3.5" />
+        </span>
+      </div>
+      <div className={cn(
+        'font-mono-numeric text-[28px] font-medium leading-none mt-1 tracking-tight',
+        empty ? 'text-muted-foreground/70' : 'text-foreground'
+      )}>
+        {empty ? '—' : value}
+      </div>
+    </Card>
   )
 }
