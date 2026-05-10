@@ -20,78 +20,79 @@ export default async function ColaboradorPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: rawProfile } = await supabase.from('users').select('full_name').eq('id', user.id).single()
+  const nowIso = new Date().toISOString()
+  const orFilter = `leader_id.eq.${user.id},collaborator_id.eq.${user.id}`
+
+  // Lanzar todas las queries independientes en paralelo (6 RTTs → 1 RTT efectivo)
+  const [
+    { data: rawProfile },
+    { data: rawUpcoming },
+    { data: rawPending },
+    { data: rawAgreements },
+    { count: realizedCount },
+    { count: completedAgreements },
+  ] = await Promise.all([
+    supabase.from('users').select('full_name').eq('id', user.id).single(),
+    supabase
+      .from('one_on_ones')
+      .select('id, scheduled_at, modality, location, meet_link, status, leader_id, collaborator_id')
+      .or(orFilter)
+      .eq('status', 'agendada')
+      .gte('scheduled_at', nowIso)
+      .order('scheduled_at', { ascending: true })
+      .limit(5),
+    supabase
+      .from('one_on_ones')
+      .select('id, scheduled_at, modality, location, status, leader_id, collaborator_id, vobos(user_id, confirmed)')
+      .or(orFilter)
+      .eq('status', 'agendada')
+      .lt('scheduled_at', nowIso)
+      .order('scheduled_at', { ascending: false })
+      .limit(8),
+    supabase
+      .from('agreements')
+      .select('id, description, status, due_date')
+      .eq('responsible_id', user.id)
+      .eq('status', 'pendiente')
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .limit(5),
+    supabase
+      .from('one_on_ones')
+      .select('id', { count: 'exact', head: true })
+      .or(orFilter)
+      .eq('status', 'realizada'),
+    supabase
+      .from('agreements')
+      .select('id', { count: 'exact', head: true })
+      .eq('responsible_id', user.id)
+      .eq('status', 'cumplido'),
+  ])
+
   const profile = rawProfile as { full_name: string } | null
-
-  const { data: rawUpcoming } = await supabase
-    .from('one_on_ones')
-    .select('id, scheduled_at, modality, location, meet_link, status, leader_id, collaborator_id')
-    .or(`leader_id.eq.${user.id},collaborator_id.eq.${user.id}`)
-    .eq('status', 'agendada')
-    .gte('scheduled_at', new Date().toISOString())
-    .order('scheduled_at', { ascending: true })
-    .limit(5)
-
   const upcoming = (rawUpcoming ?? []) as Array<{
     id: string; scheduled_at: string; modality: string; location: string | null;
     meet_link: string | null; status: string; leader_id: string; collaborator_id: string
   }>
+  const pendingMeetings = ((rawPending ?? []) as Array<{
+    id: string; scheduled_at: string; modality: string; location: string | null; status: string;
+    leader_id: string; collaborator_id: string; vobos: Array<{ user_id: string; confirmed: boolean }> | null
+  }>).filter(m => !(m.vobos ?? []).some(v => v.user_id === user.id))
+  const pendingAgreements = (rawAgreements ?? []) as Array<{ id: string; description: string; status: string; due_date: string | null }>
 
-  // Resolver "otra parte" dinámicamente: si yo soy líder, muestro al colaborador, y viceversa.
-  const otherIds = Array.from(new Set(
-    upcoming.map(m => m.leader_id === user.id ? m.collaborator_id : m.leader_id)
-  ))
+  // Una sola query de users para upcoming + pending combinados (en vez de 2 queries condicionales secuenciales)
+  const allOtherIds = Array.from(new Set([
+    ...upcoming.map(m => m.leader_id === user.id ? m.collaborator_id : m.leader_id),
+    ...pendingMeetings.map(m => m.leader_id === user.id ? m.collaborator_id : m.leader_id),
+  ]))
   let userMap: Record<string, string> = {}
-  if (otherIds.length > 0) {
-    const { data: others } = await supabase.from('users').select('id, full_name').in('id', otherIds)
+  if (allOtherIds.length > 0) {
+    const { data: others } = await supabase.from('users').select('id, full_name').in('id', allOtherIds)
     userMap = Object.fromEntries((others ?? []).map(u => [u.id, (u as { full_name: string }).full_name]))
   }
   const otherPartyName = (m: { leader_id: string; collaborator_id: string }) => {
     const otherId = m.leader_id === user.id ? m.collaborator_id : m.leader_id
     return userMap[otherId] ?? 'tu contraparte'
   }
-
-  // 1:1s pasadas todavía agendadas (sin VoBo del usuario actual).
-  const { data: rawPending } = await supabase
-    .from('one_on_ones')
-    .select('id, scheduled_at, modality, location, status, leader_id, collaborator_id, vobos(user_id, confirmed)')
-    .or(`leader_id.eq.${user.id},collaborator_id.eq.${user.id}`)
-    .eq('status', 'agendada')
-    .lt('scheduled_at', new Date().toISOString())
-    .order('scheduled_at', { ascending: false })
-    .limit(8)
-  const pendingMeetings = ((rawPending ?? []) as Array<{
-    id: string; scheduled_at: string; modality: string; location: string | null; status: string;
-    leader_id: string; collaborator_id: string; vobos: Array<{ user_id: string; confirmed: boolean }> | null
-  }>).filter(m => !(m.vobos ?? []).some(v => v.user_id === user.id))
-
-  const pendingOtherIds = pendingMeetings.map(m => m.leader_id === user.id ? m.collaborator_id : m.leader_id)
-  const missingIds = pendingOtherIds.filter(id => !userMap[id])
-  if (missingIds.length > 0) {
-    const { data: extras } = await supabase.from('users').select('id, full_name').in('id', Array.from(new Set(missingIds)))
-    ;(extras ?? []).forEach(u => { userMap[u.id] = (u as { full_name: string }).full_name })
-  }
-
-  const { data: rawAgreements } = await supabase
-    .from('agreements')
-    .select('id, description, status, due_date')
-    .eq('responsible_id', user.id)
-    .eq('status', 'pendiente')
-    .order('due_date', { ascending: true, nullsFirst: false })
-    .limit(5)
-  const pendingAgreements = (rawAgreements ?? []) as Array<{ id: string; description: string; status: string; due_date: string | null }>
-
-  const { count: realizedCount } = await supabase
-    .from('one_on_ones')
-    .select('id', { count: 'exact', head: true })
-    .or(`leader_id.eq.${user.id},collaborator_id.eq.${user.id}`)
-    .eq('status', 'realizada')
-
-  const { count: completedAgreements } = await supabase
-    .from('agreements')
-    .select('id', { count: 'exact', head: true })
-    .eq('responsible_id', user.id)
-    .eq('status', 'cumplido')
 
   const firstName = profile?.full_name.split(' ')[0] ?? 'equipo'
   const today = new Date()

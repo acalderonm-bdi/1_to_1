@@ -15,30 +15,44 @@ export default async function LiderPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: rawProfile } = await supabase.from('users').select('full_name').eq('id', user.id).single()
+  const startOfMonth = new Date()
+  startOfMonth.setDate(1)
+  startOfMonth.setHours(0, 0, 0, 0)
+  const nowIso = new Date().toISOString()
+
+  // 4 queries en paralelo (4 RTTs → 1 RTT efectivo)
+  const [
+    { data: rawProfile },
+    { data: rawRelations },
+    { data: rawMeetings },
+    { data: rawUpcoming },
+  ] = await Promise.all([
+    supabase.from('users').select('full_name').eq('id', user.id).single(),
+    supabase
+      .from('leadership_relations')
+      .select('collaborator_id, users!leadership_relations_collaborator_id_fkey(id, full_name, email)')
+      .eq('leader_id', user.id)
+      .is('ended_at', null),
+    supabase
+      .from('one_on_ones')
+      .select('id, status, collaborator_id, scheduled_at')
+      .eq('leader_id', user.id)
+      .gte('scheduled_at', startOfMonth.toISOString()),
+    supabase
+      .from('one_on_ones')
+      .select('id, collaborator_id, scheduled_at')
+      .eq('leader_id', user.id)
+      .eq('status', 'agendada')
+      .gte('scheduled_at', nowIso)
+      .order('scheduled_at', { ascending: true }),
+  ])
+
   const profile = rawProfile as { full_name: string } | null
-
-  const { data: rawRelations } = await supabase
-    .from('leadership_relations')
-    .select('collaborator_id, users!leadership_relations_collaborator_id_fkey(id, full_name, email)')
-    .eq('leader_id', user.id)
-    .is('ended_at', null)
-
   const relations = (rawRelations ?? []) as Array<{
     collaborator_id: string
     users: { id: string; full_name: string; email: string } | Array<{ id: string; full_name: string; email: string }> | null
   }>
   const collaboratorIds = relations.map(r => r.collaborator_id)
-
-  const startOfMonth = new Date()
-  startOfMonth.setDate(1)
-  startOfMonth.setHours(0, 0, 0, 0)
-
-  const { data: rawMeetings } = await supabase
-    .from('one_on_ones')
-    .select('id, status, collaborator_id, scheduled_at')
-    .eq('leader_id', user.id)
-    .gte('scheduled_at', startOfMonth.toISOString())
   const monthMeetings = (rawMeetings ?? []) as Array<{ id: string; status: string; collaborator_id: string; scheduled_at: string }>
 
   const realized = monthMeetings.filter(m => m.status === 'realizada').length
@@ -46,19 +60,10 @@ export default async function LiderPage() {
   const compliance = total > 0 ? Math.round((realized / total) * 100) : 0
 
   const upcomingMap: Record<string, { id: string; scheduled_at: string }> = {}
-  if (collaboratorIds.length > 0) {
-    const { data: rawUpcoming } = await supabase
-      .from('one_on_ones')
-      .select('id, collaborator_id, scheduled_at')
-      .eq('leader_id', user.id)
-      .eq('status', 'agendada')
-      .gte('scheduled_at', new Date().toISOString())
-      .order('scheduled_at', { ascending: true })
-    const upcoming = (rawUpcoming ?? []) as Array<{ id: string; collaborator_id: string; scheduled_at: string }>
-    upcoming.forEach(m => {
-      if (!upcomingMap[m.collaborator_id]) upcomingMap[m.collaborator_id] = { id: m.id, scheduled_at: m.scheduled_at }
-    })
-  }
+  const upcoming = (rawUpcoming ?? []) as Array<{ id: string; collaborator_id: string; scheduled_at: string }>
+  upcoming.forEach(m => {
+    if (!upcomingMap[m.collaborator_id]) upcomingMap[m.collaborator_id] = { id: m.id, scheduled_at: m.scheduled_at }
+  })
 
   const firstName = profile?.full_name.split(' ')[0] ?? 'Líder'
   const hasMeetings = total > 0
