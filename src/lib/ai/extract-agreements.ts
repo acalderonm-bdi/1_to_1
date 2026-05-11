@@ -36,7 +36,9 @@ export async function extractAgreements(
     const text = response.content[0]?.type === 'text' ? response.content[0].text : ''
     const parsed = parseJSONResponse<{ agreements: ExtractedAgreement[] }>(text)
     return { agreements: parsed.agreements ?? [] }
-  } catch {
-    return { agreements: [], error: 'IA no disponible — edita los acuerdos manualmente' }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[extractAgreements] error:', msg)
+    return { agreements: [], error: `IA no disponible: ${msg.slice(0, 120)}` }
   }
 }

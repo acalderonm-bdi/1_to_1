@@ -5,7 +5,6 @@ import { Calendar, Clock, Video, MapPin, ChevronLeft, MoreHorizontal, ArrowRight
 import { STATUS_LABELS } from '@/lib/constants'
 import { AgendaList } from '@/components/one-on-one/agenda-list'
 import { DetailInteraction } from '@/components/one-on-one/detail-interaction'
-import { LeaderInsightPanel } from '@/components/one-on-one/leader-insight-panel'
 import { EmptyState } from '@/components/shared/empty-state'
 
 const STATUS_TONE: Record<string, string> = {
@@ -40,17 +39,20 @@ export default async function LiderOneOnOneDetailPage({ params }: { params: { id
   if (leader?.id !== user.id) redirect('/lider')
 
   const [
-    { data: rawAgenda }, { data: rawMinute }, { data: rawAgreements }, { data: rawVobo }, { data: rawInsights }
+    { data: rawAgenda }, { data: rawMinute }, { data: rawAgreements }, { data: rawVobos }
   ] = await Promise.all([
     supabase.from('agenda_items').select('id, content, author_id').eq('one_on_one_id', params.id).order('created_at'),
-    supabase.from('minutes').select('raw_content').eq('one_on_one_id', params.id).eq('author_id', user.id).maybeSingle(),
+    supabase.from('minutes').select('raw_content, author_id, updated_at').eq('one_on_one_id', params.id).maybeSingle(),
     supabase.from('agreements').select('id, description, responsible_id, due_date, status, ai_generated').eq('one_on_one_id', params.id).order('created_at'),
-    supabase.from('vobos').select('confirmed').eq('one_on_one_id', params.id).eq('user_id', user.id).maybeSingle(),
-    supabase.from('ai_insights').select('id, type, content, created_at').eq('leader_id', user.id).eq('collaborator_id', collaborator?.id ?? '').eq('used', false).order('created_at', { ascending: false }).limit(3),
+    supabase.from('vobos').select('user_id, confirmed').eq('one_on_one_id', params.id),
   ])
 
   const isPastMeeting = new Date(meeting.scheduled_at) < new Date()
-  const myVobo = rawVobo as { confirmed: boolean } | null
+  const vobos = (rawVobos ?? []) as Array<{ user_id: string; confirmed: boolean }>
+  const myVoboRow = vobos.find(v => v.user_id === user.id)
+  const myVobo = myVoboRow ? { confirmed: myVoboRow.confirmed } : null
+  const partnerVoboRow = vobos.find(v => v.user_id !== user.id)
+  const partnerVobo: boolean | null = partnerVoboRow ? partnerVoboRow.confirmed : null
   const date = new Date(meeting.scheduled_at)
   const dateLabel = date.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const time = date.toTimeString().slice(0, 5)
@@ -161,57 +163,48 @@ export default async function LiderOneOnOneDetailPage({ params }: { params: { id
         </div>
       </div>
 
-      <div className="layout-2col">
-        <div style={{ display: 'grid', gap: 18 }}>
-          <div className="ui-card">
-            <div className="ui-card__head">
-              <div>
-                <h3 className="ui-card__title">Agenda</h3>
-                <p className="ui-card__desc">Temas para esta reunión</p>
-              </div>
-            </div>
-            <div className="ui-card__body">
-              <AgendaList
-                oneOnOneId={params.id}
-                initialItems={(rawAgenda ?? []) as Array<{ id: string; content: string; author_id: string }>}
-                currentUserId={user.id}
-                authorMap={authorMap}
-              />
+      <div style={{ display: 'grid', gap: 18 }}>
+        <div className="ui-card">
+          <div className="ui-card__head">
+            <div>
+              <h3 className="ui-card__title">Agenda</h3>
+              <p className="ui-card__desc">Temas para esta reunión</p>
             </div>
           </div>
-
-          {isPastMeeting && participants && (
-            <DetailInteraction
+          <div className="ui-card__body">
+            <AgendaList
               oneOnOneId={params.id}
-              initialMinuteContent={(rawMinute as { raw_content: string } | null)?.raw_content ?? ''}
-              initialAgreements={(rawAgreements ?? []) as Array<{ id: string; description: string; responsible_id: string; due_date: string | null; status: string; ai_generated: boolean }>}
-              participants={participants}
-              hasVobo={myVobo !== null}
-              voboValue={myVobo?.confirmed ?? null}
-              pendingPrevAgreements={[]}
+              initialItems={(rawAgenda ?? []) as Array<{ id: string; content: string; author_id: string }>}
               currentUserId={user.id}
-              meetingStatus={meeting.status}
-              partnerName={partnerName}
+              authorMap={authorMap}
             />
-          )}
-
-          {!isPastMeeting && (
-            <div className="ui-card" style={{ padding: 0 }}>
-              <EmptyState
-                illustration="meetings"
-                title="Aún no es hora"
-                description="La minuta y los acuerdos estarán disponibles después de la reunión. Mientras tanto, agreguen los temas que quieran tratar en la agenda."
-              />
-            </div>
-          )}
+          </div>
         </div>
 
-        {collaborator && (
-          <LeaderInsightPanel
-            collaboratorId={collaborator.id}
-            collaboratorName={collaborator.full_name}
-            insights={(rawInsights ?? []) as Array<{ id: string; type: string; content: unknown; created_at: string }>}
+        {isPastMeeting && participants && (
+          <DetailInteraction
+            oneOnOneId={params.id}
+            initialMinuteContent={(rawMinute as { raw_content: string } | null)?.raw_content ?? ''}
+            initialAgreements={(rawAgreements ?? []) as Array<{ id: string; description: string; responsible_id: string; due_date: string | null; status: string; ai_generated: boolean }>}
+            participants={participants}
+            hasVobo={myVobo !== null}
+            voboValue={myVobo?.confirmed ?? null}
+            partnerVobo={partnerVobo}
+            pendingPrevAgreements={[]}
+            currentUserId={user.id}
+            meetingStatus={meeting.status}
+            partnerName={partnerName}
           />
+        )}
+
+        {!isPastMeeting && (
+          <div className="ui-card" style={{ padding: 0 }}>
+            <EmptyState
+              illustration="meetings"
+              title="Aún no es hora"
+              description="La minuta y los acuerdos estarán disponibles después de la reunión. Mientras tanto, agreguen los temas que quieran tratar en la agenda."
+            />
+          </div>
         )}
       </div>
     </div>

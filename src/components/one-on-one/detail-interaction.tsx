@@ -6,6 +6,7 @@ import { MinuteEditor } from './minute-editor'
 import { AgreementList } from './agreement-list'
 import { VoboButton } from './vobo-button'
 import { FollowupModal } from './followup-modal'
+import { useRealtimeMeeting } from '@/hooks/use-realtime-meeting'
 import type { ExtractedAgreement } from '@/types/domain'
 
 interface Agreement {
@@ -23,6 +24,7 @@ interface DetailInteractionProps {
   }
   hasVobo: boolean
   voboValue: boolean | null
+  partnerVobo: boolean | null
   pendingPrevAgreements: PendingAgreement[]
   currentUserId: string
   meetingStatus: string
@@ -31,11 +33,15 @@ interface DetailInteractionProps {
 
 export function DetailInteraction({
   oneOnOneId, initialMinuteContent, initialAgreements, participants,
-  hasVobo, voboValue, pendingPrevAgreements, meetingStatus, partnerName,
+  hasVobo, voboValue, partnerVobo, pendingPrevAgreements, currentUserId, meetingStatus, partnerName,
 }: DetailInteractionProps) {
   const [extractedSuggestions, setExtractedSuggestions] = useState<ExtractedAgreement[]>([])
   const [showFollowup, setShowFollowup] = useState(false)
   const [followupDone, setFollowupDone] = useState(hasVobo || pendingPrevAgreements.length === 0)
+
+  // Real-time: cuando el otro participante actualiza notas, acuerdos o VoBo,
+  // se refresca la página automáticamente sin tener que recargar manualmente.
+  const { lastEventAt } = useRealtimeMeeting(oneOnOneId, currentUserId)
 
   return (
     <>
@@ -46,18 +52,47 @@ export function DetailInteraction({
         onClose={() => { setShowFollowup(false); setFollowupDone(true) }}
       />
 
-      {/* Minuta */}
+      {/* Notas de la reunión — compartidas entre líder y colab */}
       <div className="ui-card anim-fade-in-up">
         <div className="ui-card__head">
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <h3 className="ui-card__title">Minuta</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+              <h3 className="ui-card__title">Notas de la reunión</h3>
               <span className="ui-badge ui-badge--slate ui-badge--plain" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <Lock size={11} /> Privado
+                <Lock size={11} /> Privadas para RH
+              </span>
+              <span
+                title={lastEventAt ? `Última sincronización: ${new Date(lastEventAt).toLocaleTimeString()}` : 'Sincronizado en vivo'}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontSize: 10.5,
+                  fontWeight: 600,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  color: 'var(--green-700)',
+                  padding: '3px 8px',
+                  background: 'var(--green-50)',
+                  border: '1px solid var(--green-200)',
+                  borderRadius: 999,
+                }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 999,
+                    background: 'var(--green-500)',
+                    animation: 'pulse-soft 1.6s var(--ease-out) infinite',
+                  }}
+                />
+                En vivo
               </span>
             </div>
             <p className="ui-card__desc">
-              Lo que conversaron. Solo lo ven {participants.leader.name.split(' ')[0]} y {participants.collaborator.name.split(' ')[0]}.
+              {participants.leader.name.split(' ')[0]} y {participants.collaborator.name.split(' ')[0]} comparten estas notas.
+              Cualquiera puede editarlas — la IA extrae los acuerdos al guardar.
             </p>
           </div>
         </div>
@@ -68,15 +103,14 @@ export function DetailInteraction({
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
             <div>
-              <strong>Esta minuta es privada.</strong>{' '}
-              <span>RH no tiene acceso al contenido — solo a los acuerdos estructurados que decidas guardar.</span>
+              <strong>RH no ve estas notas.</strong>{' '}
+              <span>Solo ven los acuerdos estructurados que la IA extrae.</span>
             </div>
           </div>
           <MinuteEditor
             oneOnOneId={oneOnOneId}
             initialContent={initialMinuteContent}
             participants={participants}
-            onAgreementsExtracted={setExtractedSuggestions}
           />
         </div>
       </div>
@@ -106,30 +140,30 @@ export function DetailInteraction({
         </div>
       </div>
 
-      {/* VoBo */}
-      {meetingStatus !== 'realizada' && meetingStatus !== 'no_realizada' && (
-        <>
-          {pendingPrevAgreements.length > 0 && !followupDone ? (
-            <div className="vobo">
-              <h3 className="vobo__title">Antes de dar VoBo</h3>
-              <p className="vobo__sub">
-                Tienes {pendingPrevAgreements.length} acuerdo{pendingPrevAgreements.length !== 1 ? 's' : ''} pendientes de la sesión anterior.
-                Reporta su estado antes de confirmar esta reunión.
-              </p>
-              <div className="vobo__buttons">
-                <button type="button" className="ui-btn ui-btn--accent" onClick={() => setShowFollowup(true)}>
-                  <span>Revisar acuerdos anteriores</span>
-                </button>
-              </div>
-            </div>
-          ) : (
-            <VoboButton
-              oneOnOneId={oneOnOneId}
-              userVobo={voboValue}
-              partnerName={partnerName}
-            />
-          )}
-        </>
+      {/* VoBo — siempre visible post-reunión.
+         Si la 1:1 ya cerró (realizada/no_realizada), el componente muestra el estado
+         de ambos votos y permite cambiar si alguien quiere reabrir la discusión. */}
+      {pendingPrevAgreements.length > 0 && !followupDone ? (
+        <div className="vobo">
+          <h3 className="vobo__title">Antes de aprobar</h3>
+          <p className="vobo__sub">
+            Tienes {pendingPrevAgreements.length} acuerdo{pendingPrevAgreements.length !== 1 ? 's' : ''} pendientes de la sesión anterior.
+            Reporta su estado antes de aprobar esta reunión.
+          </p>
+          <div className="vobo__buttons">
+            <button type="button" className="ui-btn ui-btn--accent" onClick={() => setShowFollowup(true)}>
+              <span>Revisar acuerdos anteriores</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <VoboButton
+          oneOnOneId={oneOnOneId}
+          userVobo={voboValue}
+          partnerVobo={partnerVobo}
+          partnerName={partnerName}
+          agreementsCount={initialAgreements.length}
+        />
       )}
     </>
   )

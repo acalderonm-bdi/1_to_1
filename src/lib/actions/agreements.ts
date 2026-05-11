@@ -73,6 +73,53 @@ export async function updateAgreementStatus(
   return { success: true }
 }
 
+const deleteSchema = z.object({
+  agreementId: z.string().uuid(),
+})
+
+export async function deleteAgreement(
+  input: z.infer<typeof deleteSchema>
+): Promise<ActionResult> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const parsed = deleteSchema.safeParse(input)
+  if (!parsed.success) return { success: false, error: 'Datos inválidos' }
+
+  // Antes de borrar, obtenemos el one_on_one_id para revalidar el path correcto.
+  const { data: ag } = await supabase
+    .from('agreements')
+    .select('one_on_one_id')
+    .eq('id', parsed.data.agreementId)
+    .single<{ one_on_one_id: string }>()
+
+  const { error } = await supabase
+    .from('agreements')
+    .delete()
+    .eq('id', parsed.data.agreementId)
+
+  if (error) return { success: false, error: error.message }
+
+  // Audit
+  if (ag) {
+    await supabase.from('audit_logs').insert({
+      user_id: user.id,
+      action: 'agreement_deleted',
+      resource_type: 'agreement',
+      resource_id: parsed.data.agreementId,
+      metadata: { one_on_one_id: ag.one_on_one_id },
+    })
+    revalidatePath(`/lider/1to1/${ag.one_on_one_id}`)
+    revalidatePath(`/colaborador/1to1/${ag.one_on_one_id}`)
+  }
+  revalidatePath('/colaborador')
+  revalidatePath('/lider')
+  revalidatePath('/colaborador/acuerdos')
+
+  return { success: true }
+}
+
 const followupSchema = z.object({
   agreementId: z.string().uuid(),
   reportedStatus: z.enum(['pendiente', 'cumplido', 'parcial', 'no_cumplido']),

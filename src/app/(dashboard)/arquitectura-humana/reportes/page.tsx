@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Sparkles } from 'lucide-react'
 import { EmptyState } from '@/components/shared/empty-state'
+import { ReportReviewButton } from '@/components/arquitectura-humana/report-review-button'
 
 const SEVERITY_TONE: Record<string, string> = { info: 'blue', warning: 'amber', critical: 'red' }
 const SEVERITY_LABELS: Record<string, string> = { info: 'Informativo', warning: 'Atención', critical: 'Crítico' }
@@ -60,7 +61,10 @@ export default async function ReportesPage() {
                 </span>
               </div>
               <div className="ui-card__body">
-                <p style={{ fontSize: 13.5, lineHeight: 1.65, color: 'var(--text-c)', margin: 0 }}>{r.content}</p>
+                <p style={{ fontSize: 13.5, lineHeight: 1.65, color: 'var(--text-c)', margin: 0, marginBottom: 14 }}>{r.content}</p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <ReportReviewButton reportId={r.id} reviewed={r.reviewed} />
+                </div>
               </div>
             </div>
           ))}

@@ -12,6 +12,11 @@ export default async function NuevaOneOnOnePage() {
   const { data: rawProfile } = await supabase.from('users').select('role').eq('id', user.id).single()
   const profile = rawProfile as { role: string } | null
 
+  // Solo líderes (y HR) pueden agendar 1:1s.
+  if (profile?.role !== 'leader' && profile?.role !== 'hr') {
+    redirect('/colaborador')
+  }
+
   let counterparts: Array<{ id: string; full_name: string; email: string }> = []
 
   if (profile?.role === 'leader') {

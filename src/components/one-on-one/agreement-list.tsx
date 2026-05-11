@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { Plus, Calendar, ChevronDown, Sparkles } from 'lucide-react'
-import { createAgreement, updateAgreementStatus } from '@/lib/actions/agreements'
-import { AGREEMENT_LABELS } from '@/lib/constants'
+import { useEffect, useState, useTransition } from 'react'
+import { Plus, Calendar, Sparkles, Trash2 } from 'lucide-react'
+import { createAgreement, deleteAgreement } from '@/lib/actions/agreements'
 import type { ExtractedAgreement } from '@/types/domain'
 
 interface Agreement {
@@ -29,11 +28,20 @@ export function AgreementList({
 }: AgreementListProps) {
   const [agreements, setAgreements] = useState<Agreement[]>(initialAgreements)
   const [newDesc, setNewDesc] = useState('')
+
+  // Sincronizar con cambios externos (realtime: cuando el otro participante crea
+  // acuerdos o la IA los extrae al guardar la minuta). Si tengo filas optimistic
+  // pendientes (id empieza con temp-), no las clobbeo.
+  useEffect(() => {
+    setAgreements(prev => {
+      const optimistic = prev.filter(a => a.id.startsWith('temp-'))
+      return [...initialAgreements, ...optimistic]
+    })
+  }, [initialAgreements])
   const [newResponsible, setNewResponsible] = useState(participants.collaborator.id)
   const [newDueDate, setNewDueDate] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   async function handleAdd(desc: string, responsibleId: string, dueDate: string | null = null, aiGenerated = false, confidence?: number) {
@@ -80,19 +88,19 @@ export function AgreementList({
     await handleAdd(s.description, responsibleId, s.due_date, true, s.confidence)
   }
 
-  async function handleStatusChange(agreementId: string, status: string) {
-    setOpenMenuId(null)
-    const previous = agreements.find(a => a.id === agreementId)
-    if (!previous) return
-    setAgreements(prev => prev.map(a => a.id === agreementId ? { ...a, status } : a))
+  async function handleDelete(agreementId: string) {
+    const target = agreements.find(a => a.id === agreementId)
+    if (!target) return
+    if (!confirm(`¿Eliminar este acuerdo?\n\n"${target.description.slice(0, 120)}"\n\nSi alguien ya había aprobado, su aprobación se invalidará y deberá votar de nuevo.`)) return
+
+    // Optimistic
+    setAgreements(prev => prev.filter(a => a.id !== agreementId))
     setErrorMsg(null)
-    const result = await updateAgreementStatus({
-      agreementId,
-      status: status as 'pendiente' | 'cumplido' | 'parcial' | 'no_cumplido',
-    })
+    const result = await deleteAgreement({ agreementId })
     if (!result.success) {
-      setAgreements(prev => prev.map(a => a.id === agreementId ? { ...a, status: previous.status } : a))
-      setErrorMsg(result.error ?? 'No se pudo cambiar el estado')
+      // Rollback
+      setAgreements(prev => [...prev, target])
+      setErrorMsg(result.error ?? 'No se pudo eliminar el acuerdo')
     }
   }
 
@@ -182,43 +190,48 @@ export function AgreementList({
         const isOptimistic = a.id.startsWith('temp-')
         return (
           <div key={a.id} className="agreement anim-fade-in" style={{ opacity: isOptimistic ? 0.7 : 1 }}>
-            <div className="agreement__head">
+            <div className="agreement__head" style={{ alignItems: 'center' }}>
               <p className="agreement__desc">{a.description}</p>
-              <div style={{ position: 'relative' }}>
-                <button
-                  type="button"
-                  className={`status-select status-select--${a.status}`}
-                  onClick={() => setOpenMenuId(openMenuId === a.id ? null : a.id)}
-                  disabled={isOptimistic}
-                >
-                  {AGREEMENT_LABELS[a.status]}
-                  <ChevronDown size={11} />
-                </button>
-                {openMenuId === a.id && (
-                  <div className="popover" style={{ top: 'calc(100% + 4px)', right: 0, padding: 4, minWidth: 160 }}>
-                    {Object.entries(AGREEMENT_LABELS).map(([k, label]) => (
-                      <button
-                        key={k}
-                        type="button"
-                        onClick={() => handleStatusChange(a.id, k)}
-                        style={{
-                          display: 'block', width: '100%', textAlign: 'left',
-                          background: a.status === k ? 'var(--bg-subtle)' : 'transparent',
-                          border: 'none', padding: '7px 10px',
-                          borderRadius: 5, fontSize: 12.5, cursor: 'pointer',
-                          color: 'var(--text-c)',
-                          fontFamily: 'inherit',
-                          fontWeight: a.status === k ? 600 : 400,
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-muted)'}
-                        onMouseLeave={e => e.currentTarget.style.background = a.status === k ? 'var(--bg-subtle)' : 'transparent'}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* En el detalle de la 1:1 no mostramos estado — todos los acuerdos
+                  nacen 'pendiente'. El seguimiento se hace en "Mis acuerdos". */}
+              <button
+                type="button"
+                onClick={() => handleDelete(a.id)}
+                disabled={isOptimistic}
+                title="Eliminar acuerdo"
+                aria-label="Eliminar acuerdo"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 14px',
+                  background: 'transparent',
+                  border: '1px solid var(--border-c)',
+                  borderRadius: 'var(--r-md)',
+                  cursor: isOptimistic ? 'not-allowed' : 'pointer',
+                  color: 'var(--text-muted)',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  fontFamily: 'inherit',
+                  flexShrink: 0,
+                  transition: 'all 0.15s var(--ease-out)',
+                }}
+                onMouseEnter={e => {
+                  if (!isOptimistic) {
+                    e.currentTarget.style.background = 'var(--red-50)'
+                    e.currentTarget.style.color = 'var(--red-700)'
+                    e.currentTarget.style.borderColor = 'var(--red-200)'
+                  }
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'var(--text-muted)'
+                  e.currentTarget.style.borderColor = 'var(--border-c)'
+                }}
+              >
+                <Trash2 size={14} />
+                <span>Eliminar</span>
+              </button>
             </div>
             <div className="agreement__meta">
               <span className="agreement__meta-item">

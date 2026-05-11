@@ -43,12 +43,6 @@ export interface ExtractedAgreement {
   confidence: number
 }
 
-export interface SuggestedQuestion {
-  question: string
-  rationale: string
-  category: 'desempeño' | 'desarrollo' | 'bienestar' | 'seguimiento' | 'feedback'
-}
-
 export interface FollowupPlan {
   summary: string
   actions: Array<{

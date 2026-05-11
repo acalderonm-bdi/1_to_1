@@ -22,14 +22,13 @@ interface NavItem {
 const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   collaborator: [
     { key: 'col-dash', label: 'Inicio', icon: Home, href: '/colaborador' },
-    { key: 'col-1to1-new', label: 'Agendar 1:1', icon: CalendarPlus, href: '/colaborador/1to1/nueva' },
     { key: 'col-acuerdos', label: 'Mis acuerdos', icon: CheckSquare, href: '/colaborador/acuerdos' },
+    { key: 'col-historial', label: 'Historial', icon: Repeat, href: '/colaborador/historial' },
     { key: 'col-config', label: 'Configuración', icon: Settings, href: '/colaborador/configuracion', divider: true },
   ],
   leader: [
     { key: 'lid-dash', label: 'Resumen', icon: LayoutDashboard, href: '/lider' },
     { key: 'lid-equipo', label: 'Mi equipo', icon: Users, href: '/lider/equipo' },
-    { key: 'lid-insights', label: 'Insights', icon: Sparkles, href: '/lider/insights' },
     { key: 'lid-1to1-new', label: 'Agendar 1:1', icon: CalendarPlus, href: '/colaborador/1to1/nueva' },
     { key: 'lid-config', label: 'Configuración', icon: Settings, href: '/lider/configuracion', divider: true },
   ],

@@ -1,11 +1,16 @@
 import Anthropic from '@anthropic-ai/sdk'
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-})
+let _client: Anthropic | null = null
 
 export function getAIClient() {
-  return client
+  if (!_client) {
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY no está configurada en el server')
+    }
+    _client = new Anthropic({ apiKey })
+  }
+  return _client
 }
 
 export function parseJSONResponse<T>(text: string): T {

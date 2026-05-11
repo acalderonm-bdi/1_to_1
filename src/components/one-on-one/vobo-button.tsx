@@ -1,17 +1,32 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Check, X } from 'lucide-react'
+import { Check, X, ShieldCheck, Loader2 } from 'lucide-react'
 import { submitVobo } from '@/lib/actions/vobos'
 
 interface VoboButtonProps {
   oneOnOneId: string
   userVobo: boolean | null
-  onVobo?: (confirmed: boolean) => void
+  /** Información del compañero para mostrar "esperando a X" o el conteo. */
   partnerName?: string
+  partnerVobo?: boolean | null
+  /** Si la 1:1 todavía no tiene acuerdos registrados, el VoBo está bloqueado. */
+  agreementsCount: number
 }
 
-export function VoboButton({ oneOnOneId, userVobo, onVobo, partnerName }: VoboButtonProps) {
+function ApprovalCounter({ mine, partner }: { mine: boolean | null; partner: boolean | null }) {
+  const mineApproved = mine === true
+  const partnerApproved = partner === true
+  const approvedCount = (mineApproved ? 1 : 0) + (partnerApproved ? 1 : 0)
+  const tone = approvedCount === 2 ? 'green' : approvedCount === 1 ? 'amber' : 'slate'
+  return (
+    <span className={`ui-badge ui-badge--${tone}`} style={{ fontSize: 11.5 }}>
+      <ShieldCheck size={12} /> {approvedCount}/2 aprobaciones
+    </span>
+  )
+}
+
+export function VoboButton({ oneOnOneId, userVobo, partnerName, partnerVobo = null, agreementsCount }: VoboButtonProps) {
   const [myVobo, setMyVobo] = useState<boolean | null>(userVobo)
   const [isPending, startTransition] = useTransition()
 
@@ -20,34 +35,60 @@ export function VoboButton({ oneOnOneId, userVobo, onVobo, partnerName }: VoboBu
       const result = await submitVobo({ oneOnOneId, confirmed })
       if (result.success) {
         setMyVobo(confirmed)
-        onVobo?.(confirmed)
       }
     })
   }
 
-  if (myVobo !== null) {
+  const partnerFirst = partnerName?.split(' ')[0] ?? 'la otra persona'
+
+  // Sin acuerdos no se puede aprobar todavía.
+  if (agreementsCount === 0) {
     return (
       <div className="vobo">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+          <h3 className="vobo__title" style={{ margin: 0 }}>¿Apruebas los acuerdos?</h3>
+          <ApprovalCounter mine={null} partner={null} />
+        </div>
+        <p className="vobo__sub">
+          Aún no hay acuerdos registrados. Agreguen al menos uno (manual o vía IA) para poder aprobar y cerrar la reunión.
+        </p>
+      </div>
+    )
+  }
+
+  // Ya voté
+  if (myVobo !== null) {
+    const bothApproved = myVobo === true && partnerVobo === true
+    const bothDenied = myVobo === false && partnerVobo === false
+    const conflict = (myVobo === true && partnerVobo === false) || (myVobo === false && partnerVobo === true)
+    const waiting = partnerVobo === null
+
+    return (
+      <div className="vobo">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
               width: 38, height: 38, borderRadius: '50%',
               background: myVobo ? 'var(--green-100)' : 'var(--red-100)',
               color: myVobo ? 'var(--green-700)' : 'var(--red-700)',
-              display: 'grid', placeItems: 'center'
+              display: 'grid', placeItems: 'center',
             }}>
               {myVobo ? <Check size={18} /> : <X size={18} />}
             </div>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 14 }}>
-                {myVobo ? 'Confirmaste que sí se realizó' : 'Indicaste que no se realizó'}
+              <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                {myVobo ? 'Aprobaste los acuerdos' : 'Indicaste que no apruebas'}
+                <ApprovalCounter mine={myVobo} partner={partnerVobo} />
               </div>
               <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>
-                {partnerName ? `Esperando confirmación de ${partnerName.split(' ')[0]}` : 'Confirmación registrada'}
+                {bothApproved && '✓ Ambos aprobaron — la reunión se marcó como realizada'}
+                {bothDenied && '✗ Ambos indicaron que no aprueban — reunión marcada como no realizada'}
+                {conflict && '⚠ Hay discrepancia — la 1:1 entró en disputa, revisará Arquitectura Humana'}
+                {waiting && `Esperando aprobación de ${partnerFirst}`}
               </div>
             </div>
           </div>
-          <button type="button" className="ui-btn ui-btn--ghost ui-btn--sm" onClick={() => setMyVobo(null)}>
+          <button type="button" className="ui-btn ui-btn--ghost ui-btn--sm" onClick={() => setMyVobo(null)} disabled={isPending}>
             <span>Cambiar</span>
           </button>
         </div>
@@ -55,10 +96,19 @@ export function VoboButton({ oneOnOneId, userVobo, onVobo, partnerName }: VoboBu
     )
   }
 
+  // No he votado
   return (
     <div className="vobo">
-      <h3 className="vobo__title">¿Esta reunión se realizó?</h3>
-      <p className="vobo__sub">Tu confirmación es independiente. Si hay contradicción, se levanta una disputa para revisión.</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+        <h3 className="vobo__title" style={{ margin: 0 }}>¿Apruebas los acuerdos registrados?</h3>
+        <ApprovalCounter mine={null} partner={partnerVobo} />
+      </div>
+      <p className="vobo__sub">
+        Tu aprobación confirma que la reunión se realizó y que los compromisos quedan tal como están listados arriba.
+        {partnerVobo === true && ` ${partnerFirst} ya aprobó — falta tu confirmación para cerrar.`}
+        {partnerVobo === false && ` ${partnerFirst} indicó que no aprueba — si tú lo haces, se levantará una disputa.`}
+        {' '}Si modifican los acuerdos después, ambos deberán aprobar de nuevo.
+      </p>
       <div className="vobo__buttons">
         <button
           type="button"
@@ -66,8 +116,8 @@ export function VoboButton({ oneOnOneId, userVobo, onVobo, partnerName }: VoboBu
           onClick={() => handleVobo(true)}
           disabled={isPending}
         >
-          {isPending ? <span className="spinner" /> : <Check size={15} />}
-          <span>Sí, se realizó</span>
+          {isPending ? <Loader2 size={15} className="spinner" /> : <Check size={15} />}
+          <span>Sí, apruebo</span>
         </button>
         <button
           type="button"
@@ -76,7 +126,7 @@ export function VoboButton({ oneOnOneId, userVobo, onVobo, partnerName }: VoboBu
           disabled={isPending}
         >
           <X size={15} />
-          <span>No se realizó</span>
+          <span>No estoy de acuerdo</span>
         </button>
       </div>
     </div>

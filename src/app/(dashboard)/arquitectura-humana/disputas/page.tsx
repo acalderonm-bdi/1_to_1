@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AlertTriangle, Calendar, Check, X } from 'lucide-react'
 import { EmptyState } from '@/components/shared/empty-state'
+import { DisputeResolver } from '@/components/arquitectura-humana/dispute-resolver'
 
 interface Participant { full_name: string; email: string }
 interface DisputeRow {
@@ -111,6 +112,7 @@ export default async function DisputasPage() {
                       </span>
                     ))}
                   </div>
+                  <DisputeResolver oneOnOneId={d.id} />
                 </div>
               </div>
             )

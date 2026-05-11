@@ -44,11 +44,11 @@ export default async function OneOnOneDetailPage({ params }: { params: { id: str
   const { data: rawAgenda } = await supabase
     .from('agenda_items').select('id, content, author_id').eq('one_on_one_id', params.id).order('created_at')
   const { data: rawMinute } = await supabase
-    .from('minutes').select('raw_content').eq('one_on_one_id', params.id).eq('author_id', user.id).maybeSingle()
+    .from('minutes').select('raw_content, author_id, updated_at').eq('one_on_one_id', params.id).maybeSingle()
   const { data: rawAgreements } = await supabase
     .from('agreements').select('id, description, responsible_id, due_date, status, ai_generated').eq('one_on_one_id', params.id).order('created_at')
-  const { data: rawVobo } = await supabase
-    .from('vobos').select('confirmed').eq('one_on_one_id', params.id).eq('user_id', user.id).maybeSingle()
+  const { data: rawVobos } = await supabase
+    .from('vobos').select('user_id, confirmed').eq('one_on_one_id', params.id)
 
   const { data: rawPrevAgreements } = await supabase
     .from('agreements')
@@ -62,7 +62,11 @@ export default async function OneOnOneDetailPage({ params }: { params: { id: str
   }>).map(a => ({ id: a.id, description: a.description, due_date: a.due_date }))
 
   const isPastMeeting = new Date(meeting.scheduled_at) < new Date()
-  const myVobo = rawVobo as { confirmed: boolean } | null
+  const vobos = (rawVobos ?? []) as Array<{ user_id: string; confirmed: boolean }>
+  const myVoboRow = vobos.find(v => v.user_id === user.id)
+  const myVobo = myVoboRow ? { confirmed: myVoboRow.confirmed } : null
+  const partnerVoboRow = vobos.find(v => v.user_id !== user.id)
+  const partnerVobo: boolean | null = partnerVoboRow ? partnerVoboRow.confirmed : null
   const date = new Date(meeting.scheduled_at)
   const dateLabel = date.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const time = date.toTimeString().slice(0, 5)
@@ -200,6 +204,7 @@ export default async function OneOnOneDetailPage({ params }: { params: { id: str
             participants={participants}
             hasVobo={myVobo !== null}
             voboValue={myVobo?.confirmed ?? null}
+            partnerVobo={partnerVobo}
             pendingPrevAgreements={pendingPrevAgreements}
             currentUserId={user.id}
             meetingStatus={meeting.status}

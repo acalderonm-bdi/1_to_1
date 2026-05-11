@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
-import { Save, Sparkles, Check } from 'lucide-react'
+import { useEffect, useRef, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { Save, Sparkles, Check, AlertCircle, Radio } from 'lucide-react'
 import { saveMinute } from '@/lib/actions/minutes'
 import type { ExtractedAgreement } from '@/types/domain'
 
@@ -12,63 +13,91 @@ interface MinuteEditorProps {
     leader: { id: string; name: string; email: string }
     collaborator: { id: string; name: string; email: string }
   }
-  onAgreementsExtracted: (agreements: ExtractedAgreement[]) => void
+  onAgreementsExtracted?: (agreements: ExtractedAgreement[]) => void
 }
 
-export function MinuteEditor({ oneOnOneId, initialContent, onAgreementsExtracted }: MinuteEditorProps) {
+export function MinuteEditor({ oneOnOneId, initialContent }: MinuteEditorProps) {
+  const router = useRouter()
   const [content, setContent] = useState(initialContent)
-  const [isSaving, startSave] = useTransition()
-  const [isExtracting, setIsExtracting] = useState(false)
+  const [isPending, startTransition] = useTransition()
   const [savedMsg, setSavedMsg] = useState('')
-  const [aiError, setAiError] = useState('')
-  const [hasExtracted, setHasExtracted] = useState(false)
+  const [aiStatus, setAiStatus] = useState<{ count: number; error?: string } | null>(null)
+  const [externalUpdate, setExternalUpdate] = useState<string | null>(null)
+  const lastBaselineRef = useRef(initialContent)
 
-  const dirty = content !== initialContent
+  const dirty = content !== lastBaselineRef.current
+
+  // Cuando llega un cambio del otro participante (initialContent cambia tras router.refresh),
+  // si NO estoy editando, sincronizo el contenido en silencio. Si SÍ estoy editando,
+  // guardo la versión nueva para mostrar un banner "hay cambios externos".
+  useEffect(() => {
+    if (initialContent === lastBaselineRef.current) return
+    if (!dirty) {
+      setContent(initialContent)
+      lastBaselineRef.current = initialContent
+      setExternalUpdate(null)
+    } else {
+      setExternalUpdate(initialContent)
+    }
+  }, [initialContent, dirty])
 
   useEffect(() => {
     if (savedMsg) {
-      const t = setTimeout(() => setSavedMsg(''), 2200)
+      const t = setTimeout(() => setSavedMsg(''), 3000)
       return () => clearTimeout(t)
     }
   }, [savedMsg])
 
+  function acceptExternal() {
+    if (externalUpdate === null) return
+    setContent(externalUpdate)
+    lastBaselineRef.current = externalUpdate
+    setExternalUpdate(null)
+  }
+
   async function handleSave() {
-    startSave(async () => {
+    startTransition(async () => {
+      setAiStatus(null)
       const result = await saveMinute({ oneOnOneId, rawContent: content })
       if (result.success) {
         setSavedMsg('Guardado')
+        setAiStatus({ count: result.data?.extractedCount ?? 0, error: result.data?.aiError })
+        lastBaselineRef.current = content  // mi guardado es la nueva baseline
+        setExternalUpdate(null)
+        router.refresh()
       }
     })
-  }
-
-  async function handleExtract() {
-    if (!content.trim()) return
-    setIsExtracting(true)
-    setAiError('')
-    try {
-      const res = await fetch('/api/ai/extract-agreements', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oneOnOneId, rawContent: content }),
-      })
-      const data = await res.json() as { agreements: ExtractedAgreement[]; error?: string }
-      if (data.error && !data.agreements.length) {
-        setAiError(data.error)
-      } else {
-        onAgreementsExtracted(data.agreements)
-        setHasExtracted(true)
-      }
-    } catch {
-      setAiError('IA no disponible — agrega los acuerdos manualmente')
-    } finally {
-      setIsExtracting(false)
-    }
   }
 
   const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0
 
   return (
     <div>
+      {externalUpdate !== null && (
+        <div
+          className="anim-fade-in"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '10px 12px',
+            marginBottom: 10,
+            background: 'var(--amber-50)',
+            border: '1px solid var(--amber-200)',
+            borderRadius: 'var(--r-md)',
+            fontSize: 12.5,
+          }}
+        >
+          <Radio size={14} style={{ color: 'var(--amber-700)' }} />
+          <span style={{ flex: 1, color: 'var(--amber-700)' }}>
+            La otra persona guardó cambios. Tienes ediciones sin guardar.
+          </span>
+          <button type="button" className="ui-btn ui-btn--ghost ui-btn--sm" onClick={acceptExternal}>
+            Ver versión nueva
+          </button>
+        </div>
+      )}
+
       <textarea
         className="ui-textarea"
         placeholder="Escribe lo que pasó en la reunión. Compromisos, decisiones, temas pendientes…"
@@ -76,12 +105,51 @@ export function MinuteEditor({ oneOnOneId, initialContent, onAgreementsExtracted
         onChange={e => setContent(e.target.value)}
         style={{ minHeight: 200, fontSize: 13.5, lineHeight: 1.65, fontFamily: 'var(--font-sans)' }}
       />
-      {aiError && (
-        <p style={{ fontSize: 12, color: 'var(--amber-700)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Sparkles size={12} /> {aiError}
+
+      <p
+        style={{
+          fontSize: 11.5,
+          color: 'var(--text-muted)',
+          marginTop: 8,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+        }}
+      >
+        <Sparkles size={12} style={{ color: 'var(--accent-500)' }} />
+        Al guardar, la IA extraerá los acuerdos automáticamente · sincronizado en vivo con el otro participante.
+      </p>
+
+      {aiStatus && aiStatus.count > 0 && (
+        <p
+          className="anim-fade-in"
+          style={{
+            fontSize: 12,
+            color: 'var(--green-700)',
+            marginTop: 6,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontWeight: 500,
+          }}
+        >
+          <Check size={12} /> Se extrajeron {aiStatus.count} {aiStatus.count === 1 ? 'acuerdo' : 'acuerdos'}
         </p>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, gap: 8, flexWrap: 'wrap' }}>
+
+      {aiStatus && aiStatus.count === 0 && !aiStatus.error && (
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
+          La IA no encontró acuerdos claros en esta minuta.
+        </p>
+      )}
+
+      {aiStatus?.error && (
+        <p style={{ fontSize: 12, color: 'var(--amber-700)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <AlertCircle size={12} /> {aiStatus.error}
+        </p>
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, gap: 8, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 11.5, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <span>{wordCount} {wordCount === 1 ? 'palabra' : 'palabras'} · {content.length} car.</span>
           {savedMsg && (
@@ -89,30 +157,19 @@ export function MinuteEditor({ oneOnOneId, initialContent, onAgreementsExtracted
               <Check size={12} /> {savedMsg}
             </span>
           )}
-          {dirty && !savedMsg && !isSaving && (
+          {dirty && !savedMsg && !isPending && (
             <span style={{ color: 'var(--amber-700)' }}>· sin guardar</span>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className="ui-btn ui-btn--ghost ui-btn--sm"
-            onClick={handleSave}
-            disabled={isSaving || !dirty}
-          >
-            {isSaving ? <span className="spinner" /> : <Save size={13} />}
-            <span>{isSaving ? 'Guardando…' : 'Guardar'}</span>
-          </button>
-          <button
-            type="button"
-            className="ui-btn ui-btn--accent ui-btn--sm"
-            onClick={handleExtract}
-            disabled={isExtracting || !content.trim()}
-          >
-            {isExtracting ? <span className="spinner" /> : <Sparkles size={13} />}
-            <span>{isExtracting ? 'Procesando…' : (hasExtracted ? 'Reextraer acuerdos' : 'Extraer acuerdos con IA')}</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          className="ui-btn ui-btn--accent ui-btn--sm"
+          onClick={handleSave}
+          disabled={isPending || !content.trim()}
+        >
+          {isPending ? <span className="spinner" /> : <Save size={13} />}
+          <span>{isPending ? 'Guardando y procesando con IA…' : 'Guardar minuta'}</span>
+        </button>
       </div>
     </div>
   )

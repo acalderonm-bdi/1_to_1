@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { Calendar, CheckSquare, Plus, ArrowRight, Video, MapPin, Sparkles } from 'lucide-react'
+import { Calendar, CheckSquare, ArrowRight, Video, MapPin, Sparkles, AlertCircle } from 'lucide-react'
 import { STATUS_LABELS, AGREEMENT_LABELS } from '@/lib/constants'
 import { EmptyState } from '@/components/shared/empty-state'
 
@@ -13,12 +13,15 @@ export default async function ColaboradorPage() {
   const { data: rawProfile } = await supabase.from('users').select('full_name').eq('id', user.id).single()
   const profile = rawProfile as { full_name: string } | null
 
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
+
   const { data: rawUpcoming } = await supabase
     .from('one_on_ones')
     .select('id, scheduled_at, modality, location, meet_link, status, leader_id')
     .or(`leader_id.eq.${user.id},collaborator_id.eq.${user.id}`)
     .eq('status', 'agendada')
-    .gte('scheduled_at', new Date().toISOString())
+    .gte('scheduled_at', startOfToday.toISOString())
     .order('scheduled_at', { ascending: true })
     .limit(5)
 
@@ -27,10 +30,24 @@ export default async function ColaboradorPage() {
     meet_link: string | null; status: string; leader_id: string
   }>
 
-  const leaderIds = Array.from(new Set(upcoming.map(m => m.leader_id)))
+  // 1:1s pasadas sin VoBo del usuario → "esperan tu confirmación"
+  const { data: rawPast } = await supabase
+    .from('one_on_ones')
+    .select('id, scheduled_at, modality, status, leader_id, vobos!left(user_id)')
+    .or(`leader_id.eq.${user.id},collaborator_id.eq.${user.id}`)
+    .eq('status', 'agendada')
+    .lt('scheduled_at', startOfToday.toISOString())
+    .order('scheduled_at', { ascending: false })
+    .limit(5)
+  const pendingVobo = ((rawPast ?? []) as Array<{
+    id: string; scheduled_at: string; modality: string; status: string; leader_id: string
+    vobos: Array<{ user_id: string }>
+  }>).filter(m => !m.vobos.some(v => v.user_id === user.id))
+
+  const allLeaderIds = Array.from(new Set([...upcoming.map(m => m.leader_id), ...pendingVobo.map(m => m.leader_id)]))
   let leaderMap: Record<string, string> = {}
-  if (leaderIds.length > 0) {
-    const { data: leaders } = await supabase.from('users').select('id, full_name').in('id', leaderIds)
+  if (allLeaderIds.length > 0) {
+    const { data: leaders } = await supabase.from('users').select('id, full_name').in('id', allLeaderIds)
     leaderMap = Object.fromEntries((leaders ?? []).map(l => [l.id, (l as { full_name: string }).full_name]))
   }
 
@@ -75,11 +92,6 @@ export default async function ColaboradorPage() {
             Aquí está un resumen de tus próximas 1:1s y los compromisos que tienes abiertos.
           </p>
         </div>
-        <div className="page__actions">
-          <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--accent">
-            <Plus size={14} /> <span>Agendar 1:1</span>
-          </Link>
-        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }} className="anim-stagger">
@@ -103,6 +115,44 @@ export default async function ColaboradorPage() {
         </div>
       </div>
 
+      {pendingVobo.length > 0 && (
+        <div className="ui-card" style={{ marginBottom: 18, borderColor: 'var(--amber-200)' }}>
+          <div className="ui-card__head" style={{ borderBottom: '1px solid var(--amber-200)' }}>
+            <div>
+              <h3 className="ui-card__title">
+                <AlertCircle size={15} style={{ color: 'var(--amber-600)' }} /> Esperan tu confirmación
+              </h3>
+              <p className="ui-card__desc">
+                {pendingVobo.length} 1:1 {pendingVobo.length === 1 ? 'pasada' : 'pasadas'} sin marcar si se realizó.
+              </p>
+            </div>
+          </div>
+          <div className="ui-card__body ui-card__body--flush">
+            {pendingVobo.map(m => {
+              const d = new Date(m.scheduled_at)
+              const dateLabel = d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
+              const time = d.toTimeString().slice(0, 5)
+              return (
+                <div key={m.id} className="list-row">
+                  <div className="list-row__content">
+                    <div className="list-row__title" style={{ textTransform: 'capitalize' }}>
+                      1:1 con {leaderMap[m.leader_id] ?? 'líder'}
+                    </div>
+                    <div className="list-row__meta">
+                      <span style={{ textTransform: 'capitalize' }}>{dateLabel} · {time}</span>
+                      {m.modality === 'virtual' ? <Video size={12} /> : <MapPin size={12} />}
+                    </div>
+                  </div>
+                  <Link href={`/colaborador/1to1/${m.id}`} className="ui-btn ui-btn--accent ui-btn--sm list-row__action">
+                    Confirmar <ArrowRight size={12} />
+                  </Link>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="layout-2col" style={{ gridTemplateColumns: '1fr 1fr', gap: 18 }}>
         <div className="ui-card">
           <div className="ui-card__head">
@@ -120,12 +170,7 @@ export default async function ColaboradorPage() {
               <EmptyState
                 illustration="meetings"
                 title="Sin reuniones próximas"
-                description="Agenda tu próxima 1:1 con tu líder para mantener el ritmo de tus conversaciones."
-                action={
-                  <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--accent">
-                    <Plus size={13} /> <span>Agendar 1:1</span>
-                  </Link>
-                }
+                description="Tu líder es quien agenda las 1:1s. Cuando programe la siguiente, aparecerá aquí."
               />
             ) : (
               upcoming.map(m => {

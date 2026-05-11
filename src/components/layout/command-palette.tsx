@@ -40,14 +40,12 @@ export function CommandPalette({ open, onClose, role }: CommandPaletteProps) {
     const navByRole: Record<UserRole, PaletteItem[]> = {
       collaborator: [
         { id: 'col-home', group: 'Navegación', label: 'Inicio', icon: Home, kbd: 'g h', run: go('/colaborador') },
-        { id: 'col-new', group: 'Navegación', label: 'Agendar 1:1', hint: 'Nueva reunión', icon: CalendarPlus, kbd: 'g a', run: go('/colaborador/1to1/nueva') },
         { id: 'col-agree', group: 'Navegación', label: 'Mis acuerdos', icon: CheckSquare, kbd: 'g k', run: go('/colaborador/acuerdos') },
         { id: 'col-config', group: 'Navegación', label: 'Configuración', icon: Settings, kbd: 'g s', run: go('/colaborador/configuracion') },
       ],
       leader: [
         { id: 'lid-dash', group: 'Navegación', label: 'Resumen', icon: LayoutDashboard, kbd: 'g h', run: go('/lider') },
         { id: 'lid-team', group: 'Navegación', label: 'Mi equipo', icon: Users, kbd: 'g e', run: go('/lider/equipo') },
-        { id: 'lid-insights', group: 'Navegación', label: 'Insights IA', icon: Sparkles, kbd: 'g i', run: go('/lider/insights') },
         { id: 'lid-new', group: 'Navegación', label: 'Agendar 1:1', icon: CalendarPlus, kbd: 'g a', run: go('/colaborador/1to1/nueva') },
         { id: 'lid-config', group: 'Navegación', label: 'Configuración', icon: Settings, kbd: 'g s', run: go('/lider/configuracion') },
       ],

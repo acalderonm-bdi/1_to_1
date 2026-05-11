@@ -27,38 +27,6 @@ Reglas:
 - La confianza (confidence) va de 0.0 a 1.0`
 }
 
-export function suggestQuestionsPrompt(context: {
-  collaboratorName: string
-  recentMeetings: Array<{ date: string; agreements: string[] }>
-  pendingAgreements: Array<{ description: string; dueDate: string | null; status: string }>
-}): string {
-  return `Eres un coach ejecutivo que ayuda a líderes a tener mejores conversaciones 1:1.
-
-Contexto del colaborador: ${context.collaboratorName}
-
-Últimas 1:1s:
-${context.recentMeetings.map(m => `- ${m.date}: ${m.agreements.join(', ') || 'Sin acuerdos registrados'}`).join('\n')}
-
-Acuerdos pendientes:
-${context.pendingAgreements.map(a => `- ${a.description} (vence: ${a.dueDate ?? 'sin fecha'}, estado: ${a.status})`).join('\n') || 'Ninguno'}
-
-Sugiere 5 preguntas para la próxima 1:1. Responde ÚNICAMENTE con JSON válido, sin markdown:
-{
-  "questions": [
-    {
-      "question": "Pregunta específica y abierta",
-      "rationale": "Por qué esta pregunta es relevante ahora",
-      "category": "desempeño|desarrollo|bienestar|seguimiento|feedback"
-    }
-  ]
-}
-
-Reglas:
-- Preguntas abiertas, no de sí/no
-- Basadas en el contexto real, no genéricas
-- En español, tono profesional pero cercano`
-}
-
 export function generateFollowupPlanPrompt(context: {
   collaboratorName: string
   meetingDate: string

@@ -51,12 +51,11 @@ export function AppShell({ role, currentPath, userId, userName, userEmail, child
     const go = (path: string) => () => router.push(path)
     const base: Record<string, () => void> = {
       'g h': go(homePath),
-      'g a': go('/colaborador/1to1/nueva'),
       '?': openCmdK,
     }
     if (role === 'leader') {
+      base['g a'] = go('/colaborador/1to1/nueva')
       base['g e'] = go('/lider/equipo')
-      base['g i'] = go('/lider/insights')
       base['g s'] = go('/lider/configuracion')
     }
     if (role === 'collaborator') {

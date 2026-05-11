@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { Users, Calendar } from 'lucide-react'
+import { Users, Calendar, ArrowRight } from 'lucide-react'
 import { AGREEMENT_LABELS } from '@/lib/constants'
 import { EmptyState } from '@/components/shared/empty-state'
 
@@ -74,8 +75,12 @@ export default async function EquipoPage() {
             const pending = agreementsMap[rel.collaborator_id] ?? []
             const initials = collab.full_name.split(' ').map(p => p[0]).slice(0, 2).join('')
             return (
-              <div key={rel.collaborator_id} className="ui-card">
-                <div className="ui-card__head">
+              <div key={rel.collaborator_id} className="ui-card ui-card--hover">
+                <Link
+                  href={`/lider/colaborador/${rel.collaborator_id}`}
+                  className="ui-card__head"
+                  style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div className={`avatar avatar--lg ${AV_COLORS[idx % AV_COLORS.length]}`}>{initials}</div>
                     <div>
@@ -83,10 +88,13 @@ export default async function EquipoPage() {
                       <p className="ui-card__desc">{collab.email}</p>
                     </div>
                   </div>
-                  <span className={`ui-badge ui-badge--${pending.length > 0 ? 'amber' : 'green'}`}>
-                    {pending.length} pendiente{pending.length !== 1 ? 's' : ''}
-                  </span>
-                </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span className={`ui-badge ui-badge--${pending.length > 0 ? 'amber' : 'green'}`}>
+                      {pending.length} pendiente{pending.length !== 1 ? 's' : ''}
+                    </span>
+                    <ArrowRight size={14} style={{ color: 'var(--text-muted)' }} />
+                  </div>
+                </Link>
                 {pending.length > 0 && (
                   <div className="ui-card__body" style={{ display: 'grid', gap: 10 }}>
                     {pending.map((a, i) => (

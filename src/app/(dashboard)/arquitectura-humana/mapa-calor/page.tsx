@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { Grid } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -86,8 +87,16 @@ export default async function MapaCalorPage() {
       <div className="heatmap-grid anim-stagger">
         {metrics.map(d => {
           const t = tone(d.compliance_rate)
+          const href = d.department_id
+            ? `/arquitectura-humana/usuarios?department=${d.department_id}`
+            : '/arquitectura-humana/usuarios'
           return (
-            <div key={d.department_id} className={`heat-card heat-card--${t}`}>
+            <Link
+              key={d.department_id}
+              href={href}
+              className={`heat-card heat-card--${t}`}
+              style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}
+            >
               <div className="heat-card__head">
                 <div>
                   <h3 className="heat-card__name">{d.department_name}</h3>
@@ -114,7 +123,7 @@ export default async function MapaCalorPage() {
                   <div className="heat-card__stat-value u-tabular">{d.fulfilled_agreements ?? 0}</div>
                 </div>
               </div>
-            </div>
+            </Link>
           )
         })}
       </div>
