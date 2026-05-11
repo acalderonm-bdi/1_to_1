@@ -572,44 +572,68 @@ La config relevante de Supabase Auth se almacena en `supabase/config.toml` (prov
 
 ---
 
-## 8. Variables de entorno (`.env.local`)
+## 8. Variables de entorno (`.env.local`) — **valores reales de test**
+
+> ⚠️ **Estos son accesos de un entorno de prueba, ya están publicados intencionalmente en este prompt para reproducibilidad. NO uses estos valores en producción — rota todo antes de cualquier deploy real.**
 
 ```bash
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=...
-SUPABASE_PROJECT_REF=...
-SUPABASE_DB_PASSWORD=...
+# ========================================
+# SUPABASE
+# ========================================
+NEXT_PUBLIC_SUPABASE_URL=https://mlmpjeneeckfdyqavwgj.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sbXBqZW5lZWNrZmR5cWF2d2dqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwODM4MjYsImV4cCI6MjA5MzY1OTgyNn0.ao9XAz7xCOHGaPdCSRlYZwmaVgk8foznGHBmtb9fTCQ
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sbXBqZW5lZWNrZmR5cWF2d2dqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODA4MzgyNiwiZXhwIjoyMDkzNjU5ODI2fQ.pIfzuH_K9bS07G7hYMqep0Nz1jAKlWKPDPVkTfDrLDg
+SUPABASE_PROJECT_REF=mlmpjeneeckfdyqavwgj
+SUPABASE_DB_PASSWORD=Elmata09060101.
 
-# Admin inicial (script de setup)
-ADMIN_EMAIL=admin@empresa.com
-ADMIN_PASSWORD=...
-ADMIN_FULL_NAME=...
+# ========================================
+# ADMIN INICIAL (lo crea el script create-admin)
+# ========================================
+ADMIN_EMAIL=admin@b-drive.com
+ADMIN_PASSWORD=admin
+ADMIN_FULL_NAME=Administrador del Sistema
 
-# Google OAuth (la app NO los lee directamente — Supabase maneja el OAuth)
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
+# ========================================
+# GOOGLE OAUTH
+# (estos valores se configuran en Supabase Dashboard → Auth → Providers → Google.
+#  La app NO los lee directamente; Supabase maneja el OAuth. Las env vars son solo
+#  para que el script verify.ts compruebe que están seteados.)
+# ========================================
+GOOGLE_CLIENT_ID=98483174330-kl5vlf4h8glopfp4vse0dg48gvrep60d.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
 GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/callback
 
-# Anthropic
-ANTHROPIC_API_KEY=sk-ant-...
+# ========================================
+# ANTHROPIC CLAUDE
+# ========================================
+ANTHROPIC_API_KEY=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
 
-# Slack (opcional)
+# ========================================
+# OPCIONALES (la app funciona sin estos)
+# ========================================
 SLACK_BOT_TOKEN=
 SLACK_DEFAULT_CHANNEL=
-
-# Resend (opcional)
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
 
-# App
+# ========================================
+# APP
+# ========================================
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-CRON_SECRET=...
+CRON_SECRET=
 
-# Seed
+# ========================================
+# SEED
+# ========================================
 SEED_DEMO_DATA=true
 ```
+
+**URLs derivadas que vas a necesitar**:
+- Callback de Google → Supabase: `https://mlmpjeneeckfdyqavwgj.supabase.co/auth/v1/callback`
+- Callback final de Supabase → app: `http://localhost:3000/api/auth/callback`
+- Dashboard Supabase del proyecto: `https://supabase.com/dashboard/project/mlmpjeneeckfdyqavwgj`
+- Auth Providers: `https://supabase.com/dashboard/project/mlmpjeneeckfdyqavwgj/auth/providers`
+- URL Configuration: `https://supabase.com/dashboard/project/mlmpjeneeckfdyqavwgj/auth/url-configuration`
 
 ---
 
@@ -1372,6 +1396,114 @@ Al terminar:
 3. Credenciales del admin para primer login
 4. Lista de pendientes conocidos (Slack/Resend si no se cablearon, refresh token de Google, etc.)
 5. Honestidad sobre qué NO se implementó si quedó algo fuera del tiempo
+
+---
+
+---
+
+## 25. Cuentas de prueba (credenciales reales del entorno de test)
+
+> ⚠️ Todas estas credenciales corresponden al proyecto Supabase `mlmpjeneeckfdyqavwgj` que es de TEST. Si vas a montar tu propio entorno, crea cuentas nuevas.
+
+### 25.1 Cuentas principales
+
+| Rol | Email | Password | Notas |
+|---|---|---|---|
+| **HR (Administrador)** | `admin@b-drive.com` | `admin` | Creado por `scripts/create-admin.ts`. Acceso global. |
+| **Líder real (Google SSO)** | `acalderonm@b-drive.com.mx` | (sin password — solo Google OAuth) | Cuenta del dueño del proyecto. Tiene a `ariel@demo.com` como colab. Úsala para demos de Google Calendar (porque tiene `provider_token` válido). |
+| **Colab demo** | `ariel@demo.com` | `demo` | Reporta a `acalderonm@b-drive.com.mx`. Usado para demostrar el flujo colab end-to-end. |
+
+### 25.2 Cuentas del seed (todas con password `Demo1234!`)
+
+**Líderes**:
+| Email | Nombre | Departamento |
+|---|---|---|
+| `lider.tech@demo.com` | Carolina Méndez | Tecnología |
+| `lider.producto@demo.com` | Roberto Silva | Producto |
+| `lider.diseno@demo.com` | Ana Patricia Ruiz | Diseño |
+
+**Colaboradores** (cada uno con su líder asignado):
+| Email | Nombre | Departamento | Líder |
+|---|---|---|---|
+| `dev1@demo.com` | Luis Hernández | Tecnología | Carolina |
+| `dev2@demo.com` | María González | Tecnología | Carolina |
+| `dev3@demo.com` | Pedro Ramírez | Tecnología | Carolina |
+| `pm1@demo.com` | Sofía Vargas | Producto | Roberto |
+| `pm2@demo.com` | Diego Morales | Producto | Roberto |
+| `designer1@demo.com` | Valentina López | Diseño | Ana Patricia |
+| `designer2@demo.com` | Jorge Castillo | Diseño | Ana Patricia |
+
+Total seed: 10 usuarios + admin + acalderonm + ariel = **13 usuarios**.
+
+### 25.3 Google OAuth (Cloud Console)
+
+Las APIs habilitadas en este proyecto Google son:
+- Google Calendar API
+- Google People API
+
+OAuth consent screen en modo **Externo / Testing**. Los usuarios `acalderonm@b-drive.com.mx` y cualquier otro tester deben estar agregados como **Test Users** en `console.cloud.google.com → APIs & Services → OAuth consent screen`.
+
+**Authorized redirect URI registrada en Google Cloud**:
+```
+https://mlmpjeneeckfdyqavwgj.supabase.co/auth/v1/callback
+```
+
+### 25.4 Comandos para arrancar desde cero
+
+```bash
+# 1. Clonar y entrar
+git clone <repo>
+cd 1_to_1
+
+# 2. Crear .env.local con los valores de la sección 8
+
+# 3. Instalar
+pnpm install
+
+# 4. Aplicar migraciones (las 6 ya están en supabase/migrations/)
+supabase link --project-ref mlmpjeneeckfdyqavwgj
+supabase db push --yes
+
+# 5. Crear admin
+pnpm db:create-admin
+
+# 6. (Opcional) Sembrar 10 usuarios demo + 50 1:1s + vobos + agreements
+pnpm db:seed
+
+# 7. Verificar todo
+pnpm verify
+# Output esperado:
+# ✅ Conexión a Supabase
+# ✅ Tablas creadas (14)
+# ✅ Usuario admin existe
+# ✅ API Anthropic responde
+# ✅ Google OAuth configurado
+# ⚠️  Slack configurado (opcional)
+# ⚠️  Resend configurado (opcional)
+
+# 8. Levantar dev
+pnpm dev
+
+# 9. Probar:
+#    - http://localhost:3000/login con admin@b-drive.com / admin → HR dashboard
+#    - http://localhost:3000/login con ariel@demo.com / demo → Colab dashboard
+#    - http://localhost:3000/login con lider.tech@demo.com / Demo1234! → Líder dashboard
+#    - http://localhost:3000/login con Google (cuenta acalderonm@b-drive.com.mx) → Líder con Calendar habilitado
+```
+
+### 25.5 Notas de seguridad (para producción real)
+
+Cuando este sistema salga de demo a producción real:
+
+1. **Rotar TODAS las credenciales** publicadas en este documento (Anthropic key, Google OAuth client secret, Supabase service role).
+2. **Cambiar `ADMIN_PASSWORD`** a algo robusto y rotarlo.
+3. **OAuth consent screen** debe pasar de "Testing" a "In production" + verificación de Google.
+4. **Supabase project** debe estar en plan Pro mínimo (Realtime tiene límites estrictos en free).
+5. **Configurar SMTP propio** para emails de signup/recovery (default de Supabase no es para prod).
+6. **CRON_SECRET** debe ser un string aleatorio largo (≥32 chars) — los endpoints `/api/cron/*` se autentican contra él.
+7. **Habilitar 2FA** en Supabase, GitHub, Google Cloud, Anthropic.
+8. **Revisar RLS** en cada tabla manualmente — verificar que ningún role pueda leer/escribir más de lo permitido.
+9. **Logs sanitizados**: el catch de `extractAgreements` ya loggea solo los primeros 120 chars del mensaje de error para no filtrar datos sensibles. Verificar lo mismo en cualquier otro try/catch.
 
 ---
 
