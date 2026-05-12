@@ -609,7 +609,10 @@ GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/callback
 ANTHROPIC_API_KEY=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
 
 # ========================================
-# OPCIONALES (la app funciona sin estos)
+# OPCIONALES — vacíos a propósito en el entorno de test.
+# Si quieres habilitar Slack/Resend, crea las cuentas y pega aquí.
+# Si no, los módulos correspondientes (notify.ts, email/client.ts) detectan
+# la ausencia y se vuelven no-ops sin romper nada.
 # ========================================
 SLACK_BOT_TOKEN=
 SLACK_DEFAULT_CHANNEL=
@@ -620,6 +623,9 @@ RESEND_FROM_EMAIL=
 # APP
 # ========================================
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+# CRON_SECRET vacío en test — para prod, generar un string aleatorio largo
+# (>32 chars) y configurar headers Authorization: Bearer <CRON_SECRET> en
+# los jobs que llamen a /api/cron/*
 CRON_SECRET=
 
 # ========================================
@@ -628,12 +634,24 @@ CRON_SECRET=
 SEED_DEMO_DATA=true
 ```
 
+**Variable adicional para `supabase config push`** (no va en `.env.local`, se exporta inline):
+
+```bash
+# El nombre se mapea con env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET) en
+# supabase/config.toml. Es el mismo valor que GOOGLE_CLIENT_SECRET.
+SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=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
+
+# Uso típico:
+SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET="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" supabase config push --yes
+```
+
 **URLs derivadas que vas a necesitar**:
 - Callback de Google → Supabase: `https://mlmpjeneeckfdyqavwgj.supabase.co/auth/v1/callback`
 - Callback final de Supabase → app: `http://localhost:3000/api/auth/callback`
 - Dashboard Supabase del proyecto: `https://supabase.com/dashboard/project/mlmpjeneeckfdyqavwgj`
 - Auth Providers: `https://supabase.com/dashboard/project/mlmpjeneeckfdyqavwgj/auth/providers`
 - URL Configuration: `https://supabase.com/dashboard/project/mlmpjeneeckfdyqavwgj/auth/url-configuration`
+- DB connection string: `postgresql://postgres.mlmpjeneeckfdyqavwgj:Elmata09060101.@aws-0-us-west-1.pooler.supabase.com:6543/postgres` (pooler, transaction mode)
 
 ---
 
