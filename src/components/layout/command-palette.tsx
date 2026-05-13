@@ -195,7 +195,7 @@ export function CommandPalette({ open, onClose, role }: CommandPaletteProps) {
                       {it.hint && <div className="cmdk__item-hint">{it.hint}</div>}
                     </span>
                     {it.kbd && <span className="cmdk__kbd" aria-hidden="true">{it.kbd}</span>}
-                    {isActive && <ArrowRight size={14} style={{ color: 'var(--accent-600)', marginLeft: 4 }} />}
+                    {isActive && <ArrowRight size={14} className="text-primary" style={{ marginLeft: 4 }} />}
                   </button>
                 )
               })}

@@ -71,10 +71,10 @@ export function DetailInteraction({
                   fontWeight: 600,
                   letterSpacing: '0.06em',
                   textTransform: 'uppercase',
-                  color: 'var(--green-700)',
+                  color: 'hsl(var(--success))',
                   padding: '3px 8px',
-                  background: 'var(--green-50)',
-                  border: '1px solid var(--green-200)',
+                  background: 'hsl(var(--success) / 0.1)',
+                  border: '1px solid hsl(var(--success) / 0.3)',
                   borderRadius: 999,
                 }}
               >
@@ -83,7 +83,7 @@ export function DetailInteraction({
                     width: 6,
                     height: 6,
                     borderRadius: 999,
-                    background: 'var(--green-500)',
+                    background: 'hsl(var(--success))',
                     animation: 'pulse-soft 1.6s var(--ease-out) infinite',
                   }}
                 />

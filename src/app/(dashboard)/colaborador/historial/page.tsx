@@ -122,7 +122,7 @@ export default async function HistorialPage({
                         </span>
                       )}
                       {m.status === 'en_disputa' && (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--orange-700)' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'hsl(var(--warning))' }}>
                           <AlertTriangle size={11} /> Disputa abierta
                         </span>
                       )}

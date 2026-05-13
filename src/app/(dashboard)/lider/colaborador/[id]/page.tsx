@@ -212,12 +212,12 @@ export default async function LeaderCollabProfile({ params }: { params: { id: st
                     </div>
                     <div className="list-row__meta">
                       {a.due_date && (
-                        <span style={{ color: overdue ? 'var(--red-700)' : 'var(--text-muted)' }}>
+                        <span style={{ color: overdue ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))' }}>
                           <Calendar size={11} /> Vence {formatMonthDay(a.due_date)}
                         </span>
                       )}
                       <span>Creado {formatMonthDay(a.created_at)}</span>
-                      <Link href={`/lider/1to1/${a.one_on_one_id}`} style={{ color: 'var(--accent-500)' }}>
+                      <Link href={`/lider/1to1/${a.one_on_one_id}`} style={{ color: 'hsl(var(--primary))' }}>
                         Ver 1:1 origen
                       </Link>
                     </div>
@@ -281,7 +281,7 @@ export default async function LeaderCollabProfile({ params }: { params: { id: st
                         </span>
                       )}
                       {m.status === 'en_disputa' && (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--orange-700)' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'hsl(var(--warning))' }}>
                           <AlertTriangle size={11} /> Disputa abierta
                         </span>
                       )}

@@ -129,6 +129,12 @@ export default async function ArquitecturaHumanaPage() {
                 const rate = d.compliance_rate ?? 0
                 const tone = complianceTone(rate)
                 const fillTone = tone === 'orange' ? 'amber' : tone
+                const toneColor =
+                  tone === 'green'
+                    ? 'hsl(var(--success))'
+                    : tone === 'red'
+                      ? 'hsl(var(--destructive))'
+                      : 'hsl(var(--warning))'
                 return (
                   <div
                     key={d.department_id}
@@ -145,8 +151,8 @@ export default async function ArquitecturaHumanaPage() {
                         aria-hidden="true"
                         style={{
                           width: 8, height: 8, borderRadius: 999,
-                          background: `var(--${tone === 'orange' ? 'orange' : tone}-500)`,
-                          boxShadow: `0 0 0 3px color-mix(in oklab, var(--${tone === 'orange' ? 'orange' : tone}-500) 18%, transparent)`,
+                          background: toneColor,
+                          boxShadow: `0 0 0 3px color-mix(in oklab, ${toneColor} 18%, transparent)`,
                           flexShrink: 0,
                         }}
                       />
@@ -169,7 +175,7 @@ export default async function ArquitecturaHumanaPage() {
                         fontFamily: 'var(--font-serif)',
                         letterSpacing: '-0.012em',
                         minWidth: 56,
-                        color: `var(--${tone === 'orange' ? 'orange' : tone}-700)`,
+                        color: toneColor,
                       }}
                     >
                       {rate}%

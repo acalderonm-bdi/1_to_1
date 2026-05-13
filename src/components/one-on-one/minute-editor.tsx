@@ -82,14 +82,14 @@ export function MinuteEditor({ oneOnOneId, initialContent }: MinuteEditorProps) 
             gap: 10,
             padding: '10px 12px',
             marginBottom: 10,
-            background: 'var(--amber-50)',
-            border: '1px solid var(--amber-200)',
+            background: 'hsl(var(--warning) / 0.1)',
+            border: '1px solid hsl(var(--warning) / 0.3)',
             borderRadius: 'var(--r-md)',
             fontSize: 12.5,
           }}
         >
-          <Radio size={14} style={{ color: 'var(--amber-700)' }} />
-          <span style={{ flex: 1, color: 'var(--amber-700)' }}>
+          <Radio size={14} style={{ color: 'hsl(var(--warning))' }} />
+          <span style={{ flex: 1, color: 'hsl(var(--warning))' }}>
             La otra persona guardó cambios. Tienes ediciones sin guardar.
           </span>
           <button type="button" className="ui-btn ui-btn--ghost ui-btn--sm" onClick={acceptExternal}>
@@ -116,7 +116,7 @@ export function MinuteEditor({ oneOnOneId, initialContent }: MinuteEditorProps) 
           gap: 6,
         }}
       >
-        <Sparkles size={12} style={{ color: 'var(--accent-500)' }} />
+        <Sparkles size={12} style={{ color: 'hsl(var(--primary))' }} />
         Al guardar, la IA extraerá los acuerdos automáticamente · sincronizado en vivo con el otro participante.
       </p>
 
@@ -125,7 +125,7 @@ export function MinuteEditor({ oneOnOneId, initialContent }: MinuteEditorProps) 
           className="anim-fade-in"
           style={{
             fontSize: 12,
-            color: 'var(--green-700)',
+            color: 'hsl(var(--success))',
             marginTop: 6,
             display: 'flex',
             alignItems: 'center',
@@ -144,7 +144,7 @@ export function MinuteEditor({ oneOnOneId, initialContent }: MinuteEditorProps) 
       )}
 
       {aiStatus?.error && (
-        <p style={{ fontSize: 12, color: 'var(--amber-700)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <p style={{ fontSize: 12, color: 'hsl(var(--warning))', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
           <AlertCircle size={12} /> {aiStatus.error}
         </p>
       )}
@@ -153,12 +153,12 @@ export function MinuteEditor({ oneOnOneId, initialContent }: MinuteEditorProps) 
         <div style={{ fontSize: 11.5, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <span>{wordCount} {wordCount === 1 ? 'palabra' : 'palabras'} · {content.length} car.</span>
           {savedMsg && (
-            <span className="anim-fade-in" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--green-700)', fontWeight: 500 }}>
+            <span className="anim-fade-in" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'hsl(var(--success))', fontWeight: 500 }}>
               <Check size={12} /> {savedMsg}
             </span>
           )}
           {dirty && !savedMsg && !isPending && (
-            <span style={{ color: 'var(--amber-700)' }}>· sin guardar</span>
+            <span style={{ color: 'hsl(var(--warning))' }}>· sin guardar</span>
           )}
         </div>
         <button

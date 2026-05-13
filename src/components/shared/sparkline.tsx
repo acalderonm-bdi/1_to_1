@@ -6,12 +6,12 @@ interface SparklineProps {
 }
 
 const COLOR_MAP: Record<NonNullable<SparklineProps['color']>, { stroke: string; fillStart: string; fillEnd: string }> = {
-  accent: { stroke: 'var(--accent-500)', fillStart: 'var(--accent-500)', fillEnd: 'var(--accent-500)' },
-  lime:   { stroke: 'var(--lime-500)',   fillStart: 'var(--lime-500)',   fillEnd: 'var(--lime-500)' },
-  green:  { stroke: 'var(--green-500)',  fillStart: 'var(--green-500)',  fillEnd: 'var(--green-500)' },
-  amber:  { stroke: 'var(--amber-500)',  fillStart: 'var(--amber-500)',  fillEnd: 'var(--amber-500)' },
-  red:    { stroke: 'var(--red-500)',    fillStart: 'var(--red-500)',    fillEnd: 'var(--red-500)' },
-  violet: { stroke: 'var(--violet-500)', fillStart: 'var(--violet-500)', fillEnd: 'var(--violet-500)' },
+  accent: { stroke: 'hsl(var(--primary))',     fillStart: 'hsl(var(--primary))',     fillEnd: 'hsl(var(--primary))' },
+  lime:   { stroke: 'hsl(var(--success))',     fillStart: 'hsl(var(--success))',     fillEnd: 'hsl(var(--success))' },
+  green:  { stroke: 'hsl(var(--success))',     fillStart: 'hsl(var(--success))',     fillEnd: 'hsl(var(--success))' },
+  amber:  { stroke: 'hsl(var(--warning))',     fillStart: 'hsl(var(--warning))',     fillEnd: 'hsl(var(--warning))' },
+  red:    { stroke: 'hsl(var(--destructive))', fillStart: 'hsl(var(--destructive))', fillEnd: 'hsl(var(--destructive))' },
+  violet: { stroke: 'hsl(var(--primary))',     fillStart: 'hsl(var(--primary))',     fillEnd: 'hsl(var(--primary))' },
 }
 
 export function Sparkline({ data, color = 'accent', height = 38, ariaLabel }: SparklineProps) {

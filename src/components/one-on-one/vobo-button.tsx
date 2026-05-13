@@ -69,8 +69,8 @@ export function VoboButton({ oneOnOneId, userVobo, partnerName, partnerVobo = nu
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
               width: 38, height: 38, borderRadius: '50%',
-              background: myVobo ? 'var(--green-100)' : 'var(--red-100)',
-              color: myVobo ? 'var(--green-700)' : 'var(--red-700)',
+              background: myVobo ? 'hsl(var(--success) / 0.15)' : 'hsl(var(--destructive) / 0.15)',
+              color: myVobo ? 'hsl(var(--success))' : 'hsl(var(--destructive))',
               display: 'grid', placeItems: 'center',
             }}>
               {myVobo ? <Check size={18} /> : <X size={18} />}

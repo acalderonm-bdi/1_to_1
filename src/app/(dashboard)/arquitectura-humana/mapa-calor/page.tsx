@@ -30,10 +30,10 @@ export default async function MapaCalorPage() {
   }
 
   const legend: Array<{ tone: 'green' | 'amber' | 'orange' | 'red'; label: string; color: string }> = [
-    { tone: 'green', label: '≥ 80%', color: 'var(--green-500)' },
-    { tone: 'amber', label: '60–79%', color: 'var(--amber-500)' },
-    { tone: 'orange', label: '40–59%', color: 'var(--orange-500)' },
-    { tone: 'red', label: '< 40%', color: 'var(--red-500)' },
+    { tone: 'green', label: '≥ 80%', color: 'hsl(var(--success))' },
+    { tone: 'amber', label: '60–79%', color: 'hsl(var(--warning))' },
+    { tone: 'orange', label: '40–59%', color: 'hsl(var(--warning) / 0.7)' },
+    { tone: 'red', label: '< 40%', color: 'hsl(var(--destructive))' },
   ]
 
   return (

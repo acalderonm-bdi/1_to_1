@@ -156,7 +156,7 @@ export default async function AcuerdosPage({
                     </div>
                     <div className="list-row__meta">
                       {a.due_date && (
-                        <span style={{ color: overdue ? 'var(--red-700)' : 'var(--text-muted)' }}>
+                        <span style={{ color: overdue ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))' }}>
                           <Calendar size={11} /> Vence {formatDate(a.due_date)}
                         </span>
                       )}
@@ -164,7 +164,7 @@ export default async function AcuerdosPage({
                       {ref && leader && (
                         <Link
                           href={`/colaborador/1to1/${ref.id}`}
-                          style={{ color: 'var(--accent-500)' }}
+                          style={{ color: 'hsl(var(--primary))' }}
                         >
                           1:1 con {leader.full_name.split(' ')[0]} · {formatShort(ref.scheduled_at)}
                         </Link>

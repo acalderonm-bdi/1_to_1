@@ -53,11 +53,11 @@ export function UserAdminControls({ userId, currentRole, isActive, currentLeader
   }
 
   return (
-    <div className="ui-card" style={{ borderColor: 'var(--accent-200)' }}>
-      <div className="ui-card__head" style={{ borderBottom: '1px solid var(--accent-200)' }}>
+    <div className="ui-card" style={{ borderColor: 'hsl(var(--primary) / 0.3)' }}>
+      <div className="ui-card__head" style={{ borderBottom: '1px solid hsl(var(--primary) / 0.3)' }}>
         <div>
           <h3 className="ui-card__title" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <ShieldCheck size={15} style={{ color: 'var(--accent-500)' }} /> Controles administrativos
+            <ShieldCheck size={15} style={{ color: 'hsl(var(--primary))' }} /> Controles administrativos
           </h3>
           <p className="ui-card__desc">Solo Arquitectura Humana puede modificar estos campos. Cada cambio queda en auditoría.</p>
         </div>
@@ -95,7 +95,7 @@ export function UserAdminControls({ userId, currentRole, isActive, currentLeader
               style={{ width: 16, height: 16 }}
             />
             <span>Usuario activo</span>
-            {!active && <ShieldAlert size={13} style={{ color: 'var(--red-700)' }} />}
+            {!active && <ShieldAlert size={13} style={{ color: 'hsl(var(--destructive))' }} />}
           </label>
           <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 6 }}>
             Desactivar evita que aparezca en listas y selectores; no borra historial.
@@ -105,7 +105,7 @@ export function UserAdminControls({ userId, currentRole, isActive, currentLeader
         {msg && (
           <p style={{
             fontSize: 12.5,
-            color: msg.type === 'ok' ? 'var(--green-700)' : 'var(--red-700)',
+            color: msg.type === 'ok' ? 'hsl(var(--success))' : 'hsl(var(--destructive))',
             margin: 0,
           }}>
             {msg.text}

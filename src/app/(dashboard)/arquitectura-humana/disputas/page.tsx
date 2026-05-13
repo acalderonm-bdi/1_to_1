@@ -61,11 +61,11 @@ export default async function DisputasPage() {
                 key={d.id}
                 className="ui-card"
                 style={{
-                  borderColor: 'var(--orange-200)',
-                  background: 'linear-gradient(180deg, var(--orange-50), var(--bg-card))',
+                  borderColor: 'hsl(var(--warning) / 0.4)',
+                  background: 'linear-gradient(180deg, hsl(var(--warning) / 0.08), hsl(var(--card)))',
                 }}
               >
-                <div className="ui-card__head" style={{ borderBottom: '1px solid var(--orange-200)' }}>
+                <div className="ui-card__head" style={{ borderBottom: '1px solid hsl(var(--warning) / 0.4)' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                       <span className="ui-badge ui-badge--orange">En disputa</span>
@@ -102,9 +102,9 @@ export default async function DisputasPage() {
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: 6,
                           padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500,
-                          background: v.confirmed ? 'var(--green-50)' : 'var(--red-50)',
-                          color: v.confirmed ? 'var(--green-700)' : 'var(--red-700)',
-                          border: `1px solid ${v.confirmed ? 'var(--green-200)' : 'var(--red-200)'}`,
+                          background: v.confirmed ? 'hsl(var(--success) / 0.1)' : 'hsl(var(--destructive) / 0.1)',
+                          color: v.confirmed ? 'hsl(var(--success))' : 'hsl(var(--destructive))',
+                          border: `1px solid ${v.confirmed ? 'hsl(var(--success) / 0.3)' : 'hsl(var(--destructive) / 0.3)'}`,
                         }}
                       >
                         {v.confirmed ? <Check size={13}/> : <X size={13}/>}

@@ -109,7 +109,7 @@ export function AppShell({ role, currentPath, userId, userName, userEmail, child
 
   return (
     <AppShellContext.Provider value={value}>
-      <div className="app">
+      <div className="min-h-screen bg-background text-foreground">
         <div
           className="app-drawer-backdrop"
           data-open={drawerOpen}
@@ -122,9 +122,11 @@ export function AppShell({ role, currentPath, userId, userName, userEmail, child
           userName={userName}
           userEmail={userEmail}
         />
-        <div className="app-main">
+        <div className="flex min-w-0 flex-col xl:ml-[var(--sidebar-width)] transition-[margin] duration-300">
           <Header userId={userId} userName={userName} userRole={role} />
-          {children}
+          <main className="min-w-0">
+            {children}
+          </main>
         </div>
       </div>
       <CommandPalette

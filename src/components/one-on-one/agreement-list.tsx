@@ -142,7 +142,7 @@ export function AgreementList({
                   boxShadow: 'var(--shadow-xs)',
                 }}
               >
-                <Sparkles size={14} style={{ color: 'var(--accent-500)', flexShrink: 0, marginTop: 3 }} />
+                <Sparkles size={14} style={{ color: 'hsl(var(--primary))', flexShrink: 0, marginTop: 3 }} />
                 <p style={{ flex: 1, fontSize: 13.5, lineHeight: 1.55, margin: 0 }}>{s.description}</p>
                 <button
                   type="button"
@@ -168,7 +168,7 @@ export function AgreementList({
             background: 'var(--bg-subtle)',
           }}
         >
-          <Sparkles size={22} style={{ color: 'var(--accent-500)', opacity: 0.7, marginBottom: 8 }} />
+          <Sparkles size={22} style={{ color: 'hsl(var(--primary))', opacity: 0.7, marginBottom: 8 }} />
           <div style={{ fontSize: 14, marginBottom: 6, fontWeight: 600, color: 'var(--text-c)', letterSpacing: '-0.008em' }}>
             Aún no hay acuerdos
           </div>
@@ -180,7 +180,7 @@ export function AgreementList({
       )}
 
       {errorMsg && (
-        <div className="ui-field-error" role="alert" style={{ padding: '8px 12px', background: 'var(--red-50)', border: '1px solid var(--red-200)', borderRadius: 'var(--r-sm)' }}>
+        <div className="ui-field-error" role="alert" style={{ padding: '8px 12px', background: 'hsl(var(--destructive) / 0.1)', border: '1px solid hsl(var(--destructive) / 0.3)', borderRadius: 'var(--r-sm)' }}>
           {errorMsg}
         </div>
       )}
@@ -218,9 +218,9 @@ export function AgreementList({
                 }}
                 onMouseEnter={e => {
                   if (!isOptimistic) {
-                    e.currentTarget.style.background = 'var(--red-50)'
-                    e.currentTarget.style.color = 'var(--red-700)'
-                    e.currentTarget.style.borderColor = 'var(--red-200)'
+                    e.currentTarget.style.background = 'hsl(var(--destructive) / 0.1)'
+                    e.currentTarget.style.color = 'hsl(var(--destructive))'
+                    e.currentTarget.style.borderColor = 'hsl(var(--destructive) / 0.3)'
                   }
                 }}
                 onMouseLeave={e => {

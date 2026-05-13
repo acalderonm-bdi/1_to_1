@@ -51,7 +51,7 @@ export default async function CadenciasPage() {
                   letterSpacing: '-0.028em',
                   lineHeight: 1,
                   color: 'var(--text-c)',
-                  background: 'linear-gradient(135deg, var(--accent-700), var(--slate-900))',
+                  background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--foreground)))',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   backgroundClip: 'text',

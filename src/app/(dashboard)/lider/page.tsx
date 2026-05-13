@@ -156,11 +156,11 @@ export default async function LiderPage() {
       </div>
 
       {pendingVobo.length > 0 && (
-        <div className="ui-card" style={{ marginBottom: 18, borderColor: 'var(--amber-200)' }}>
-          <div className="ui-card__head" style={{ borderBottom: '1px solid var(--amber-200)' }}>
+        <div className="ui-card" style={{ marginBottom: 18, borderColor: 'hsl(var(--warning) / 0.4)' }}>
+          <div className="ui-card__head" style={{ borderBottom: '1px solid hsl(var(--warning) / 0.4)' }}>
             <div>
               <h3 className="ui-card__title">
-                <AlertCircle size={15} style={{ color: 'var(--amber-600)' }} /> Esperan tu confirmación
+                <AlertCircle size={15} style={{ color: 'hsl(var(--warning))' }} /> Esperan tu confirmación
               </h3>
               <p className="ui-card__desc">
                 {pendingVobo.length} 1:1 {pendingVobo.length === 1 ? 'pasada' : 'pasadas'} sin marcar si se realizó.

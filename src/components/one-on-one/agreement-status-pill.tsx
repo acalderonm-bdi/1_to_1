@@ -119,7 +119,7 @@ export function AgreementStatusPill({ agreementId, status, overdue = false }: Pr
               >
                 {AGREEMENT_LABELS[opt]}
               </span>
-              {opt === optimistic && <Check size={13} style={{ marginLeft: 'auto', color: 'var(--accent-500)' }} />}
+              {opt === optimistic && <Check size={13} style={{ marginLeft: 'auto', color: 'hsl(var(--primary))' }} />}
             </button>
           ))}
         </div>

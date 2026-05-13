@@ -29,7 +29,7 @@ export function DisputeResolver({ oneOnOneId }: Props) {
       gap: 8,
       marginTop: 16,
       paddingTop: 14,
-      borderTop: '1px dashed var(--orange-200)',
+      borderTop: '1px dashed hsl(var(--warning) / 0.4)',
       flexWrap: 'wrap',
     }}>
       <span style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', alignSelf: 'center', marginRight: 4 }}>

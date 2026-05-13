@@ -45,10 +45,10 @@ export function EmptyState({
 }
 
 function EmptyArt({ kind }: { kind: Illustration }) {
-  const accent = 'var(--accent-500)'
-  const lime = 'var(--lime-500)'
-  const muted = 'var(--warm-200)'
-  const stroke = 'var(--border-strong)'
+  const accent = 'hsl(var(--primary))'
+  const lime = 'hsl(var(--success))'
+  const muted = 'hsl(var(--muted))'
+  const stroke = 'hsl(var(--border))'
 
   switch (kind) {
     case 'list':
@@ -57,7 +57,7 @@ function EmptyArt({ kind }: { kind: Illustration }) {
           <defs>
             <linearGradient id="emp-list-card" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#ffffff" />
-              <stop offset="100%" stopColor="var(--bg-subtle)" />
+              <stop offset="100%" stopColor="hsl(var(--muted))" />
             </linearGradient>
             <linearGradient id="emp-list-stripe" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stopColor={accent} stopOpacity="0.6" />
@@ -80,7 +80,7 @@ function EmptyArt({ kind }: { kind: Illustration }) {
           <defs>
             <linearGradient id="emp-cal-bg" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#ffffff" />
-              <stop offset="100%" stopColor="var(--bg-subtle)" />
+              <stop offset="100%" stopColor="hsl(var(--muted))" />
             </linearGradient>
           </defs>
           <ellipse cx="90" cy="124" rx="68" ry="6" fill={muted} opacity="0.6" />
@@ -125,8 +125,8 @@ function EmptyArt({ kind }: { kind: Illustration }) {
       return (
         <svg viewBox="0 0 180 140" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <ellipse cx="90" cy="124" rx="58" ry="5" fill={muted} opacity="0.6" />
-          <circle cx="90" cy="64" r="42" fill="var(--lime-100)" stroke="var(--lime-500)" strokeWidth="2" />
-          <path d="M72 64 L84 76 L108 52" stroke="var(--lime-700)" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          <circle cx="90" cy="64" r="42" fill="hsl(var(--success) / 0.15)" stroke="hsl(var(--success))" strokeWidth="2" />
+          <path d="M72 64 L84 76 L108 52" stroke="hsl(var(--success))" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
           <circle cx="38" cy="38" r="3" fill={lime} />
           <circle cx="146" cy="48" r="2.5" fill={accent} />
           <circle cx="36" cy="86" r="2" fill={accent} />

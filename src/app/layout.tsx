@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Source_Serif_4, JetBrains_Mono } from 'next/font/google'
+import { Montserrat, Source_Serif_4, JetBrains_Mono } from 'next/font/google'
+import { Toaster } from '@/components/ui/toaster'
 import './globals.css'
 
-const inter = Inter({
+const montserrat = Montserrat({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-inter',
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-montserrat',
   display: 'swap',
 })
 
@@ -51,11 +52,14 @@ const themeInitScript = `
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${inter.variable} ${sourceSerif.variable} ${jetbrainsMono.variable}`}>
+    <html lang="es" className={`${montserrat.variable} ${sourceSerif.variable} ${jetbrainsMono.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className={inter.className}>{children}</body>
+      <body className={montserrat.className}>
+        {children}
+        <Toaster />
+      </body>
     </html>
   )
 }

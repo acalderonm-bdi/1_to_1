@@ -15,7 +15,7 @@ export function LoadingSpinner({ className }: { className?: string }) {
           width: 22,
           height: 22,
           borderWidth: 2.5,
-          color: 'var(--text-subtle)',
+          color: 'hsl(var(--muted-foreground))',
         }}
       />
     </div>
