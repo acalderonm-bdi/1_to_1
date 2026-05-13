@@ -1,4 +1,29 @@
 import type { Database } from './database.types'
+import type {
+  AgreementQualityExtension,
+  LeadershipRelationsDismissalExtension,
+  MeetingWarmthResponse,
+  NonRealizationReasonExtended,
+  OneOnOneJustificationExtension,
+  OpenAgreementByCollaborator,
+  UserWarmthOptIn,
+  WarmthMetricsByDepartment,
+  WarmthMetricsByLeader,
+  WarmthTrendByLeaderMonth,
+} from './database.augmentation'
+
+export type {
+  AgreementQualityExtension,
+  LeadershipRelationsDismissalExtension,
+  MeetingWarmthResponse,
+  NonRealizationReasonExtended,
+  OneOnOneJustificationExtension,
+  OpenAgreementByCollaborator,
+  UserWarmthOptIn,
+  WarmthMetricsByDepartment,
+  WarmthMetricsByLeader,
+  WarmthTrendByLeaderMonth,
+}
 
 export type User = Database['public']['Tables']['users']['Row']
 export type Department = Database['public']['Tables']['departments']['Row']

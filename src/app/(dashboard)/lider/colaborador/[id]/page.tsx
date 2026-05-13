@@ -7,6 +7,8 @@ import {
 } from 'lucide-react'
 import { STATUS_LABELS, AGREEMENT_LABELS } from '@/lib/constants'
 import { EmptyState } from '@/components/shared/empty-state'
+import { TransferBanner } from '@/components/shared/transfer-banner'
+import type { OpenAgreementByCollaborator } from '@/types/domain'
 
 const STATUS_TONE: Record<string, string> = {
   agendada: 'blue', realizada: 'green', no_realizada: 'red', en_disputa: 'orange',
@@ -33,15 +35,21 @@ export default async function LeaderCollabProfile({ params }: { params: { id: st
   const departmentName = (Array.isArray(collab.department) ? collab.department[0] : collab.department)?.name ?? null
 
   // Validar que sea mi colaborador (relación activa) o que sea HR.
-  const [{ data: relation }, { data: myProfile }] = await Promise.all([
+  // F4: `transfer_banner_dismissed_at` aún no está en los tipos Database
+  // generados, casteamos el select de leadership_relations.
+  const [relationRes, { data: myProfile }] = await Promise.all([
     supabase.from('leadership_relations')
-      .select('started_at, ended_at')
+      .select('id, leader_id, started_at, ended_at, transfer_banner_dismissed_at')
       .eq('leader_id', user.id)
       .eq('collaborator_id', params.id)
       .is('ended_at', null)
       .maybeSingle(),
     supabase.from('users').select('role').eq('id', user.id).single<{ role: string }>(),
   ])
+  const relation = relationRes.data as unknown as {
+    id: string; leader_id: string; started_at: string; ended_at: string | null
+    transfer_banner_dismissed_at: string | null
+  } | null
   const isMyCollab = !!relation
   const isHr = myProfile?.role === 'hr'
   if (!isMyCollab && !isHr) redirect('/lider')
@@ -73,6 +81,42 @@ export default async function LeaderCollabProfile({ params }: { params: { id: st
       .in('one_on_one_id', myMeetingIds)
       .order('created_at', { ascending: false })
     agreementsRaw = (data ?? []) as typeof agreementsRaw
+  }
+
+  // F4: traer acuerdos abiertos desde la view (incluye is_transferred y
+  // original_leader_id). La view aún no está en los tipos generados; casteamos
+  // el resultado al tipo augmentado.
+  const openAgreementsRes = await supabase
+    .from('open_agreements_by_collaborator' as never)
+    .select('*')
+    .eq('collaborator_id' as never, params.id)
+    .order('due_date' as never, { ascending: true, nullsFirst: false })
+  const openAgreements = (openAgreementsRes.data ?? []) as unknown as OpenAgreementByCollaborator[]
+  const transferredMap = new Map<string, boolean>(
+    openAgreements.map(a => [a.id, a.is_transferred])
+  )
+  const transferredCount = openAgreements.filter(a => a.is_transferred).length
+
+  // Decidir si mostramos el banner: yo soy el líder actual, no lo he descartado
+  // y hay al menos un acuerdo transferido.
+  const shouldShowBanner = Boolean(
+    relation &&
+    relation.leader_id === user.id &&
+    !relation.transfer_banner_dismissed_at &&
+    transferredCount > 0
+  )
+
+  let previousLeaderName: string | null = null
+  if (shouldShowBanner) {
+    const firstTransferred = openAgreements.find(a => a.is_transferred)
+    if (firstTransferred?.original_leader_id) {
+      const { data: prevLeader } = await supabase
+        .from('users')
+        .select('full_name')
+        .eq('id', firstTransferred.original_leader_id)
+        .single<{ full_name: string }>()
+      previousLeaderName = prevLeader?.full_name ?? 'líder anterior'
+    }
   }
 
   const now = new Date()
@@ -178,6 +222,16 @@ export default async function LeaderCollabProfile({ params }: { params: { id: st
         </div>
       </div>
 
+      {/* F4: banner de acuerdos heredados (sólo para el líder actual). */}
+      {shouldShowBanner && relation && (
+        <TransferBanner
+          leadershipRelationId={relation.id}
+          collaboratorName={collab.full_name}
+          previousLeaderName={previousLeaderName ?? 'líder anterior'}
+          openAgreementsCount={transferredCount}
+        />
+      )}
+
       {/* Acuerdos del colaborador */}
       <div className="ui-card" style={{ marginBottom: 18 }}>
         <div className="ui-card__head">
@@ -208,6 +262,21 @@ export default async function LeaderCollabProfile({ params }: { params: { id: st
                         {overdue ? 'Vencido' : AGREEMENT_LABELS[a.status]}
                       </span>
                       {a.ai_generated && <span className="ai-chip">IA</span>}
+                      {transferredMap.get(a.id) && (
+                        <span
+                          className="ui-badge"
+                          style={{
+                            background: 'hsl(var(--warning) / 0.15)',
+                            color: 'hsl(var(--warning-foreground, 0 0% 10%))',
+                            fontSize: '0.7rem',
+                            padding: '0.125rem 0.5rem',
+                            borderRadius: '0.25rem',
+                            fontWeight: 600,
+                          }}
+                        >
+                          Transferido del líder anterior
+                        </span>
+                      )}
                       <span>{a.description}</span>
                     </div>
                     <div className="list-row__meta">

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { checkAgreementQuality } from '@/lib/agreement-quality'
 import type { ActionResult, Agreement } from '@/types/domain'
 
 const createAgreementSchema = z.object({
@@ -24,16 +25,37 @@ export async function createAgreement(
   const parsed = createAgreementSchema.safeParse(input)
   if (!parsed.success) return { success: false, error: 'Datos inválidos' }
 
+  // F1: calcular score de calidad SMART antes de insertar. Contamos los
+  // acuerdos abiertos del responsable para detectar sobrecarga.
+  const { count: openCount } = await supabase
+    .from('agreements')
+    .select('id', { count: 'exact', head: true })
+    .eq('responsible_id', parsed.data.responsibleId)
+    .in('status', ['pendiente', 'parcial'])
+
+  const quality = checkAgreementQuality({
+    description: parsed.data.description,
+    responsibleId: parsed.data.responsibleId,
+    dueDate: parsed.data.dueDate ?? null,
+    collaboratorOpenAgreementsCount: openCount ?? 0,
+  })
+
+  const insertPayload = {
+    one_on_one_id: parsed.data.oneOnOneId,
+    description: parsed.data.description,
+    responsible_id: parsed.data.responsibleId,
+    due_date: parsed.data.dueDate ?? null,
+    ai_generated: parsed.data.aiGenerated,
+    ai_confidence: parsed.data.aiConfidence ?? null,
+    // Las columnas ai_quality_* viven en el esquema (Fase A) pero todavía no
+    // están en los tipos generados — castear a never para sortear el chequeo.
+    ai_quality_score: quality.score,
+    ai_quality_warnings: quality.warnings.map(w => w.code),
+  } as never
+
   const { data, error } = await supabase
     .from('agreements')
-    .insert({
-      one_on_one_id: parsed.data.oneOnOneId,
-      description: parsed.data.description,
-      responsible_id: parsed.data.responsibleId,
-      due_date: parsed.data.dueDate ?? null,
-      ai_generated: parsed.data.aiGenerated,
-      ai_confidence: parsed.data.aiConfidence ?? null,
-    })
+    .insert(insertPayload)
     .select()
     .single()
 

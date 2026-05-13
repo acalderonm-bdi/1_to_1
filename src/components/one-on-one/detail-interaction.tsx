@@ -6,6 +6,7 @@ import { MinuteEditor } from './minute-editor'
 import { AgreementList } from './agreement-list'
 import { VoboButton } from './vobo-button'
 import { FollowupModal } from './followup-modal'
+import { WarmthSurvey } from './warmth-survey'
 import { useRealtimeMeeting } from '@/hooks/use-realtime-meeting'
 import type { ExtractedAgreement } from '@/types/domain'
 
@@ -29,15 +30,22 @@ interface DetailInteractionProps {
   currentUserId: string
   meetingStatus: string
   partnerName: string
+  /** F6: estado inicial del gate de calidez (renderiza WarmthSurvey junto al VoBo). */
+  hasWarmthResponse?: boolean
 }
 
 export function DetailInteraction({
   oneOnOneId, initialMinuteContent, initialAgreements, participants,
   hasVobo, voboValue, partnerVobo, pendingPrevAgreements, currentUserId, meetingStatus, partnerName,
+  hasWarmthResponse = false,
 }: DetailInteractionProps) {
   const [extractedSuggestions, setExtractedSuggestions] = useState<ExtractedAgreement[]>([])
   const [showFollowup, setShowFollowup] = useState(false)
   const [followupDone, setFollowupDone] = useState(hasVobo || pendingPrevAgreements.length === 0)
+  const [warmthSubmitted, setWarmthSubmitted] = useState(hasWarmthResponse)
+
+  const isCollaborator = currentUserId === participants.collaborator.id
+  const needsWarmth = isCollaborator && meetingStatus === 'realizada' && !warmthSubmitted
 
   // Real-time: cuando el otro participante actualiza notas, acuerdos o VoBo,
   // se refresca la página automáticamente sin tener que recargar manualmente.
@@ -111,6 +119,8 @@ export function DetailInteraction({
             oneOnOneId={oneOnOneId}
             initialContent={initialMinuteContent}
             participants={participants}
+            isCollaborator={isCollaborator}
+            meetingStatus={meetingStatus}
           />
         </div>
       </div>
@@ -140,6 +150,16 @@ export function DetailInteraction({
         </div>
       </div>
 
+      {/* F6: encuesta de calidez del colaborador — renderizada junto al VoBo para
+         que el flujo sea evidente (responder → habilitar VoBo). El servidor también
+         gatea la mutación submitVobo, esto es UX adelantada. */}
+      {needsWarmth && (
+        <WarmthSurvey
+          oneOnOneId={oneOnOneId}
+          onSubmitted={() => setWarmthSubmitted(true)}
+        />
+      )}
+
       {/* VoBo — siempre visible post-reunión.
          Si la 1:1 ya cerró (realizada/no_realizada), el componente muestra el estado
          de ambos votos y permite cambiar si alguien quiere reabrir la discusión. */}
@@ -156,7 +176,7 @@ export function DetailInteraction({
             </button>
           </div>
         </div>
-      ) : (
+      ) : needsWarmth ? null : (
         <VoboButton
           oneOnOneId={oneOnOneId}
           userVobo={voboValue}

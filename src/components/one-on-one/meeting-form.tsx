@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Calendar, Clock, Video, MapPin, AlertCircle } from 'lucide-react'
 import { scheduleOneOnOne } from '@/lib/actions/one-on-ones'
+import { FocusGuidance } from './focus-guidance'
 
 interface Person { id: string; full_name: string; email: string }
 interface MeetingFormProps {
@@ -60,6 +61,9 @@ export function MeetingForm({ counterparts, currentRole, currentUserId }: Meetin
           </h3>
           <p className="ui-card__desc">Define cuándo, cuánto tiempo y dónde se realizará</p>
         </div>
+      </div>
+      <div className="ui-card__body" style={{ paddingBottom: 0 }}>
+        <FocusGuidance />
       </div>
       <form onSubmit={handleSubmit} className="ui-card__body" style={{ display: 'grid', gap: 18 }}>
         <div>

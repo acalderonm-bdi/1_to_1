@@ -8,6 +8,7 @@ import {
 import { STATUS_LABELS, AGREEMENT_LABELS, ROLE_LABELS } from '@/lib/constants'
 import { EmptyState } from '@/components/shared/empty-state'
 import { UserAdminControls } from '@/components/arquitectura-humana/user-admin-controls'
+import type { OpenAgreementByCollaborator } from '@/types/domain'
 
 const STATUS_TONE: Record<string, string> = {
   agendada: 'blue', realizada: 'green', no_realizada: 'red', en_disputa: 'orange',
@@ -92,6 +93,19 @@ export default async function HrUserProfile({ params }: { params: { id: string }
     id: string; description: string; status: string; due_date: string | null
     ai_generated: boolean; created_at: string; one_on_one_id: string
   }>
+
+  // F4: enriquecemos los acuerdos abiertos con `is_transferred` desde la view.
+  // La view aún no está en los tipos generados, casteamos.
+  const openAgreementsRes = await supabase
+    .from('open_agreements_by_collaborator' as never)
+    .select('id, is_transferred')
+    .eq('collaborator_id' as never, params.id)
+  const openAgreementsView = (openAgreementsRes.data ?? []) as unknown as Pick<
+    OpenAgreementByCollaborator, 'id' | 'is_transferred'
+  >[]
+  const transferredMap = new Map<string, boolean>(
+    openAgreementsView.map(a => [a.id, a.is_transferred])
+  )
 
   // Auditoría (acciones sobre este usuario)
   const { data: rawAudit } = await supabase
@@ -215,6 +229,21 @@ export default async function HrUserProfile({ params }: { params: { id: string }
                             {overdue ? 'Vencido' : AGREEMENT_LABELS[a.status]}
                           </span>
                           {a.ai_generated && <span className="ai-chip">IA</span>}
+                          {transferredMap.get(a.id) && (
+                            <span
+                              className="ui-badge"
+                              style={{
+                                background: 'hsl(var(--warning) / 0.15)',
+                                color: 'hsl(var(--warning-foreground, 0 0% 10%))',
+                                fontSize: '0.7rem',
+                                padding: '0.125rem 0.5rem',
+                                borderRadius: '0.25rem',
+                                fontWeight: 600,
+                              }}
+                            >
+                              Transferido del líder anterior
+                            </span>
+                          )}
                           <span>{a.description}</span>
                         </div>
                         <div className="list-row__meta">

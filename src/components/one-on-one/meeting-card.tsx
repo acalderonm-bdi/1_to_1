@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { Calendar, Clock, Video, MapPin, ExternalLink, ArrowRight } from 'lucide-react'
 import { STATUS_LABELS } from '@/lib/constants'
+import { NonRealizationModal } from './non-realization-modal'
 
 const STATUS_TONE: Record<string, string> = {
   agendada: 'blue', realizada: 'green', no_realizada: 'red', en_disputa: 'orange',
@@ -25,10 +27,12 @@ interface MeetingCardProps {
 }
 
 export function MeetingCard({ meeting, partnerName, partnerInitials, partnerColor = 'av-blue', href }: MeetingCardProps) {
+  const [showNonRealization, setShowNonRealization] = useState(false)
   const date = new Date(meeting.scheduled_at)
   const dateLabel = date.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })
   const time = date.toTimeString().slice(0, 5)
   const isVirtual = meeting.modality === 'virtual'
+  const canMarkNonRealized = meeting.status === 'agendada' && date < new Date()
 
   return (
     <div className="ui-card ui-card--hover" style={{ padding: 18, display: 'grid', gap: 14 }}>
@@ -66,10 +70,28 @@ export function MeetingCard({ meeting, partnerName, partnerInitials, partnerColo
             <Video size={13} /> <span>Unirse a Meet</span> <ExternalLink size={11} />
           </a>
         ) : <span />}
-        <Link href={href} className="ui-btn ui-btn--outline ui-btn--sm">
-          <span>Ver detalle</span> <ArrowRight size={12} />
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {canMarkNonRealized && (
+            <button
+              type="button"
+              className="ui-btn ui-btn--ghost ui-btn--sm"
+              onClick={() => setShowNonRealization(true)}
+            >
+              Marcar como no realizada
+            </button>
+          )}
+          <Link href={href} className="ui-btn ui-btn--outline ui-btn--sm">
+            <span>Ver detalle</span> <ArrowRight size={12} />
+          </Link>
+        </div>
       </div>
+      {canMarkNonRealized && (
+        <NonRealizationModal
+          oneOnOneId={meeting.id}
+          open={showNonRealization}
+          onOpenChange={setShowNonRealization}
+        />
+      )}
     </div>
   )
 }

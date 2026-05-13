@@ -1,13 +1,19 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
-import { Plus, Calendar, Sparkles, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
+import { Plus, Calendar, Sparkles, Trash2, AlertTriangle } from 'lucide-react'
 import { createAgreement, deleteAgreement } from '@/lib/actions/agreements'
+import { checkAgreementQuality } from '@/lib/agreement-quality'
 import type { ExtractedAgreement } from '@/types/domain'
 
 interface Agreement {
   id: string; description: string; responsible_id: string;
   due_date: string | null; status: string; ai_generated: boolean
+  // F4: marca acuerdos heredados de un líder anterior (vía view
+  // open_agreements_by_collaborator). Opcional para no romper consumers.
+  is_transferred?: boolean
+  // F1: score de calidad IA — opcional, sólo se usa en algunas vistas.
+  ai_quality_score?: number | null
 }
 interface AgreementListProps {
   oneOnOneId: string
@@ -43,6 +49,65 @@ export function AgreementList({
   const [showAdd, setShowAdd] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  // F1: sugerencias y validación IA on-demand
+  const [aiSuggestion, setAiSuggestion] = useState<{
+    quality_score: number
+    warnings: Array<{ code: string; message: string; suggestion?: string | null }>
+    refined_description: string | null
+  } | null>(null)
+  const [validating, setValidating] = useState(false)
+
+  // F1: contar acuerdos abiertos del responsable elegido para detectar
+  // sobrecarga sin tener que ir al server en cada keystroke.
+  const collaboratorOpenCount = useMemo(
+    () =>
+      agreements.filter(
+        a =>
+          a.responsible_id === newResponsible &&
+          (a.status === 'pendiente' || a.status === 'parcial'),
+      ).length,
+    [agreements, newResponsible],
+  )
+
+  // F1: heurísticas SMART en vivo mientras el usuario escribe.
+  const liveQuality = useMemo(
+    () =>
+      checkAgreementQuality({
+        description: newDesc,
+        responsibleId: newResponsible,
+        dueDate: newDueDate || null,
+        collaboratorOpenAgreementsCount: collaboratorOpenCount,
+      }),
+    [newDesc, newResponsible, newDueDate, collaboratorOpenCount],
+  )
+
+  function responsibleNameById(id: string): string {
+    return id === participants.leader.id
+      ? participants.leader.name
+      : participants.collaborator.name
+  }
+
+  async function handleValidateWithAI() {
+    if (!newDesc.trim() || newDesc.trim().length < 5) return
+    setValidating(true)
+    try {
+      const res = await fetch('/api/ai/agreement-quality', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: newDesc,
+          responsibleName: responsibleNameById(newResponsible),
+          dueDate: newDueDate || null,
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setAiSuggestion(data)
+      }
+    } finally {
+      setValidating(false)
+    }
+  }
 
   async function handleAdd(desc: string, responsibleId: string, dueDate: string | null = null, aiGenerated = false, confidence?: number) {
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -77,7 +142,7 @@ export function AgreementList({
     const desc = newDesc.trim()
     const responsibleId = newResponsible
     const dueDate = newDueDate || null
-    setNewDesc(''); setNewDueDate(''); setShowAdd(false)
+    setNewDesc(''); setNewDueDate(''); setShowAdd(false); setAiSuggestion(null)
     startTransition(() => { void handleAdd(desc, responsibleId, dueDate) })
   }
 
@@ -244,6 +309,21 @@ export function AgreementList({
                 </span>
               )}
               {a.ai_generated && <span className="ai-chip">IA</span>}
+              {a.is_transferred && (
+                <span
+                  className="ui-badge"
+                  style={{
+                    background: 'hsl(var(--warning) / 0.15)',
+                    color: 'hsl(var(--warning-foreground, 0 0% 10%))',
+                    fontSize: '0.7rem',
+                    padding: '0.125rem 0.5rem',
+                    borderRadius: '0.25rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  Transferido del líder anterior
+                </span>
+              )}
               {isOptimistic && (
                 <span className="agreement__meta-item u-muted">
                   <span className="spinner" style={{ width: 11, height: 11 }} />
@@ -280,23 +360,96 @@ export function AgreementList({
             </select>
             <input className="ui-input" type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)} />
           </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+
+          {/* F1: warnings inline SMART en vivo */}
+          {newDesc.trim() && liveQuality.warnings.length > 0 && (
+            <div style={{ display: 'grid', gap: 4 }}>
+              {liveQuality.warnings.map(w => (
+                <div
+                  key={w.code}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 6,
+                    fontSize: 12,
+                    color: 'hsl(var(--warning))',
+                    padding: '2px 0',
+                  }}
+                >
+                  <AlertTriangle
+                    size={12}
+                    style={{ marginTop: 2, flexShrink: 0, color: 'hsl(var(--warning))' }}
+                  />
+                  <span>{w.message}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* F1: sugerencia IA on-demand */}
+          {aiSuggestion?.refined_description && (
+            <div
+              style={{
+                padding: 12,
+                border: '1px solid hsl(var(--primary) / 0.3)',
+                background: 'hsl(var(--primary) / 0.05)',
+                borderRadius: 'var(--r-md)',
+              }}
+            >
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>
+                Sugerencia de IA (score {aiSuggestion.quality_score.toFixed(1)}/5):
+              </p>
+              <p style={{ fontSize: 13, margin: 0 }}>{aiSuggestion.refined_description}</p>
+              <button
+                type="button"
+                className="ui-btn ui-btn--ghost ui-btn--sm"
+                style={{ marginTop: 8, fontSize: 12 }}
+                onClick={() => {
+                  if (aiSuggestion.refined_description) {
+                    setNewDesc(aiSuggestion.refined_description)
+                  }
+                  setAiSuggestion(null)
+                }}
+              >
+                <Sparkles size={12} />
+                <span>Aplicar sugerencia</span>
+              </button>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
             <button
               type="button"
               className="ui-btn ui-btn--ghost ui-btn--sm"
-              onClick={() => { setShowAdd(false); setNewDesc(''); setNewDueDate('') }}
+              onClick={() => void handleValidateWithAI()}
+              disabled={validating || !newDesc.trim() || newDesc.trim().length < 5}
             >
-              <span>Cancelar</span>
+              {validating ? <span className="spinner" /> : <Sparkles size={13} />}
+              <span>{validating ? 'Validando…' : 'Validar con IA'}</span>
             </button>
-            <button
-              type="button"
-              className="ui-btn ui-btn--accent ui-btn--sm"
-              onClick={handleAddManual}
-              disabled={isPending || !newDesc.trim()}
-            >
-              {isPending ? <span className="spinner" /> : <Plus size={13} />}
-              <span>Guardar</span>
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                className="ui-btn ui-btn--ghost ui-btn--sm"
+                onClick={() => {
+                  setShowAdd(false)
+                  setNewDesc('')
+                  setNewDueDate('')
+                  setAiSuggestion(null)
+                }}
+              >
+                <span>Cancelar</span>
+              </button>
+              <button
+                type="button"
+                className="ui-btn ui-btn--accent ui-btn--sm"
+                onClick={handleAddManual}
+                disabled={isPending || !newDesc.trim()}
+              >
+                {isPending ? <span className="spinner" /> : <Plus size={13} />}
+                <span>Guardar</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

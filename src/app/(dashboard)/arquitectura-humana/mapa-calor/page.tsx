@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Grid } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { EmptyState } from '@/components/shared/empty-state'
+import { WarmthHeatmap } from '@/components/arquitectura-humana/warmth-heatmap'
 
 export default async function MapaCalorPage() {
   const supabase = createClient()
@@ -20,6 +21,51 @@ export default async function MapaCalorPage() {
     disputed_meetings: number | null; total_agreements: number | null;
     fulfilled_agreements: number | null; compliance_rate: number | null
   }>
+
+  // F6: calidez por líder. Las views no exponen FK alias, así que hacemos lookup separado.
+  const rawByLeaderQuery = (await supabase
+    .from('warmth_metrics_by_leader' as never)
+    .select('leader_id, response_count, avg_overall')
+    .order('avg_overall' as never, { ascending: true })) as unknown as {
+      data: Array<{ leader_id: string; response_count: number; avg_overall: number }> | null
+    }
+  const rawByLeader = rawByLeaderQuery.data ?? []
+
+  const leaderIds = rawByLeader.map((r) => r.leader_id)
+  const nameMap = new Map<string, string>()
+  if (leaderIds.length > 0) {
+    const { data: leaders } = await supabase
+      .from('users')
+      .select('id, full_name')
+      .in('id', leaderIds)
+    for (const u of (leaders ?? []) as Array<{ id: string; full_name: string }>) {
+      nameMap.set(u.id, u.full_name)
+    }
+  }
+
+  const byLeader = rawByLeader.map((r) => ({
+    label: nameMap.get(r.leader_id) ?? 'Sin nombre',
+    avg: Number(r.avg_overall),
+    count: r.response_count,
+  }))
+
+  // F6: calidez por departamento.
+  const byDeptQuery = (await supabase
+    .from('warmth_metrics_by_department' as never)
+    .select('*')
+    .order('avg_overall' as never, { ascending: true })) as unknown as {
+      data: Array<{
+        department_id: string | null
+        department_name: string | null
+        response_count: number
+        avg_overall: number
+      }> | null
+    }
+  const byDept = (byDeptQuery.data ?? []).map((r) => ({
+    label: r.department_name ?? 'Sin departamento',
+    avg: Number(r.avg_overall),
+    count: r.response_count,
+  }))
 
   function tone(rate: number | null): 'green' | 'amber' | 'orange' | 'red' {
     const r = rate ?? 0
@@ -128,6 +174,26 @@ export default async function MapaCalorPage() {
         })}
       </div>
       )}
+
+      <div
+        style={{
+          display: 'grid',
+          gap: '1rem',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          marginTop: '1.5rem',
+        }}
+      >
+        <WarmthHeatmap
+          title="Calidez por líder"
+          description="Promedio de las 5 dimensiones, ordenado de menor a mayor"
+          rows={byLeader}
+        />
+        <WarmthHeatmap
+          title="Calidez por departamento"
+          description="Promedio de calidez por área organizacional"
+          rows={byDept}
+        />
+      </div>
     </div>
   )
 }

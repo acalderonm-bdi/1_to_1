@@ -5,6 +5,7 @@ import { Calendar, Clock, Video, MapPin, ChevronLeft, MoreHorizontal, ArrowRight
 import { STATUS_LABELS } from '@/lib/constants'
 import { AgendaList } from '@/components/one-on-one/agenda-list'
 import { DetailInteraction } from '@/components/one-on-one/detail-interaction'
+import { labelForReason } from '@/components/one-on-one/non-realization-modal'
 import { EmptyState } from '@/components/shared/empty-state'
 
 const STATUS_TONE: Record<string, string> = {
@@ -12,11 +13,20 @@ const STATUS_TONE: Record<string, string> = {
 }
 
 interface Participant { id: string; full_name: string; email: string }
+interface Marker { id: string; full_name: string }
+// Las columnas non_realization_note/marked_by/marked_at fueron añadidas en la
+// migración 7b pero todavía no están en el tipo `Database` generado. Las
+// reflejamos manualmente acá (ver `src/types/database.augmentation.ts`).
 interface MeetingRow {
   id: string; scheduled_at: string; duration_minutes: number
   modality: string; location: string | null; meet_link: string | null; status: string
+  non_realization_reason: string | null
+  non_realization_note: string | null
+  non_realization_marked_by: string | null
+  non_realization_marked_at: string | null
   leader: Participant | Participant[] | null
   collaborator: Participant | Participant[] | null
+  non_realization_marker: Marker | Marker[] | null
 }
 
 export default async function LiderOneOnOneDetailPage({ params }: { params: { id: string } }) {
@@ -28,14 +38,19 @@ export default async function LiderOneOnOneDetailPage({ params }: { params: { id
     .from('one_on_ones')
     .select(`
       id, scheduled_at, duration_minutes, modality, location, meet_link, status,
+      non_realization_reason, non_realization_note, non_realization_marked_by, non_realization_marked_at,
       leader:users!one_on_ones_leader_id_fkey(id, full_name, email),
-      collaborator:users!one_on_ones_collaborator_id_fkey(id, full_name, email)
+      collaborator:users!one_on_ones_collaborator_id_fkey(id, full_name, email),
+      non_realization_marker:users!one_on_ones_non_realization_marked_by_fkey(id, full_name)
     `)
     .eq('id', params.id).single()
   if (!raw) notFound()
-  const meeting = raw as MeetingRow
+  const meeting = raw as unknown as MeetingRow
   const leader = (Array.isArray(meeting.leader) ? meeting.leader[0] : meeting.leader) as Participant | null
   const collaborator = (Array.isArray(meeting.collaborator) ? meeting.collaborator[0] : meeting.collaborator) as Participant | null
+  const nonRealizationMarker = (Array.isArray(meeting.non_realization_marker)
+    ? meeting.non_realization_marker[0]
+    : meeting.non_realization_marker) as Marker | null
   if (leader?.id !== user.id) redirect('/lider')
 
   const [
@@ -164,6 +179,32 @@ export default async function LiderOneOnOneDetailPage({ params }: { params: { id
       </div>
 
       <div style={{ display: 'grid', gap: 18 }}>
+        {meeting.status === 'no_realizada' && meeting.non_realization_reason && (
+          <div
+            className="ui-card"
+            style={{
+              padding: 16,
+              borderLeft: '3px solid var(--accent-red, #b91c1c)',
+              background: 'var(--bg-subtle)',
+            }}
+          >
+            <div style={{ fontWeight: 600, fontSize: 14.5, letterSpacing: '-0.005em', marginBottom: 6 }}>
+              Sesión no realizada — {labelForReason(meeting.non_realization_reason)}
+            </div>
+            {meeting.non_realization_note && (
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'pre-wrap' }}>
+                {meeting.non_realization_note}
+              </div>
+            )}
+            {meeting.non_realization_marked_at && (
+              <div style={{ fontSize: 11.5, color: 'var(--text-subtle)', marginTop: 8 }}>
+                Registrado por {nonRealizationMarker?.full_name ?? 'usuario'} el{' '}
+                {new Date(meeting.non_realization_marked_at).toLocaleDateString('es-MX')}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="ui-card">
           <div className="ui-card__head">
             <div>

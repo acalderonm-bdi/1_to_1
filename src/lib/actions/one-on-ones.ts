@@ -148,3 +148,127 @@ export async function cancelOneOnOne(
 
   return { success: true }
 }
+
+// ---------------------------------------------------------------------------
+// F2 — Justificación de sesiones (markNonRealization)
+// ---------------------------------------------------------------------------
+// Las nuevas columnas `non_realization_note`, `non_realization_marked_by` y
+// `non_realization_marked_at` ya existen en el schema local (migración 7b),
+// pero el tipo `Database` generado por `pnpm db:types` apunta al schema remoto
+// que aún no las refleja. Por eso los payloads que las usan se castean con
+// `as never` (ver `src/types/database.augmentation.ts`).
+const markNonRealizationSchema = z.object({
+  oneOnOneId: z.string().uuid(),
+  reason: z.enum([
+    'reagendada',
+    'cancelada_cargas',
+    'ausencia',
+    'emergencia',
+    'vacaciones',
+    'sin_justificacion',
+  ]),
+  note: z.string().max(500).optional(),
+})
+
+export async function markNonRealization(
+  input: z.infer<typeof markNonRealizationSchema>
+): Promise<ActionResult<{ status: 'no_realizada' | 'en_disputa' }>> {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const parsed = markNonRealizationSchema.safeParse(input)
+  if (!parsed.success) return { success: false, error: 'Datos inválidos' }
+
+  const { data: meeting, error: fetchErr } = await supabase
+    .from('one_on_ones')
+    .select('id, leader_id, collaborator_id, status, non_realization_reason')
+    .eq('id', parsed.data.oneOnOneId)
+    .single()
+
+  if (fetchErr || !meeting) return { success: false, error: 'Reunión no encontrada' }
+
+  const isParticipant = user.id === meeting.leader_id || user.id === meeting.collaborator_id
+  if (!isParticipant) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single<{ role: string }>()
+    if (profile?.role !== 'hr') return { success: false, error: 'Sin permisos' }
+  }
+
+  const previousReason = (meeting as { non_realization_reason: string | null }).non_realization_reason
+  const newReason = parsed.data.reason
+  const goToDispute = Boolean(previousReason && previousReason !== newReason)
+
+  // Cast: type augmentation aún no propagada al tipo Database generado.
+  const updatePayload = {
+    status: goToDispute ? 'en_disputa' : 'no_realizada',
+    non_realization_reason: newReason,
+    non_realization_note: parsed.data.note ?? null,
+    non_realization_marked_by: user.id,
+    non_realization_marked_at: new Date().toISOString(),
+  } as never
+
+  const { error: updateErr } = await supabase
+    .from('one_on_ones')
+    .update(updatePayload)
+    .eq('id', parsed.data.oneOnOneId)
+
+  if (updateErr) return { success: false, error: updateErr.message }
+
+  // Audit log (best-effort): el schema de audit_logs usa user_id/action/resource_type/resource_id/metadata.
+  await supabase.from('audit_logs').insert({
+    user_id: user.id,
+    action: goToDispute ? 'meeting_marked_disputed' : 'meeting_marked_not_realized',
+    resource_type: 'one_on_one',
+    resource_id: parsed.data.oneOnOneId,
+    metadata: { reason: newReason, has_note: Boolean(parsed.data.note) },
+  })
+
+  revalidatePath(`/colaborador/1to1/${parsed.data.oneOnOneId}`)
+  revalidatePath(`/lider/1to1/${parsed.data.oneOnOneId}`)
+
+  return { success: true, data: { status: goToDispute ? 'en_disputa' : 'no_realizada' } }
+}
+
+// ---------------------------------------------------------------------------
+// F4 — Histórico al cambio de líder (dismissTransferBanner)
+// ---------------------------------------------------------------------------
+// La columna `transfer_banner_dismissed_at` (migración 8) existe en el schema
+// local pero el tipo `Database` generado por `pnpm db:types` apunta al schema
+// remoto que aún no la refleja. Por eso el payload se castea con `as never`
+// (ver `src/types/database.augmentation.ts`).
+const dismissTransferBannerSchema = z.object({
+  leadershipRelationId: z.string().uuid(),
+})
+
+export async function dismissTransferBanner(
+  input: z.infer<typeof dismissTransferBannerSchema>
+): Promise<ActionResult<undefined>> {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user
+  if (!user) return { success: false, error: 'No autenticado' }
+
+  const parsed = dismissTransferBannerSchema.safeParse(input)
+  if (!parsed.success) return { success: false, error: 'Datos inválidos' }
+
+  // Cast: `transfer_banner_dismissed_at` aún no está en los tipos Database
+  // generados. La operación es idempotente — un dismiss repetido sólo
+  // reescribe el timestamp.
+  const updatePayload = { transfer_banner_dismissed_at: new Date().toISOString() } as never
+
+  const { error } = await supabase
+    .from('leadership_relations')
+    .update(updatePayload)
+    .eq('id', parsed.data.leadershipRelationId)
+    .eq('leader_id', user.id)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/lider')
+  return { success: true }
+}

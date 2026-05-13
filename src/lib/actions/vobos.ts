@@ -30,6 +30,22 @@ export async function submitVobo(
 
   if (!meeting) return { success: false, error: 'No tienes permiso para esta 1:1' }
 
+  // Gate F6: el VoBo del colaborador requiere haber respondido la encuesta de calidez.
+  if (parsed.data.confirmed && (meeting as { collaborator_id: string }).collaborator_id === user.id) {
+    const warmthQuery = (await supabase
+      .from('meeting_warmth_responses' as never)
+      .select('id', { count: 'exact', head: true })
+      .eq('one_on_one_id' as never, parsed.data.oneOnOneId)
+      .eq('collaborator_id' as never, user.id)) as unknown as { count: number | null }
+
+    if (!warmthQuery.count || warmthQuery.count === 0) {
+      return {
+        success: false,
+        error: 'Completá la encuesta de calidez antes de dar tu VoBo.',
+      }
+    }
+  }
+
   const { error } = await supabase
     .from('vobos')
     .upsert(

@@ -14,9 +14,16 @@ interface MinuteEditorProps {
     collaborator: { id: string; name: string; email: string }
   }
   onAgreementsExtracted?: (agreements: ExtractedAgreement[]) => void
+  /** F6: solo se usan para etiquetar contexto; la WarmthSurvey ahora vive
+   * en detail-interaction junto al VoboButton. */
+  isCollaborator?: boolean
+  meetingStatus?: string
 }
 
-export function MinuteEditor({ oneOnOneId, initialContent }: MinuteEditorProps) {
+export function MinuteEditor({
+  oneOnOneId,
+  initialContent,
+}: MinuteEditorProps) {
   const router = useRouter()
   const [content, setContent] = useState(initialContent)
   const [isPending, startTransition] = useTransition()

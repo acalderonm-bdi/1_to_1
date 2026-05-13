@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { extractAgreements } from '@/lib/ai/extract-agreements'
+import { checkAgreementQuality } from '@/lib/agreement-quality'
 import type { ActionResult } from '@/types/domain'
 
 const saveMinuteSchema = z.object({
@@ -101,7 +102,37 @@ export async function saveMinute(
               }
             })
 
-          const { error: insErr } = await supabase.from('agreements').insert(rows)
+          // F1: enriquecer cada acuerdo extraído por IA con score SMART.
+          // Pre-computamos el conteo de acuerdos abiertos por responsable único
+          // para evitar N queries cuando hay múltiples acuerdos del mismo dueño.
+          const uniqueResponsibles = Array.from(new Set(rows.map(r => r.responsible_id)))
+          const openCounts = new Map<string, number>()
+          for (const respId of uniqueResponsibles) {
+            const { count } = await supabase
+              .from('agreements')
+              .select('id', { count: 'exact', head: true })
+              .eq('responsible_id', respId)
+              .in('status', ['pendiente', 'parcial'])
+            openCounts.set(respId, count ?? 0)
+          }
+
+          const enrichedRows = rows.map(row => {
+            const quality = checkAgreementQuality({
+              description: row.description,
+              responsibleId: row.responsible_id,
+              dueDate: row.due_date,
+              collaboratorOpenAgreementsCount: openCounts.get(row.responsible_id) ?? 0,
+            })
+            return {
+              ...row,
+              // Columnas ai_quality_* existen en esquema (Fase A) pero aún no
+              // están en los tipos generados — castear vía never al final.
+              ai_quality_score: quality.score,
+              ai_quality_warnings: quality.warnings.map(w => w.code),
+            }
+          }) as never
+
+          const { error: insErr } = await supabase.from('agreements').insert(enrichedRows)
           if (!insErr) extractedCount = rows.length
           else aiError = insErr.message
         }
