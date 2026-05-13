@@ -45,7 +45,16 @@ create index idx_oneonones_non_realization
   where non_realization_marked_by is not null;
 ```
 
-El enum `non_realization_reason` (`reagendada / cancelada_cargas / ausencia / sin_justificacion`) se mantiene tal cual. Si AH requiere ajustar el catálogo (decisión de producto, no técnica), se hace en una migration separada vía `alter type … add value`.
+El enum `non_realization_reason` se extiende con 2 valores para cubrir casos reales no contemplados:
+
+```sql
+alter type public.non_realization_reason add value if not exists 'emergencia';
+alter type public.non_realization_reason add value if not exists 'vacaciones';
+```
+
+Catálogo final (6 valores): `reagendada`, `cancelada_cargas`, `ausencia`, `emergencia`, `vacaciones`, `sin_justificacion`. El último queda como catch-all para casos que AH revisará manualmente.
+
+**Importante:** `alter type … add value` no puede correr dentro de la misma transacción que el `alter table` siguiente. La migration ejecuta los `add value` primero, hace commit, luego corre el `alter table`. Implementar como dos archivos: `00000000000007a_extend_non_realization_enum.sql` y `00000000000007b_session_justification_columns.sql`, o usar `BEGIN`/`COMMIT` explícitos.
 
 #### Server action
 
@@ -128,15 +137,22 @@ RLS se hereda de las tablas base (vista no-security-invoker en Postgres por defe
 #### Banner "primer login con colaborador transferido"
 
 Mecanismo:
-- Cada `leadership_relations` con `started_at >= now() - interval '14 days'` cuenta como "reciente".
-- Al cargar `lider/colaborador/[id]` por primera vez después del cambio, si:
-  - existe relación `(leader_id = current_user, collaborator_id = params.id, started_at recent)`,
+- Al cargar `lider/colaborador/[id]`, si:
+  - existe relación `(leader_id = current_user, collaborator_id = params.id, ended_at is null)`,
   - hay ≥1 acuerdo abierto transferido del líder anterior,
-  - el usuario no ha dismisseado el banner para esa relación,
+  - `leadership_relations.transfer_banner_dismissed_at is null`,
+  - el líder no ha dado VoBo en ninguna sesión con este colaborador aún (señal de "primer contacto"),
 - entonces mostrar banner: "Heredaste N acuerdos abiertos de [Nombre líder anterior] sobre [Nombre colaborador]."
 
+**Sin timeout temporal:** el banner persiste hasta cumplirse una de dos condiciones (lo primero que ocurra):
+1. El líder lo dismissea explícitamente (botón X).
+2. El líder da su primer VoBo en una sesión con ese colaborador (señal implícita de "ya tomé conocimiento").
+
+Cualquiera de las dos condiciones llena `transfer_banner_dismissed_at` vía server action.
+
 Dismissal:
-- Nueva tabla `transfer_banner_dismissals (user_id, leadership_relation_id, dismissed_at)` o columna `viewed_at` sobre `leadership_relations` indicada cuando un líder dismissó. Más simple: columna `transfer_banner_dismissed_at timestamptz` en `leadership_relations`, actualizada vía server action.
+- Columna `transfer_banner_dismissed_at timestamptz` en `leadership_relations`. Updated vía server action `dismissTransferBanner(relationId)` o automáticamente por el trigger de VoBo (ver abajo).
+- Trigger SQL: cuando se inserta un `vobo` con `(meeting.leader_id = current_relation.leader_id AND meeting.collaborator_id = current_relation.collaborator_id)`, set `transfer_banner_dismissed_at = now()` en la relación activa si aún era null.
 
 Migration `00000000000009_transfer_banner_dismissal.sql`:
 
@@ -178,6 +194,7 @@ export interface QualityCheck {
   warnings: Array<{
     code: 'too_short' | 'no_due_date' | 'past_due_date' | 'no_responsible'
         | 'overloaded_collaborator' | 'ambiguous_wording'
+        | 'no_measurable_outcome' | 'unrealistic_deadline'
     message: string
     suggestion?: string
   }>
@@ -192,6 +209,10 @@ Reglas cliente (sin AI):
 2. `responsibleId` set → `no_responsible` si null (UI debería forzarlo).
 3. `dueDate` set y >= today → `no_due_date` / `past_due_date`.
 4. `collaboratorOpenAgreementsCount < 7` → `overloaded_collaborator` si ya tiene 7+.
+5. Regex sobre descripción: si NO contiene patrón de entregable verificable (verbo + sustantivo concreto: "entregar reporte", "presentar plan", "completar curso") → `no_measurable_outcome`. Patrón laxo, mejor false-positive que false-negative.
+6. `dueDate` < `today + 1 day` → `unrealistic_deadline` (warning, no error). IA puede afinar con contexto.
+
+Las reglas 5 y 6 son verificables sin IA (regex + date math). IA agrega `ambiguous_wording` y refina `unrealistic_deadline` con contexto del colaborador.
 
 #### AI route — calidad y refinamiento
 
@@ -286,6 +307,7 @@ create table public.meeting_warmth_responses (
   comfortable_sharing smallint not null check (comfortable_sharing between 1 and 5),
   leader_engaged smallint not null check (leader_engaged between 1 and 5),
   conversation_quality smallint not null check (conversation_quality between 1 and 5),
+  clarity_after_session smallint not null check (clarity_after_session between 1 and 5),
   free_comment text check (free_comment is null or length(free_comment) <= 1000),
   created_at timestamptz not null default now()
 );
@@ -316,6 +338,17 @@ create policy "warmth_hr_select_all"
 -- Líder NO ve respuestas individuales — solo agregados a través de la view.
 ```
 
+#### Preguntas (5 Likert + 1 texto opcional)
+
+1. "Me sentí escuchada/o en esta sesión" → `felt_heard`
+2. "Me sentí cómodo/a compartiendo lo que pensaba" → `comfortable_sharing`
+3. "Sentí que mi líder estuvo presente y enfocado/a" → `leader_engaged`
+4. "La conversación fue significativa para mí" → `conversation_quality`
+5. "Salí con claridad de los próximos pasos" → `clarity_after_session`
+6. Comentario libre (opcional) → `free_comment`
+
+El brief original pedía "3 a 5 preguntas" — se usan las 5 para cobertura completa de las dimensiones humanas (escucha, seguridad, presencia, significado) más la dimensión accionable (claridad). AH puede ajustar los textos sin tocar schema.
+
 #### Vistas agregadas
 
 ```sql
@@ -327,7 +360,8 @@ select
   avg(w.comfortable_sharing) as avg_comfortable_sharing,
   avg(w.leader_engaged) as avg_leader_engaged,
   avg(w.conversation_quality) as avg_conversation_quality,
-  avg((w.felt_heard + w.comfortable_sharing + w.leader_engaged + w.conversation_quality)::numeric / 4) as avg_overall
+  avg(w.clarity_after_session) as avg_clarity_after_session,
+  avg((w.felt_heard + w.comfortable_sharing + w.leader_engaged + w.conversation_quality + w.clarity_after_session)::numeric / 5) as avg_overall
 from public.meeting_warmth_responses w
 join public.one_on_ones o on o.id = w.one_on_one_id
 group by o.leader_id;
@@ -337,7 +371,7 @@ select
   u.department_id,
   d.name as department_name,
   count(*) as response_count,
-  avg((w.felt_heard + w.comfortable_sharing + w.leader_engaged + w.conversation_quality)::numeric / 4) as avg_overall
+  avg((w.felt_heard + w.comfortable_sharing + w.leader_engaged + w.conversation_quality + w.clarity_after_session)::numeric / 5) as avg_overall
 from public.meeting_warmth_responses w
 join public.one_on_ones o on o.id = w.one_on_one_id
 join public.users u on u.id = o.collaborator_id
@@ -369,8 +403,8 @@ Lógica:
 
 #### UI
 
-- `src/components/one-on-one/warmth-survey.tsx` (nuevo): card con 4 sliders Likert 1-5 + textarea opcional + botón "Guardar".
-- En `minute-editor.tsx`: bloque se muestra al colaborador cuando `status === 'realizada'` y aún no envió VoBo. Si la encuesta no está completa, el botón "Dar VoBo" queda disabled con tooltip "Completá las 4 preguntas de calidez".
+- `src/components/one-on-one/warmth-survey.tsx` (nuevo): card con 5 sliders Likert 1-5 + textarea opcional + botón "Guardar".
+- En `minute-editor.tsx`: bloque se muestra al colaborador cuando `status === 'realizada'` y aún no envió VoBo. Si la encuesta no está completa, el botón "Dar VoBo" queda disabled con tooltip "Completá las 5 preguntas de calidez".
 - AH ve nuevos widgets en `arquitectura-humana/mapa-calor`:
   - Heatmap de calidez por líder (`warmth_metrics_by_leader`)
   - Heatmap por departamento (`warmth_metrics_by_department`)
@@ -379,8 +413,10 @@ Lógica:
 #### Privacidad
 
 - Líder **nunca** ve respuestas individuales del colaborador (ni en su dashboard ni en la sesión específica).
-- Líder ve solo sus propios agregados en `lider/configuracion` (su promedio histórico).
-- AH ve agregados y, si el colaborador permite, comentarios libres.
+- Líder ve solo sus propios agregados en `lider/configuracion`: promedio histórico de las 5 dimensiones + trend (line chart de avg_overall por mes, últimos 6 meses) consumido de `warmth_metrics_by_leader`. Esto le da feedback accionable sin romper la psychological safety del colaborador.
+- AH ve agregados completos (por líder y por departamento) en `mapa-calor`.
+- AH ve **comentarios libres solo si el colaborador opt-in** (`users.allow_share_warmth_comments = true`). Default opt-out.
+- Política RLS específica para `free_comment`: la vista para AH se filtra para incluir comments solo cuando el colaborador opt-in. Se implementa con una vista adicional `warmth_comments_visible_to_hr`.
 
 ---
 
