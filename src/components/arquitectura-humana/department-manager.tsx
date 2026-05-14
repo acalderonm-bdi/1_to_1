@@ -252,16 +252,25 @@ export function DepartmentManager({ initialDepartments }: DepartmentManagerProps
                       <button
                         type="button"
                         className="ui-btn ui-btn--ghost ui-btn--sm"
-                        onClick={() => setPendingDeleteId(item.id)}
-                        disabled={isPending || item.userCount > 0}
+                        onClick={() => {
+                          if (item.userCount > 0) {
+                            toast({
+                              title: 'No se puede eliminar',
+                              description: `"${item.name}" tiene ${item.userCount} usuario${item.userCount === 1 ? '' : 's'} asignado${item.userCount === 1 ? '' : 's'}. Reasignalos antes de eliminar.`,
+                              variant: 'destructive',
+                            })
+                            return
+                          }
+                          setPendingDeleteId(item.id)
+                        }}
+                        disabled={isPending}
                         title={
                           item.userCount > 0
                             ? `Hay ${item.userCount} usuario(s) asignado(s) — reasignalos antes de eliminar.`
                             : 'Eliminar departamento'
                         }
                         style={{
-                          color:
-                            item.userCount > 0 ? 'var(--text-muted)' : 'var(--destructive, #c0392b)',
+                          color: 'var(--destructive, #c0392b)',
                         }}
                       >
                         <Trash2 size={12} /> Eliminar

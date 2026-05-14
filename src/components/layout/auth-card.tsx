@@ -18,7 +18,7 @@ export function AuthCard({ title, subtitle, children, footer }: AuthCardProps) {
             alt="1to1"
             width={80}
             height={80}
-            className="h-20 w-auto"
+            className="logo-img h-20 w-auto"
             priority
           />
         </Link>

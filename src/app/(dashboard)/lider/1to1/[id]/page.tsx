@@ -7,6 +7,7 @@ import { AgendaList } from '@/components/one-on-one/agenda-list'
 import { DetailInteraction } from '@/components/one-on-one/detail-interaction'
 import { LeaderInsightPanel } from '@/components/one-on-one/leader-insight-panel'
 import { labelForReason } from '@/components/one-on-one/non-realization-modal'
+import { NonRealizationCTA } from '@/components/one-on-one/non-realization-cta'
 import { EmptyState } from '@/components/shared/empty-state'
 import { getOrgSetting } from '@/lib/org-settings'
 
@@ -173,12 +174,17 @@ export default async function LiderOneOnOneDetailPage({ params }: { params: { id
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
             {meeting.meet_link && (
               <a href={meeting.meet_link} target="_blank" rel="noreferrer" className="ui-btn ui-btn--lime">
                 <Video size={14} /> <span>Unirse a Meet</span>
               </a>
             )}
+            <NonRealizationCTA
+              oneOnOneId={meeting.id}
+              scheduledAt={meeting.scheduled_at}
+              status={meeting.status}
+            />
             <button type="button" className="ui-btn ui-btn--ghost ui-btn--icon" aria-label="Más opciones">
               <MoreHorizontal size={16} />
             </button>

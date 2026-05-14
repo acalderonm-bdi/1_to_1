@@ -189,7 +189,7 @@ export function DetailInteraction({
       <div className="vobo">
         <h3 className="vobo__title">Antes de aprobar</h3>
         <p className="vobo__sub">
-          Tienes {pendingPrevAgreements.length} acuerdo{pendingPrevAgreements.length !== 1 ? 's' : ''} pendientes de la sesión anterior.
+          Tienes {pendingPrevAgreements.length} acuerdo{pendingPrevAgreements.length !== 1 ? 's' : ''} pendiente{pendingPrevAgreements.length !== 1 ? 's' : ''} de la sesión anterior.
           Reporta su estado antes de aprobar esta reunión.
         </p>
         <div className="vobo__buttons">

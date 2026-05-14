@@ -40,6 +40,15 @@ export const TRIGGER_OPTIONS: Array<{ value: NotificationTriggerType; label: str
   { value: 'reminder_pre_1to1', label: 'Recordatorio pre-1:1' },
 ]
 
+const DEFAULT_THRESHOLD_BY_TRIGGER: Record<NotificationTriggerType, { value?: number; days?: number }> = {
+  cumplimiento_bajo: { value: 50 },
+  calidez_baja: { value: 3 },
+  vobo_pendiente: { days: 3 },
+  reminder_pre_1to1: { days: 2 },
+  acuerdo_vencido: {},
+  disputa_nueva: {},
+}
+
 const AUDIENCE_OPTIONS: Array<{ value: NotificationAudience; label: string }> = [
   { value: 'leader', label: 'Líder' },
   { value: 'collaborator', label: 'Colaborador' },
@@ -102,6 +111,15 @@ export function NotificationRuleModal({
       setChannels(['in_app'])
     }
   }, [editingRule, open])
+
+  function handleTriggerChange(newTrigger: NotificationTriggerType) {
+    setTriggerType(newTrigger)
+    const defaults = DEFAULT_THRESHOLD_BY_TRIGGER[newTrigger] ?? {}
+    if (typeof defaults.value === 'number') setThresholdValue(defaults.value)
+    if (typeof defaults.days === 'number') setThresholdDays(defaults.days)
+    // Reset scope al default global cuando cambia el trigger.
+    setThresholdScope('global')
+  }
 
   function buildThreshold(): RuleInput['threshold'] {
     switch (triggerType) {
@@ -230,7 +248,7 @@ export function NotificationRuleModal({
 
           <div className="space-y-2">
             <Label htmlFor="rule-trigger" className="ui-label">Disparador</Label>
-            <Select value={triggerType} onValueChange={(v) => setTriggerType(v as NotificationTriggerType)}>
+            <Select value={triggerType} onValueChange={(v) => handleTriggerChange(v as NotificationTriggerType)}>
               <SelectTrigger id="rule-trigger">
                 <SelectValue />
               </SelectTrigger>

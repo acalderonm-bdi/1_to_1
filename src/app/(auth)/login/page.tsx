@@ -21,15 +21,28 @@ export default function LoginPage() {
     setError(null)
 
     const supabase = createClient()
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (signInError) {
+    if (signInError || !data.user) {
       setError('Correo o contraseña incorrectos')
       setLoading(false)
       return
     }
 
-    router.push('/colaborador')
+    // Leer role del user para redirigir a la home correcta.
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', data.user.id)
+      .single<{ role: string }>()
+
+    const home = profile?.role === 'hr'
+      ? '/arquitectura-humana'
+      : profile?.role === 'leader'
+      ? '/lider'
+      : '/colaborador'
+
+    router.push(home)
     router.refresh()
   }
 
