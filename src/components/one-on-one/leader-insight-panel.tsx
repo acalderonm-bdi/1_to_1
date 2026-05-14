@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
+import { Sparkles, ChevronDown, ChevronUp, Loader2, RefreshCw } from 'lucide-react'
 import type { SuggestedQuestion } from '@/types/domain'
 
 interface LeaderInsightPanelProps {
@@ -15,6 +15,14 @@ const CATEGORY_LABELS: Record<SuggestedQuestion['category'], string> = {
   bienestar: 'Bienestar',
   seguimiento: 'Seguimiento',
   feedback: 'Feedback',
+}
+
+const CATEGORY_TONE: Record<SuggestedQuestion['category'], string> = {
+  desempeño: 'hsl(var(--primary))',
+  desarrollo: 'hsl(217 91% 60%)', // azul
+  bienestar: 'hsl(var(--success))',
+  seguimiento: 'hsl(var(--warning))',
+  feedback: 'hsl(280 75% 60%)', // morado
 }
 
 export function LeaderInsightPanel({ collaboratorId, collaboratorName }: LeaderInsightPanelProps) {
@@ -46,99 +54,195 @@ export function LeaderInsightPanel({ collaboratorId, collaboratorName }: LeaderI
     }
   }
 
+  const hasQuestions = questions.length > 0
+  const firstName = collaboratorName.split(' ')[0]
+
   return (
     <section
       className="ui-card"
       style={{
-        background: 'hsl(var(--accent) / 0.45)',
+        background: 'hsl(var(--accent) / 0.5)',
         borderColor: 'hsl(var(--primary) / 0.25)',
-        padding: '1rem 1.25rem',
-        marginBottom: '1rem',
+        padding: '12px 14px',
       }}
     >
-      <div
+      <header
         style={{
           display: 'flex',
           alignItems: 'center',
+          gap: 8,
           justifyContent: 'space-between',
-          gap: '0.75rem',
-          flexWrap: 'wrap',
+          cursor: hasQuestions ? 'pointer' : 'default',
         }}
+        onClick={() => hasQuestions && setExpanded((e) => !e)}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Sparkles size={16} style={{ color: 'hsl(var(--primary))' }} />
-          <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'hsl(var(--foreground))' }}>
-            Preguntas sugeridas por IA · {collaboratorName}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+          <Sparkles size={14} style={{ color: 'hsl(var(--primary))', flexShrink: 0 }} />
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 13,
+              fontWeight: 600,
+              color: 'hsl(var(--foreground))',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Preguntas para {firstName}
           </h3>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {questions.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setExpanded((e) => !e)}
-              aria-label={expanded ? 'Contraer' : 'Expandir'}
+          {hasQuestions && (
+            <span
               style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
+                fontSize: 10,
+                fontWeight: 700,
+                padding: '2px 7px',
+                borderRadius: 999,
+                background: 'hsl(var(--primary) / 0.18)',
                 color: 'hsl(var(--primary))',
-                padding: 4,
-                display: 'inline-flex',
+                letterSpacing: '0.04em',
               }}
             >
-              {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            </button>
+              {questions.length}
+            </span>
           )}
+        </div>
+        {hasQuestions ? (
           <button
             type="button"
-            className="ui-btn ui-btn--accent ui-btn--sm"
-            onClick={handleGenerate}
-            disabled={isLoading}
+            aria-label={expanded ? 'Contraer' : 'Expandir'}
+            onClick={(e) => {
+              e.stopPropagation()
+              setExpanded((x) => !x)
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'hsl(var(--muted-foreground))',
+              padding: 2,
+              display: 'inline-flex',
+            }}
           >
-            {isLoading ? <Loader2 size={13} className="spinner" /> : <Sparkles size={13} />}
-            <span>{isLoading ? 'Generando…' : questions.length > 0 ? 'Regenerar' : 'Generar preguntas'}</span>
+            {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
           </button>
-        </div>
-      </div>
+        ) : null}
+      </header>
 
-      {!expanded && questions.length === 0 && !error && (
-        <p style={{ marginTop: 8, marginBottom: 0, fontSize: '0.8rem', color: 'hsl(var(--muted-foreground))' }}>
-          Generá 5 preguntas contextualizadas en base al historial reciente de 1:1s y los acuerdos abiertos.
+      {!hasQuestions && !error && (
+        <p
+          style={{
+            margin: '8px 0 10px',
+            fontSize: 11.5,
+            color: 'hsl(var(--muted-foreground))',
+            lineHeight: 1.45,
+          }}
+        >
+          Generá 5 preguntas contextualizadas en base al historial reciente y los acuerdos abiertos.
         </p>
       )}
 
       {error && (
-        <p style={{ marginTop: 8, marginBottom: 0, fontSize: '0.8rem', color: 'hsl(var(--warning))' }}>
+        <p
+          style={{
+            margin: '8px 0 10px',
+            fontSize: 11.5,
+            color: 'hsl(var(--warning))',
+            lineHeight: 1.45,
+          }}
+        >
           {error}
         </p>
       )}
 
-      {expanded && questions.length > 0 && (
-        <ol style={{ marginTop: 12, marginBottom: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {questions.map((q, i) => (
-            <li key={i}>
-              <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, color: 'hsl(var(--foreground))' }}>
-                {q.question}
-              </p>
-              <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>
-                {q.rationale}
-              </p>
-              <span
+      <button
+        type="button"
+        className="ui-btn ui-btn--accent ui-btn--sm"
+        onClick={handleGenerate}
+        disabled={isLoading}
+        style={{ width: '100%', justifyContent: 'center', fontSize: 12 }}
+      >
+        {isLoading ? (
+          <Loader2 size={12} className="spinner" />
+        ) : hasQuestions ? (
+          <RefreshCw size={12} />
+        ) : (
+          <Sparkles size={12} />
+        )}
+        <span>{isLoading ? 'Generando…' : hasQuestions ? 'Regenerar' : 'Generar preguntas con IA'}</span>
+      </button>
+
+      {expanded && hasQuestions && (
+        <ul
+          style={{
+            listStyle: 'none',
+            margin: '12px 0 0',
+            padding: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+          }}
+        >
+          {questions.map((q, i) => {
+            const tone = CATEGORY_TONE[q.category] ?? 'hsl(var(--primary))'
+            return (
+              <li
+                key={i}
                 style={{
-                  display: 'inline-block',
-                  marginTop: 4,
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  color: 'hsl(var(--primary))',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
+                  background: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: 8,
+                  padding: '10px 12px',
                 }}
               >
-                {CATEGORY_LABELS[q.category] ?? q.category}
-              </span>
-            </li>
-          ))}
-        </ol>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 999,
+                      background: tone,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 9.5,
+                      fontWeight: 700,
+                      color: tone,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.07em',
+                    }}
+                  >
+                    {CATEGORY_LABELS[q.category] ?? q.category}
+                  </span>
+                </div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 12.5,
+                    fontWeight: 500,
+                    color: 'hsl(var(--foreground))',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {q.question}
+                </p>
+                <p
+                  style={{
+                    margin: '4px 0 0',
+                    fontSize: 11,
+                    color: 'hsl(var(--muted-foreground))',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {q.rationale}
+                </p>
+              </li>
+            )
+          })}
+        </ul>
       )}
     </section>
   )

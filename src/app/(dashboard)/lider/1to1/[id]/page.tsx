@@ -179,83 +179,97 @@ export default async function LiderOneOnOneDetailPage({ params }: { params: { id
         </div>
       </div>
 
-      <div style={{ display: 'grid', gap: 18 }}>
-        {meeting.status === 'no_realizada' && meeting.non_realization_reason && (
-          <div
-            className="ui-card"
-            style={{
-              padding: 16,
-              borderLeft: '3px solid var(--accent-red, #b91c1c)',
-              background: 'var(--bg-subtle)',
-            }}
-          >
-            <div style={{ fontWeight: 600, fontSize: 14.5, letterSpacing: '-0.005em', marginBottom: 6 }}>
-              Sesión no realizada — {labelForReason(meeting.non_realization_reason)}
+      {meeting.status === 'no_realizada' && meeting.non_realization_reason && (
+        <div
+          className="ui-card"
+          style={{
+            padding: 16,
+            borderLeft: '3px solid hsl(var(--destructive))',
+            background: 'var(--bg-subtle)',
+            marginBottom: 18,
+          }}
+        >
+          <div style={{ fontWeight: 600, fontSize: 14.5, letterSpacing: '-0.005em', marginBottom: 6 }}>
+            Sesión no realizada — {labelForReason(meeting.non_realization_reason)}
+          </div>
+          {meeting.non_realization_note && (
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'pre-wrap' }}>
+              {meeting.non_realization_note}
             </div>
-            {meeting.non_realization_note && (
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'pre-wrap' }}>
-                {meeting.non_realization_note}
-              </div>
-            )}
-            {meeting.non_realization_marked_at && (
-              <div style={{ fontSize: 11.5, color: 'var(--text-subtle)', marginTop: 8 }}>
-                Registrado por {nonRealizationMarker?.full_name ?? 'usuario'} el{' '}
-                {new Date(meeting.non_realization_marked_at).toLocaleDateString('es-MX')}
-              </div>
-            )}
-          </div>
-        )}
-
-        {collaborator && (
-          <LeaderInsightPanel
-            collaboratorId={collaborator.id}
-            collaboratorName={collaborator.full_name}
-          />
-        )}
-
-        <div className="ui-card">
-          <div className="ui-card__head">
-            <div>
-              <h3 className="ui-card__title">Agenda</h3>
-              <p className="ui-card__desc">Temas para esta reunión</p>
+          )}
+          {meeting.non_realization_marked_at && (
+            <div style={{ fontSize: 11.5, color: 'var(--text-subtle)', marginTop: 8 }}>
+              Registrado por {nonRealizationMarker?.full_name ?? 'usuario'} el{' '}
+              {new Date(meeting.non_realization_marked_at).toLocaleDateString('es-MX')}
             </div>
-          </div>
-          <div className="ui-card__body">
-            <AgendaList
-              oneOnOneId={params.id}
-              initialItems={(rawAgenda ?? []) as Array<{ id: string; content: string; author_id: string }>}
-              currentUserId={user.id}
-              authorMap={authorMap}
-            />
-          </div>
+          )}
         </div>
+      )}
 
-        {isPastMeeting && participants && (
-          <DetailInteraction
-            oneOnOneId={params.id}
-            initialMinuteContent={(rawMinute as { raw_content: string } | null)?.raw_content ?? ''}
-            initialAgreements={(rawAgreements ?? []) as Array<{ id: string; description: string; responsible_id: string; due_date: string | null; status: string; ai_generated: boolean }>}
-            participants={participants}
-            hasVobo={myVobo !== null}
-            voboValue={myVobo?.confirmed ?? null}
-            partnerVobo={partnerVobo}
-            pendingPrevAgreements={[]}
-            currentUserId={user.id}
-            meetingStatus={meeting.status}
-            partnerName={partnerName}
-          />
-        )}
+      {(() => {
+        const rail = (
+          <>
+            {collaborator && (
+              <LeaderInsightPanel
+                collaboratorId={collaborator.id}
+                collaboratorName={collaborator.full_name}
+              />
+            )}
+            <div className="ui-card">
+              <div className="ui-card__head">
+                <div>
+                  <h3 className="ui-card__title">Agenda</h3>
+                  <p className="ui-card__desc">Temas para esta reunión</p>
+                </div>
+              </div>
+              <div className="ui-card__body">
+                <AgendaList
+                  oneOnOneId={params.id}
+                  initialItems={(rawAgenda ?? []) as Array<{ id: string; content: string; author_id: string }>}
+                  currentUserId={user.id}
+                  authorMap={authorMap}
+                />
+              </div>
+            </div>
+          </>
+        )
 
-        {!isPastMeeting && (
-          <div className="ui-card" style={{ padding: 0 }}>
-            <EmptyState
-              illustration="meetings"
-              title="Aún no es hora"
-              description="La minuta y los acuerdos estarán disponibles después de la reunión. Mientras tanto, agreguen los temas que quieran tratar en la agenda."
+        if (isPastMeeting && participants) {
+          return (
+            <DetailInteraction
+              oneOnOneId={params.id}
+              initialMinuteContent={(rawMinute as { raw_content: string } | null)?.raw_content ?? ''}
+              initialAgreements={(rawAgreements ?? []) as Array<{ id: string; description: string; responsible_id: string; due_date: string | null; status: string; ai_generated: boolean }>}
+              participants={participants}
+              hasVobo={myVobo !== null}
+              voboValue={myVobo?.confirmed ?? null}
+              partnerVobo={partnerVobo}
+              pendingPrevAgreements={[]}
+              currentUserId={user.id}
+              meetingStatus={meeting.status}
+              partnerName={partnerName}
+              layout="split-with-rail"
+              rail={rail}
             />
+          )
+        }
+
+        // Pre-meeting: 2-col con EmptyState en main + rail con Insight + Agenda
+        return (
+          <div className="meeting-grid">
+            <div className="meeting-grid__main">
+              <div className="ui-card" style={{ padding: 0 }}>
+                <EmptyState
+                  illustration="meetings"
+                  title="Aún no es hora"
+                  description="La minuta y los acuerdos estarán disponibles después de la reunión. Mientras tanto, agreguen los temas que quieran tratar en la agenda."
+                />
+              </div>
+            </div>
+            <aside className="meeting-grid__rail">{rail}</aside>
           </div>
-        )}
-      </div>
+        )
+      })()}
     </div>
   )
 }
