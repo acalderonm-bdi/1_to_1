@@ -39,3 +39,6 @@ next-env.d.ts
 # claude code local state
 .claude
 .superpowers
+
+# QA artifacts (screenshots locales, no se versionan)
+.qa-screenshots/
