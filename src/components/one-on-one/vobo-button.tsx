@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { Check, X, ShieldCheck, Loader2 } from 'lucide-react'
 import { submitVobo } from '@/lib/actions/vobos'
+import { useToast } from '@/hooks/use-toast'
 
 interface VoboButtonProps {
   oneOnOneId: string
@@ -29,13 +30,20 @@ function ApprovalCounter({ mine, partner }: { mine: boolean | null; partner: boo
 export function VoboButton({ oneOnOneId, userVobo, partnerName, partnerVobo = null, agreementsCount }: VoboButtonProps) {
   const [myVobo, setMyVobo] = useState<boolean | null>(userVobo)
   const [isPending, startTransition] = useTransition()
+  const { toast } = useToast()
 
   async function handleVobo(confirmed: boolean) {
     startTransition(async () => {
       const result = await submitVobo({ oneOnOneId, confirmed })
       if (result.success) {
         setMyVobo(confirmed)
+        return
       }
+      toast({
+        title: 'No se pudo registrar tu aprobación',
+        description: result.error ?? 'Intentá de nuevo o avisá a soporte si persiste.',
+        variant: 'destructive',
+      })
     })
   }
 

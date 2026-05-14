@@ -45,7 +45,15 @@ export function DetailInteraction({
   const [warmthSubmitted, setWarmthSubmitted] = useState(hasWarmthResponse)
 
   const isCollaborator = currentUserId === participants.collaborator.id
-  const needsWarmth = isCollaborator && meetingStatus === 'realizada' && !warmthSubmitted
+  // La encuesta debe estar disponible ANTES de que el colaborador dé su VoBo,
+  // no después de que la 1:1 quede en 'realizada' (eso solo ocurre con ambos
+  // VoBos vía trigger SQL — sería un catch-22). Mostramos en cualquier estado
+  // salvo cuando la sesión no se realizó o está en disputa.
+  const needsWarmth =
+    isCollaborator &&
+    !warmthSubmitted &&
+    meetingStatus !== 'no_realizada' &&
+    meetingStatus !== 'en_disputa'
 
   // Real-time: cuando el otro participante actualiza notas, acuerdos o VoBo,
   // se refresca la página automáticamente sin tener que recargar manualmente.
