@@ -22,21 +22,13 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { markNonRealization } from '@/lib/actions/one-on-ones'
+import { REASON_OPTIONS, type Reason } from './non-realization-reasons'
 
-export const REASON_OPTIONS = [
-  { value: 'reagendada', label: 'Reagendada' },
-  { value: 'cancelada_cargas', label: 'Cancelada por carga de trabajo' },
-  { value: 'ausencia', label: 'Ausencia' },
-  { value: 'emergencia', label: 'Emergencia' },
-  { value: 'vacaciones', label: 'Vacaciones' },
-  { value: 'sin_justificacion', label: 'Sin justificación' },
-] as const
-
-export type Reason = typeof REASON_OPTIONS[number]['value']
-
-export function labelForReason(value: string): string {
-  return REASON_OPTIONS.find((o) => o.value === value)?.label ?? value
-}
+// Re-exporta para preservar API existente (otros componentes que
+// importaban desde acá siguen funcionando). Los server components deben
+// importar desde './non-realization-reasons' directamente.
+export { REASON_OPTIONS, labelForReason } from './non-realization-reasons'
+export type { Reason } from './non-realization-reasons'
 
 interface NonRealizationModalProps {
   oneOnOneId: string

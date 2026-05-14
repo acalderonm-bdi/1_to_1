@@ -5,7 +5,7 @@ import { Calendar, Clock, Video, MapPin, ChevronLeft, MoreHorizontal, ArrowRight
 import { STATUS_LABELS } from '@/lib/constants'
 import { AgendaList } from '@/components/one-on-one/agenda-list'
 import { DetailInteraction } from '@/components/one-on-one/detail-interaction'
-import { labelForReason } from '@/components/one-on-one/non-realization-modal'
+import { labelForReason } from '@/components/one-on-one/non-realization-reasons'
 import { NonRealizationCTA } from '@/components/one-on-one/non-realization-cta'
 import { EmptyState } from '@/components/shared/empty-state'
 import { getOrgSetting } from '@/lib/org-settings'

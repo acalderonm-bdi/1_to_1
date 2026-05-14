@@ -244,7 +244,13 @@ export default async function LeaderCollabProfile({ params }: { params: { id: st
             <p className="ui-card__desc">
               {agreementsRaw.length === 0
                 ? 'Aún no hay compromisos registrados'
-                : `${agreementsByStatus.pendiente.length} pendientes · ${agreementsByStatus.cumplido.length} cumplidos · ${agreementsByStatus.parcial.length} parciales · ${agreementsByStatus.no_cumplido.length} no cumplidos`}
+                : (() => {
+                    const p = agreementsByStatus.pendiente.length
+                    const c = agreementsByStatus.cumplido.length
+                    const pa = agreementsByStatus.parcial.length
+                    const n = agreementsByStatus.no_cumplido.length
+                    return `${p} pendiente${p === 1 ? '' : 's'} · ${c} cumplido${c === 1 ? '' : 's'} · ${pa} parcial${pa === 1 ? '' : 'es'} · ${n} no cumplido${n === 1 ? '' : 's'}`
+                  })()}
             </p>
           </div>
         </div>

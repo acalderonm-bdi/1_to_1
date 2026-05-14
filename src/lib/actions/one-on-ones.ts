@@ -289,6 +289,8 @@ export async function dismissTransferBanner(
 
   if (error) return { success: false, error: error.message }
 
-  revalidatePath('/lider')
+  // Revalidate dynamic route: el banner vive en /lider/colaborador/[id].
+  // `revalidatePath('/lider', 'layout')` invalida todas las páginas bajo /lider.
+  revalidatePath('/lider', 'layout')
   return { success: true }
 }
