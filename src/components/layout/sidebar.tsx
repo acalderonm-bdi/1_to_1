@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Home, CalendarPlus, CheckSquare, Users, Sparkles, LayoutDashboard,
   Grid, FileText, AlertTriangle, Repeat, Network, UsersRound, Settings, LogOut, X,
+  Bell, SlidersHorizontal, Download, RefreshCcw,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAppShell } from '@/components/layout/app-shell'
@@ -39,6 +40,10 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { key: 'rh-disputas', label: 'Disputas', icon: AlertTriangle, href: '/arquitectura-humana/disputas' },
     { key: 'rh-cadencias', label: 'Cadencias', icon: Repeat, href: '/arquitectura-humana/cadencias' },
     { key: 'rh-estructura', label: 'Estructura', icon: Network, href: '/arquitectura-humana/estructura' },
+    { key: 'rh-notif', label: 'Notificaciones', icon: Bell, href: '/arquitectura-humana/notificaciones' },
+    { key: 'rh-params', label: 'Parámetros', icon: SlidersHorizontal, href: '/arquitectura-humana/parametros' },
+    { key: 'rh-export', label: 'Exportes', icon: Download, href: '/arquitectura-humana/exportes' },
+    { key: 'rh-sync', label: 'Sincronización', icon: RefreshCcw, href: '/arquitectura-humana/sincronizacion' },
     { key: 'rh-usuarios', label: 'Usuarios', icon: UsersRound, href: '/arquitectura-humana/usuarios' },
     { key: 'rh-config', label: 'Configuración', icon: Settings, href: '/arquitectura-humana/configuracion', divider: true },
   ],

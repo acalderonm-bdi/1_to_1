@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { extractAgreements } from '@/lib/ai/extract-agreements'
 import { checkAgreementQuality } from '@/lib/agreement-quality'
+import { getOrgSetting } from '@/lib/org-settings'
 import type { ActionResult } from '@/types/domain'
 
 const saveMinuteSchema = z.object({
@@ -116,13 +117,21 @@ export async function saveMinute(
             openCounts.set(respId, count ?? 0)
           }
 
+          // Una sola lectura de la config para todos los acuerdos del batch —
+          // checkAgreementQuality es sincrónica, así que no podemos usar el
+          // wrapper async dentro del map.
+          const maxOpen = await getOrgSetting('collaborator_max_open_agreements')
+
           const enrichedRows = rows.map(row => {
-            const quality = checkAgreementQuality({
-              description: row.description,
-              responsibleId: row.responsible_id,
-              dueDate: row.due_date,
-              collaboratorOpenAgreementsCount: openCounts.get(row.responsible_id) ?? 0,
-            })
+            const quality = checkAgreementQuality(
+              {
+                description: row.description,
+                responsibleId: row.responsible_id,
+                dueDate: row.due_date,
+                collaboratorOpenAgreementsCount: openCounts.get(row.responsible_id) ?? 0,
+              },
+              { maxOpen },
+            )
             return {
               ...row,
               // Columnas ai_quality_* existen en esquema (Fase A) pero aún no

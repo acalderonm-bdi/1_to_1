@@ -1,0 +1,128 @@
+/**
+ * Cron: send-scheduled-reports (hourly).
+ *
+ * Vercel cron en `vercel.json` `0 * * * *`. Selecciona los reports
+ * habilitados cuyo `next_run_at <= now()`, genera el CSV, hace un
+ * stub-send a los recipients y registra dispatches en
+ * `notification_dispatches` (`channel = 'email'`, `rule_id = null`).
+ * Recalcula `next_run_at` con `cron-parser` v5 (`CronExpressionParser.parse`).
+ *
+ * Auth: `Authorization: Bearer ${CRON_SECRET}` (mismo patrón que
+ * `check-thresholds`). Usa `createAdminClient` para bypass RLS,
+ * idéntico al cron de notificaciones.
+ *
+ * Tipos: `scheduled_reports` y `notification_dispatches` no están en
+ * `database.types.ts`, casteamos con `as never` / `as unknown as`.
+ */
+import { NextResponse, type NextRequest } from 'next/server'
+
+import { CronExpressionParser } from 'cron-parser'
+
+import { generateAcuerdosCSV } from '@/lib/exports/acuerdos-csv'
+import { generateCalidezCSV } from '@/lib/exports/calidez-csv'
+import { generateCumplimientoCSV } from '@/lib/exports/cumplimiento-csv'
+import { createAdminClient } from '@/lib/supabase/admin'
+import type { ScheduledReportType } from '@/types/domain'
+
+interface DueReportRow {
+  id: string
+  name: string
+  report_type: ScheduledReportType
+  recipients: string[]
+  schedule_cron: string
+}
+
+function safeNextRun(cronExpr: string): string | null {
+  try {
+    const iso = CronExpressionParser.parse(cronExpr).next().toISOString()
+    return iso ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function GET(request: NextRequest) {
+  const authHeader = request.headers.get('authorization')
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const admin = createAdminClient()
+  const nowIso = new Date().toISOString()
+
+  const dueResult = (await admin
+    .from('scheduled_reports' as never)
+    .select('id, name, report_type, recipients, schedule_cron')
+    .eq('enabled' as never, true)
+    .lte('next_run_at' as never, nowIso)) as unknown as {
+    data: DueReportRow[] | null
+    error: { message: string } | null
+  }
+
+  const reports = dueResult.data ?? []
+  let totalDispatched = 0
+
+  for (const report of reports) {
+    let csv: { filename: string; content: string }
+    try {
+      if (report.report_type === 'cumplimiento_mensual') {
+        csv = await generateCumplimientoCSV()
+      } else if (report.report_type === 'acuerdos_baja_calidad') {
+        csv = await generateAcuerdosCSV()
+      } else {
+        csv = await generateCalidezCSV()
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[cron-reports] CSV generation failed:', err)
+      continue
+    }
+
+    // eslint-disable-next-line no-console
+    console.log(
+      `[cron-reports] would send ${csv.filename} to ${report.recipients.join(', ')}`,
+    )
+
+    for (const recipient of report.recipients) {
+      const { data: userRow } = (await admin
+        .from('users')
+        .select('id')
+        .eq('email', recipient)
+        .maybeSingle()) as unknown as { data: { id: string } | null }
+
+      if (!userRow) continue
+
+      const { error: insErr } = await admin
+        .from('notification_dispatches' as never)
+        .insert({
+          rule_id: null,
+          recipient_id: userRow.id,
+          channel: 'email',
+          context: {
+            scheduled_report_id: report.id,
+            report_name: report.name,
+            filename: csv.filename,
+            cron_dispatch: true,
+          },
+          status: 'sent',
+        } as never)
+
+      if (!insErr) totalDispatched++
+    }
+
+    const nextRun = safeNextRun(report.schedule_cron)
+
+    await admin
+      .from('scheduled_reports' as never)
+      .update({
+        last_run_at: nowIso,
+        next_run_at: nextRun,
+      } as never)
+      .eq('id', report.id)
+  }
+
+  return NextResponse.json({
+    reports_processed: reports.length,
+    total_dispatched: totalDispatched,
+  })
+}

@@ -7,6 +7,7 @@ import { AgendaList } from '@/components/one-on-one/agenda-list'
 import { DetailInteraction } from '@/components/one-on-one/detail-interaction'
 import { labelForReason } from '@/components/one-on-one/non-realization-modal'
 import { EmptyState } from '@/components/shared/empty-state'
+import { getOrgSetting } from '@/lib/org-settings'
 
 const STATUS_TONE: Record<string, string> = {
   agendada: 'blue', realizada: 'green', no_realizada: 'red', en_disputa: 'orange',
@@ -82,6 +83,10 @@ export default async function OneOnOneDetailPage({ params }: { params: { id: str
   const pendingPrevAgreements = ((rawPrevAgreements ?? []) as Array<{
     id: string; description: string; due_date: string | null
   }>).map(a => ({ id: a.id, description: a.description, due_date: a.due_date }))
+
+  // Labels configurables de la encuesta de calidez — los lee el server y los
+  // baja al cliente vía DetailInteraction → WarmthSurvey.
+  const warmthQuestions = await getOrgSetting('warmth_questions')
 
   const isPastMeeting = new Date(meeting.scheduled_at) < new Date()
   const vobos = (rawVobos ?? []) as Array<{ user_id: string; confirmed: boolean }>
@@ -258,6 +263,7 @@ export default async function OneOnOneDetailPage({ params }: { params: { id: str
             meetingStatus={meeting.status}
             partnerName={partnerName}
             hasWarmthResponse={hasWarmthResponse}
+            warmthQuestions={warmthQuestions}
           />
         )}
 

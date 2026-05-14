@@ -1,4 +1,5 @@
 import type { FollowupPlan } from '@/types/domain'
+import { getOrgSetting } from '@/lib/org-settings'
 import { getAIClient, parseJSONResponse } from './client'
 import { generateFollowupPlanPrompt } from './prompts'
 
@@ -20,12 +21,21 @@ export async function generateFollowupPlan(
     return { plan: null }
   }
 
+  // El plan de follow-up es parte de la familia "refinar acuerdo" (sugerir
+  // próximos pasos sobre compromisos vigentes). Si RH desactiva ese feature, no
+  // generamos plan.
+  const features = await getOrgSetting('ai_features')
+  if (!features.refine_agreement) {
+    return { plan: null }
+  }
+  const model = await getOrgSetting('ai_model')
+
   try {
     const client = getAIClient()
     const prompt = generateFollowupPlanPrompt(input)
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-5',
+      model,
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
     })

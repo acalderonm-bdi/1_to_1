@@ -5,22 +5,58 @@ import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import { submitWarmthResponse } from '@/lib/actions/warmth'
 
-const QUESTIONS = [
-  { key: 'feltHeard', label: 'Me sentí escuchada/o en esta sesión' },
-  { key: 'comfortableSharing', label: 'Me sentí cómoda/o compartiendo lo que pensaba' },
-  { key: 'leaderEngaged', label: 'Sentí que mi líder estuvo presente y enfocada/o' },
-  { key: 'conversationQuality', label: 'La conversación fue significativa para mí' },
-  { key: 'clarityAfterSession', label: 'Salí con claridad de los próximos pasos' },
+// Las 5 dimensiones están fijas a columnas de `meeting_warmth_responses` en la
+// DB. Lo que sí es configurable vía `org_settings.warmth_questions` son los
+// labels (texto que ve el colaborador). El mapeo `setting_key → DB column` es
+// estable: cualquier valor que pase la página padre como `questions` se aplica
+// solo a los labels, conservando el orden y las claves canónicas siguientes.
+const QUESTION_KEYS = [
+  'feltHeard',
+  'comfortableSharing',
+  'leaderEngaged',
+  'conversationQuality',
+  'clarityAfterSession',
 ] as const
 
-type QuestionKey = typeof QUESTIONS[number]['key']
+type QuestionKey = (typeof QUESTION_KEYS)[number]
+
+const DEFAULT_LABELS: Record<QuestionKey, string> = {
+  feltHeard: 'Me sentí escuchada/o en esta sesión',
+  comfortableSharing: 'Me sentí cómoda/o compartiendo lo que pensaba',
+  leaderEngaged: 'Sentí que mi líder estuvo presente y enfocada/o',
+  conversationQuality: 'La conversación fue significativa para mí',
+  clarityAfterSession: 'Salí con claridad de los próximos pasos',
+}
+
+// Las claves serializadas en `warmth_questions` siguen snake_case (espejo del
+// schema de DB y del default en `org-settings.ts`). Mapeamos a las llaves
+// camelCase que el componente y la action ya manejan.
+const SETTING_KEY_TO_QUESTION_KEY: Record<string, QuestionKey> = {
+  felt_heard: 'feltHeard',
+  comfortable_sharing: 'comfortableSharing',
+  leader_engaged: 'leaderEngaged',
+  conversation_quality: 'conversationQuality',
+  clarity_after_session: 'clarityAfterSession',
+}
 
 interface WarmthSurveyProps {
   oneOnOneId: string
   onSubmitted: () => void
+  /**
+   * Labels configurables desde `org_settings.warmth_questions`. Cada item lleva
+   * la `key` snake_case del setting y el `label` que el RH definió. Si no se
+   * pasa o llega vacío, se usan los labels canónicos.
+   */
+  questions?: Array<{ key: string; label: string }>
 }
 
-export function WarmthSurvey({ oneOnOneId, onSubmitted }: WarmthSurveyProps) {
+export function WarmthSurvey({ oneOnOneId, onSubmitted, questions }: WarmthSurveyProps) {
+  const resolvedLabels: Record<QuestionKey, string> = { ...DEFAULT_LABELS }
+  for (const q of questions ?? []) {
+    const mapped = SETTING_KEY_TO_QUESTION_KEY[q.key]
+    if (mapped && q.label.trim()) resolvedLabels[mapped] = q.label
+  }
+  const QUESTIONS = QUESTION_KEYS.map((k) => ({ key: k, label: resolvedLabels[k] }))
   const [responses, setResponses] = useState<Record<QuestionKey, number>>({
     feltHeard: 3,
     comfortableSharing: 3,

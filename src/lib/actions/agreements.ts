@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
-import { checkAgreementQuality } from '@/lib/agreement-quality'
+import { checkAgreementQualityWithConfig } from '@/lib/agreement-quality-server'
 import type { ActionResult, Agreement } from '@/types/domain'
 
 const createAgreementSchema = z.object({
@@ -33,7 +33,8 @@ export async function createAgreement(
     .eq('responsible_id', parsed.data.responsibleId)
     .in('status', ['pendiente', 'parcial'])
 
-  const quality = checkAgreementQuality({
+  // Lee `collaborator_max_open_agreements` desde org_settings (default 7).
+  const quality = await checkAgreementQualityWithConfig({
     description: parsed.data.description,
     responsibleId: parsed.data.responsibleId,
     dueDate: parsed.data.dueDate ?? null,

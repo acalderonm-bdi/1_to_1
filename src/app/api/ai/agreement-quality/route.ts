@@ -2,10 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getAIClient, parseJSONResponse } from '@/lib/ai/client'
-
-// Misma familia que `extract-agreements`/`analyze-patterns` para mantener
-// consistencia de modelo en el stack de IA.
-const MODEL_NAME = 'claude-sonnet-4-5'
+import { getOrgSetting } from '@/lib/org-settings'
 
 const requestSchema = z.object({
   description: z.string().min(1).max(1000),
@@ -27,6 +24,17 @@ export async function POST(request: NextRequest) {
   const body: unknown = await request.json()
   const parsed = requestSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
+
+  // Feature flag: la validación/refinamiento IA de un acuerdo es opt-out.
+  const features = await getOrgSetting('ai_features')
+  if (!features.refine_agreement) {
+    return NextResponse.json({
+      quality_score: 5,
+      warnings: [],
+      refined_description: null,
+    })
+  }
+  const MODEL_NAME = await getOrgSetting('ai_model')
 
   const { description, responsibleName, dueDate } = parsed.data
 

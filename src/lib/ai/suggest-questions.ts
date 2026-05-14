@@ -1,4 +1,5 @@
 import type { SuggestedQuestion } from '@/types/domain'
+import { getOrgSetting } from '@/lib/org-settings'
 import { getAIClient, parseJSONResponse } from './client'
 import { suggestQuestionsPrompt } from './prompts'
 
@@ -16,12 +17,19 @@ interface SuggestQuestionsOutput {
 export async function suggestQuestions(
   input: SuggestQuestionsInput,
 ): Promise<SuggestQuestionsOutput> {
+  // Feature flag: la sugerencia de preguntas previas a la 1:1 es opt-out.
+  const features = await getOrgSetting('ai_features')
+  if (!features.suggest_questions) {
+    return { questions: [] }
+  }
+  const model = await getOrgSetting('ai_model')
+
   try {
     const client = getAIClient()
     const prompt = suggestQuestionsPrompt(input)
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-5',
+      model,
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
     })

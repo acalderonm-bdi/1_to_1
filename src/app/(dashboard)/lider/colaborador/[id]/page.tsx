@@ -8,6 +8,7 @@ import {
 import { STATUS_LABELS, AGREEMENT_LABELS } from '@/lib/constants'
 import { EmptyState } from '@/components/shared/empty-state'
 import { TransferBanner } from '@/components/shared/transfer-banner'
+import { getOrgSetting } from '@/lib/org-settings'
 import type { OpenAgreementByCollaborator } from '@/types/domain'
 
 const STATUS_TONE: Record<string, string> = {
@@ -97,9 +98,12 @@ export default async function LeaderCollabProfile({ params }: { params: { id: st
   )
   const transferredCount = openAgreements.filter(a => a.is_transferred).length
 
-  // Decidir si mostramos el banner: yo soy el líder actual, no lo he descartado
-  // y hay al menos un acuerdo transferido.
+  // Decidir si mostramos el banner: yo soy el líder actual, no lo he descartado,
+  // hay al menos un acuerdo transferido y el setting global `transfer_banner_enabled`
+  // está activo (RH puede ocultarlo globalmente desde /parametros).
+  const transferBannerEnabled = await getOrgSetting('transfer_banner_enabled')
   const shouldShowBanner = Boolean(
+    transferBannerEnabled &&
     relation &&
     relation.leader_id === user.id &&
     !relation.transfer_banner_dismissed_at &&

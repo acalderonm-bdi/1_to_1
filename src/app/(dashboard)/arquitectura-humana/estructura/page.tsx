@@ -2,6 +2,10 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Network } from 'lucide-react'
 import { EmptyState } from '@/components/shared/empty-state'
+import {
+  DepartmentManagerDialog,
+  type DepartmentItem,
+} from '@/components/arquitectura-humana/department-manager'
 
 interface User { id: string; full_name: string; email: string; department_id?: string | null }
 interface Relation {
@@ -17,6 +21,20 @@ export default async function EstructuraPage() {
 
   const { data: rawDepts } = await supabase.from('departments').select('id, name').order('name')
   const departments = (rawDepts ?? []) as Array<{ id: string; name: string }>
+
+  // User counts per dept for the manager dialog.
+  const { data: rawUsers } = await supabase.from('users').select('department_id')
+  const userRows = (rawUsers ?? []) as Array<{ department_id: string | null }>
+  const countByDept = new Map<string, number>()
+  for (const u of userRows) {
+    if (!u.department_id) continue
+    countByDept.set(u.department_id, (countByDept.get(u.department_id) ?? 0) + 1)
+  }
+  const deptItems: DepartmentItem[] = departments.map((d) => ({
+    id: d.id,
+    name: d.name,
+    userCount: countByDept.get(d.id) ?? 0,
+  }))
 
   const { data: rawRels } = await supabase
     .from('leadership_relations')
@@ -46,6 +64,7 @@ export default async function EstructuraPage() {
           <h1 className="page__title">Estructura organizacional</h1>
           <p className="page__subtitle">Relaciones líder ↔ colaborador activas, agrupadas por área.</p>
         </div>
+        <DepartmentManagerDialog initialDepartments={deptItems} />
       </div>
 
       {relations.length === 0 ? (

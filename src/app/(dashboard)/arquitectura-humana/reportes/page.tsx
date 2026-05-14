@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Sparkles, AlertTriangle } from 'lucide-react'
+import { Sparkles, AlertTriangle, Download } from 'lucide-react'
+import Link from 'next/link'
 import { EmptyState } from '@/components/shared/empty-state'
 import { ReportReviewButton } from '@/components/arquitectura-humana/report-review-button'
+import { getOrgSetting } from '@/lib/org-settings'
 
 const SEVERITY_TONE: Record<string, string> = { info: 'blue', warning: 'amber', critical: 'red' }
 const SEVERITY_LABELS: Record<string, string> = { info: 'Informativo', warning: 'Atención', critical: 'Crítico' }
@@ -24,6 +26,8 @@ export default async function ReportesPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const qualityThreshold = await getOrgSetting('agreement_quality_threshold')
+
   const { data: rawReports } = await supabase
     .from('ai_reports').select('*').order('created_at', { ascending: false }).limit(50)
   const reports = (rawReports ?? []) as Array<{
@@ -31,7 +35,8 @@ export default async function ReportesPage() {
     reviewed: boolean; created_at: string
   }>
 
-  // F1: acuerdos abiertos con score IA bajo 3.0 — candidatos a reescritura.
+  // F1: acuerdos abiertos con score IA bajo el umbral configurable
+  // (`agreement_quality_threshold`, default 3.0) — candidatos a reescritura.
   // Las columnas ai_quality_* aún no están en los tipos generados, casteamos
   // los filtros con `as never` y el resultado vía `unknown`.
   const { data: rawLowQuality } = await supabase
@@ -45,7 +50,7 @@ export default async function ReportesPage() {
       status,
       responsible:users!agreements_responsible_id_fkey(full_name)
     `)
-    .lt('ai_quality_score' as never, 3.0)
+    .lt('ai_quality_score' as never, qualityThreshold)
     .in('status', ['pendiente', 'parcial'])
     .order('ai_quality_score' as never, { ascending: true })
     .limit(20)
@@ -90,7 +95,7 @@ export default async function ReportesPage() {
           </h3>
         </div>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 14 }}>
-          Score IA bajo 3.0 — revisar o reescribir
+          Score IA bajo {qualityThreshold.toFixed(1)} — revisar o reescribir
         </p>
         {lowQualityList.length === 0 ? (
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
@@ -191,6 +196,49 @@ export default async function ReportesPage() {
           ))}
         </div>
       )}
+
+      {/* P3: quick-access exports (CSV ad-hoc) */}
+      <section className="ui-card" style={{ padding: '1.5rem', marginTop: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <Download size={16} style={{ color: 'var(--text-c)' }} />
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
+            Exportar a CSV
+          </h3>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 14 }}>
+          Bajada inmediata. Para programar envíos recurrentes por correo, ir a{' '}
+          <Link href="/arquitectura-humana/exportes" style={{ textDecoration: 'underline' }}>
+            Exportes
+          </Link>
+          .
+        </p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <a
+            href="/api/exports/cumplimiento"
+            download
+            className="ui-btn ui-btn--ghost ui-btn--sm"
+            style={{ textDecoration: 'none' }}
+          >
+            <Download size={12} /> Cumplimiento
+          </a>
+          <a
+            href="/api/exports/acuerdos"
+            download
+            className="ui-btn ui-btn--ghost ui-btn--sm"
+            style={{ textDecoration: 'none' }}
+          >
+            <Download size={12} /> Acuerdos
+          </a>
+          <a
+            href="/api/exports/calidez"
+            download
+            className="ui-btn ui-btn--ghost ui-btn--sm"
+            style={{ textDecoration: 'none' }}
+          >
+            <Download size={12} /> Calidez
+          </a>
+        </div>
+      </section>
     </div>
   )
 }

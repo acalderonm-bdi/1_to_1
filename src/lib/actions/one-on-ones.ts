@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createCalendarEvent, deleteCalendarEvent } from '@/lib/google/calendar'
+import { getOrgSetting } from '@/lib/org-settings'
 import type { ActionResult, OneOnOne } from '@/types/domain'
 
 const scheduleSchema = z.object({
@@ -183,11 +184,30 @@ export async function markNonRealization(
 
   const { data: meeting, error: fetchErr } = await supabase
     .from('one_on_ones')
-    .select('id, leader_id, collaborator_id, status, non_realization_reason')
+    .select('id, leader_id, collaborator_id, status, non_realization_reason, scheduled_at')
     .eq('id', parsed.data.oneOnOneId)
     .single()
 
   if (fetchErr || !meeting) return { success: false, error: 'Reunión no encontrada' }
+
+  // Soft-warning: si la sesión ya excedió el plazo configurable
+  // (`non_realization_max_days`, default 7) desde su `scheduled_at`, lo
+  // logueamos pero permitimos la operación. La política dura está pendiente de
+  // decisión de producto — ver Pack 2 spec.
+  const scheduledAtRaw = (meeting as { scheduled_at: string | null }).scheduled_at
+  if (scheduledAtRaw) {
+    const scheduledAt = new Date(scheduledAtRaw)
+    if (!isNaN(scheduledAt.getTime())) {
+      const maxDays = await getOrgSetting('non_realization_max_days')
+      const daysSince = (Date.now() - scheduledAt.getTime()) / (1000 * 60 * 60 * 24)
+      if (daysSince > maxDays) {
+        console.warn(
+          `[markNonRealization] one_on_one=${parsed.data.oneOnOneId} marcada fuera del plazo (` +
+            `${daysSince.toFixed(1)}d > ${maxDays}d configurados). Se permite igualmente.`,
+        )
+      }
+    }
+  }
 
   const isParticipant = user.id === meeting.leader_id || user.id === meeting.collaborator_id
   if (!isParticipant) {

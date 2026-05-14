@@ -33,6 +33,12 @@ interface DetailInteractionProps {
   /** F6: estado inicial del gate de calidez (renderiza WarmthSurvey junto al VoBo). */
   hasWarmthResponse?: boolean
   /**
+   * Labels configurables para la encuesta de calidez (org_settings.warmth_questions).
+   * La página padre fetcha el setting y los pasa down — el líder no muestra la
+   * encuesta pero recibe la prop igualmente para evitar branching en la página.
+   */
+  warmthQuestions?: Array<{ key: string; label: string }>
+  /**
    * Layout switch:
    * - 'stacked' (default): notas → acuerdos → warmth → vobo, todo a 100% de ancho.
    *   Lo usa la vista del colaborador.
@@ -48,6 +54,7 @@ export function DetailInteraction({
   oneOnOneId, initialMinuteContent, initialAgreements, participants,
   hasVobo, voboValue, partnerVobo, pendingPrevAgreements, currentUserId, meetingStatus, partnerName,
   hasWarmthResponse = false,
+  warmthQuestions,
   layout = 'stacked',
   rail,
 }: DetailInteractionProps) {
@@ -170,6 +177,7 @@ export function DetailInteraction({
     <WarmthSurvey
       oneOnOneId={oneOnOneId}
       onSubmitted={() => setWarmthSubmitted(true)}
+      questions={warmthQuestions}
     />
   ) : null
 

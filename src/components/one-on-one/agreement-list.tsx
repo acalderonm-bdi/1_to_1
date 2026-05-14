@@ -70,6 +70,11 @@ export function AgreementList({
   )
 
   // F1: heurísticas SMART en vivo mientras el usuario escribe.
+  // El componente es client-side y se re-evalúa por keystroke; usar
+  // `getOrgSetting('collaborator_max_open_agreements')` requeriría un fetch async
+  // en cada cambio, lo que rompería la experiencia. Mantenemos el default
+  // sincrónico (7) acá — la persistencia server-side (createAgreement /
+  // saveMinute) sí lee el valor configurado vía `checkAgreementQualityWithConfig`.
   const liveQuality = useMemo(
     () =>
       checkAgreementQuality({

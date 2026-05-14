@@ -58,7 +58,20 @@ const MEASURABLE_VERBS =
 const OUT_OF_SCOPE_KEYWORDS =
   /\b(aumento\s+de\s+sueldo|aumento\s+salarial|sueldo|salario|compensaci[oó]n|bono|comisi[oó]n|promoci[oó]n|ascenso|asciender|promover|despid|finiquito|desvinculaci[oó]n|terminaci[oó]n\s+laboral|contrataci[oó]n\s+de|presupuesto|capex|opex)\b/i
 
-export function checkAgreementQuality(draft: AgreementDraft): QualityCheck {
+/**
+ * Default fallback para el umbral de "colaborador sobrecargado". Se usa cuando
+ * no se pasa `opts.maxOpen` explícito — los consumers cliente (warnings inline
+ * por keystroke) no pueden hacer un fetch async sin penalizar el render. Los
+ * consumers server-side prefieren `checkAgreementQualityWithConfig`, que lee
+ * el valor real desde `org_settings.collaborator_max_open_agreements`.
+ */
+const DEFAULT_MAX_OPEN_AGREEMENTS = 7
+
+export function checkAgreementQuality(
+  draft: AgreementDraft,
+  opts: { maxOpen?: number } = {},
+): QualityCheck {
+  const maxOpen = opts.maxOpen ?? DEFAULT_MAX_OPEN_AGREEMENTS
   const warnings: QualityWarning[] = []
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -101,7 +114,7 @@ export function checkAgreementQuality(draft: AgreementDraft): QualityCheck {
     }
   }
 
-  if (draft.collaboratorOpenAgreementsCount >= 7) {
+  if (draft.collaboratorOpenAgreementsCount >= maxOpen) {
     warnings.push({
       code: 'overloaded_collaborator',
       message: `Este colaborador ya tiene ${draft.collaboratorOpenAgreementsCount} acuerdos abiertos. Considerá priorizar antes de agregar más.`,

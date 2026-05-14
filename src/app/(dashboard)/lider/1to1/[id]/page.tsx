@@ -8,6 +8,7 @@ import { DetailInteraction } from '@/components/one-on-one/detail-interaction'
 import { LeaderInsightPanel } from '@/components/one-on-one/leader-insight-panel'
 import { labelForReason } from '@/components/one-on-one/non-realization-modal'
 import { EmptyState } from '@/components/shared/empty-state'
+import { getOrgSetting } from '@/lib/org-settings'
 
 const STATUS_TONE: Record<string, string> = {
   agendada: 'blue', realizada: 'green', no_realizada: 'red', en_disputa: 'orange',
@@ -62,6 +63,12 @@ export default async function LiderOneOnOneDetailPage({ params }: { params: { id
     supabase.from('agreements').select('id, description, responsible_id, due_date, status, ai_generated').eq('one_on_one_id', params.id).order('created_at'),
     supabase.from('vobos').select('user_id, confirmed').eq('one_on_one_id', params.id),
   ])
+
+  // Labels configurables de la encuesta de calidez — los baja el server y se
+  // propagan vía DetailInteraction (el líder no muestra la encuesta, pero el
+  // componente recibe la prop para que cuando el colaborador la abra desde su
+  // vista la jerarquía sea consistente).
+  const warmthQuestions = await getOrgSetting('warmth_questions')
 
   const isPastMeeting = new Date(meeting.scheduled_at) < new Date()
   const vobos = (rawVobos ?? []) as Array<{ user_id: string; confirmed: boolean }>
@@ -248,6 +255,7 @@ export default async function LiderOneOnOneDetailPage({ params }: { params: { id
               currentUserId={user.id}
               meetingStatus={meeting.status}
               partnerName={partnerName}
+              warmthQuestions={warmthQuestions}
               layout="split-with-rail"
               rail={rail}
             />

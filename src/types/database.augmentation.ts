@@ -97,3 +97,72 @@ export interface WarmthTrendByLeaderMonth {
   response_count: number
   avg_overall: number
 }
+
+// ===== Configs RH (Wave 1 foundation) =====
+
+export interface OrgSettingRow {
+  key: string
+  value: unknown
+  updated_by: string | null
+  updated_at: string
+}
+
+export type NotificationTriggerType =
+  | 'cumplimiento_bajo'
+  | 'acuerdo_vencido'
+  | 'vobo_pendiente'
+  | 'calidez_baja'
+  | 'disputa_nueva'
+  | 'reminder_pre_1to1'
+
+export type NotificationAudience = 'leader' | 'collaborator' | 'hr'
+export type NotificationChannelExt = 'in_app' | 'email' | 'slack'
+
+export interface NotificationRuleRow {
+  id: string
+  name: string
+  enabled: boolean
+  trigger_type: NotificationTriggerType
+  threshold: {
+    value?: number
+    unit?: 'percent' | 'days' | 'score'
+    scope?: 'global' | 'department' | 'leader'
+    days?: number
+  } | null
+  audience: NotificationAudience[]
+  channels: NotificationChannelExt[]
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface NotificationDispatchRow {
+  id: string
+  rule_id: string | null
+  recipient_id: string
+  channel: NotificationChannelExt
+  context: Record<string, unknown>
+  status: 'sent' | 'failed' | 'skipped'
+  created_at: string
+}
+
+export type ScheduledReportType =
+  | 'cumplimiento_mensual'
+  | 'acuerdos_baja_calidad'
+  | 'calidez_por_lider'
+
+export interface ScheduledReportRow {
+  id: string
+  name: string
+  enabled: boolean
+  report_type: ScheduledReportType
+  schedule_cron: string
+  recipients: string[]
+  format: 'csv'
+  filters: Record<string, unknown> | null
+  last_run_at: string | null
+  next_run_at: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}

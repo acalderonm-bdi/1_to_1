@@ -1,4 +1,5 @@
 import type { ExtractedAgreement } from '@/types/domain'
+import { getOrgSetting } from '@/lib/org-settings'
 import { getAIClient, parseJSONResponse } from './client'
 import { extractAgreementsPrompt } from './prompts'
 
@@ -20,6 +21,14 @@ export async function extractAgreements(
     return { agreements: [] }
   }
 
+  // Feature flag: si RH desactivó la extracción automática, devolvemos vacío
+  // sin llamar al modelo. El consumer (saveMinute) ya tolera 0 acuerdos.
+  const features = await getOrgSetting('ai_features')
+  if (!features.extract_agreements) {
+    return { agreements: [] }
+  }
+  const model = await getOrgSetting('ai_model')
+
   try {
     const client = getAIClient()
     const prompt = extractAgreementsPrompt(input.rawMinute, {
@@ -28,7 +37,7 @@ export async function extractAgreements(
     })
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-5',
+      model,
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
     })
