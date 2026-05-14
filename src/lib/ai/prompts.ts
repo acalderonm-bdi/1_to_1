@@ -24,7 +24,28 @@ Reglas:
 - Extrae solo compromisos concretos y verificables
 - No inventes acuerdos que no estén en la minuta
 - Si no hay acuerdos claros, devuelve { "agreements": [] }
-- La confianza (confidence) va de 0.0 a 1.0`
+- La confianza (confidence) va de 0.0 a 1.0
+
+REGLAS DE PRIVACIDAD — críticas, no negociables:
+
+NUNCA extraigas ni menciones en la descripción información sobre estos temas, aunque la persona los mencione en la minuta:
+- Salud física o mental (diagnósticos, tratamientos, terapia, ansiedad, depresión, medicación)
+- Vida familiar (divorcio, separación, problemas de pareja, hijos, embarazo, planes familiares)
+- Relaciones personales o sentimentales
+- Situación financiera personal (deudas, hipoteca, problemas económicos)
+- Creencias religiosas, políticas o ideológicas
+- Orientación sexual o identidad de género
+- Consumo de sustancias o adicciones
+- Situaciones legales personales (denuncias, demandas, herencias)
+- Discriminación, acoso o violencia sufrida (esto debe escalar por canal separado de RH, NO como acuerdo)
+
+CASO ESPECIAL: si en la minuta hay un compromiso DE TRABAJO legítimo (ej: ajuste de horario, cambio de carga, días de descanso adicionales) cuyo MOTIVO es uno de los temas privados de arriba, sí extrae el compromiso PERO redactá la descripción solo en términos de trabajo, sin mencionar el motivo personal. Ejemplo:
+
+  Minuta dice: "Maria está pasando por un divorcio y necesita salir 30 min antes los jueves por 3 semanas. Acordamos ajustar su horario."
+  ✅ Extraer: { "description": "Ajustar horario de salida los jueves: 30 min antes durante 3 semanas", "responsible_email": "<líder>", ... }
+  ❌ NO extraer: { "description": "Apoyar a Maria con su divorcio ajustando horario", ... }
+
+Si todo lo que detectás son temas personales sin un compromiso de trabajo concreto adjunto, devolvé { "agreements": [] }. La minuta queda en su forma libre (visible solo a los participantes); no creamos estructura visible a RH a partir de contenido íntimo.`
 }
 
 export function generateFollowupPlanPrompt(context: {
@@ -96,5 +117,12 @@ Reglas:
 - Solo reporta si hay un patrón real y preocupante
 - Si todo está bien, usa severity: "info" y pattern_detected: false
 - Máximo 3 recomendaciones
-- No hagas suposiciones sin evidencia en los datos`
+- No hagas suposiciones sin evidencia en los datos
+
+REGLAS DE PRIVACIDAD — críticas, no negociables:
+
+- Tu análisis es a nivel agregado/estructural (cadencia, cumplimiento, disputas). NO inferas patrones sobre temas personales aunque aparezcan en las descripciones de los acuerdos.
+- NUNCA menciones en title/description/recommendations información sobre salud, familia, divorcio, situación financiera, creencias, orientación, adicciones o situaciones legales personales — aunque los datos lo sugieran.
+- Si detectás que muchos acuerdos parecen tener un trasfondo personal (ej: múltiples ajustes de horario, ausencias frecuentes), reportá el patrón estructural en términos neutros ("alta variabilidad en cadencia y horarios — recomendable conversación de RH con el colaborador") sin especular causa personal.
+- Si un patrón sugiere posible discriminación, acoso o violencia, NO lo formalices en este reporte. En cambio, usa severity: "critical" y recommendation: "Iniciar conversación 1:1 directa con el colaborador desde RH para entender la situación y, si aplica, escalar al canal interno de denuncias". Sin detalles especulativos.`
 }
