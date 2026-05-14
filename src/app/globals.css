@@ -857,7 +857,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: var(--accent-700);
+  color: hsl(var(--primary));
   margin: 0 0 6px;
   display: inline-flex;
   align-items: center;
@@ -1080,7 +1080,7 @@
 
 .ui-link {
   background: none; border: none;
-  color: var(--accent-700);
+  color: hsl(var(--primary));
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -1089,7 +1089,7 @@
   transition: color 0.15s var(--ease-out);
   font-family: inherit;
 }
-.ui-link:hover { color: var(--accent-800); text-decoration: underline; text-underline-offset: 3px; }
+.ui-link:hover { color: color-mix(in oklab, hsl(var(--primary)) 75%, black); text-decoration: underline; text-underline-offset: 3px; }
 
 /* ============================================================
    Badges
@@ -1640,7 +1640,7 @@
   border-bottom: 1px solid var(--border-c);
 }
 .notif-list__title { font-weight: 600; font-size: 13.5px; letter-spacing: -0.005em; }
-.notif-list__action { font-size: 12px; color: var(--accent-600); background: none; border: none; padding: 0; cursor: pointer; font-weight: 500; font-family: inherit; }
+.notif-list__action { font-size: 12px; color: hsl(var(--primary)); background: none; border: none; padding: 0; cursor: pointer; font-weight: 500; font-family: inherit; }
 .notif-list__action:hover { text-decoration: underline; }
 .notif-item {
   padding: 12px 16px;
@@ -1711,10 +1711,10 @@
 }
 .settings-nav__item:hover { background: var(--bg-muted); }
 .settings-nav__item[data-active="true"] {
-  background: color-mix(in oklab, var(--accent-500) 12%, transparent);
-  color: var(--accent-700);
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
 }
-.settings-nav__item[data-active="true"] svg { color: var(--accent-700); }
+.settings-nav__item[data-active="true"] svg { color: hsl(var(--primary)); }
 .settings-nav__item svg { color: var(--text-muted); flex-shrink: 0; }
 
 .setting-row {
