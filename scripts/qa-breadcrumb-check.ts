@@ -41,16 +41,32 @@ async function main() {
   try {
     await login(page, ADMIN.email, ADMIN.password)
 
+    // Primera carga: server render
+    await page.goto(`${BASE}${ROUTES[0].path}`, { waitUntil: 'networkidle', timeout: 30000 })
+    await page.waitForTimeout(500)
+
+    // Resto: navegar via click en el sidebar (client-side navigation)
     for (const r of ROUTES) {
-      await page.goto(`${BASE}${r.path}`, { waitUntil: 'networkidle', timeout: 30000 })
-      await page.waitForTimeout(500)
+      const link = page.locator(`.sidebar__link[href="${r.path}"]`).first()
+      await link.click()
+      // Esperar URL change + react re-render
+      await page.waitForURL(`${BASE}${r.path}`, { timeout: 10000 })
+      await page.waitForTimeout(400)
+
       const breadcrumb = await page
         .locator('.app-header__breadcrumb-current')
         .first()
         .innerText()
         .catch(() => '<none>')
-      const ok = breadcrumb.trim() === r.expected
-      console.log(`${ok ? '✓' : '✗'} ${r.path}: breadcrumb="${breadcrumb}" expected="${r.expected}"`)
+      const sidebarActive = await page
+        .locator('.sidebar__link[data-active="true"]')
+        .first()
+        .innerText()
+        .catch(() => '<none>')
+      const ok = breadcrumb.trim() === r.expected && sidebarActive.trim() === r.expected
+      console.log(
+        `${ok ? '✓' : '✗'} ${r.path}: breadcrumb="${breadcrumb}" sidebar="${sidebarActive.trim()}" expected="${r.expected}"`,
+      )
       const outPath = join(OUT, `breadcrumb-${r.name}.png`)
       await page.screenshot({ path: outPath, fullPage: false })
     }

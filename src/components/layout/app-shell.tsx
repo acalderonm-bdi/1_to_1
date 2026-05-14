@@ -38,7 +38,11 @@ interface AppShellProps {
 export function AppShell({ role, currentPath, userId, userName, userEmail, children }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [cmdkOpen, setCmdkOpen] = useState(false)
-  const pathname = usePathname()
+  // `currentPath` viene del server layout (header x-pathname) y NO se actualiza
+  // en navegación client-side. Usamos usePathname() para reflejar la ruta
+  // real, con fallback al server value para el primer render.
+  const pathname = usePathname() ?? currentPath
+  const activePath = pathname
   const router = useRouter()
 
   const openDrawer = useCallback(() => setDrawerOpen(true), [])
@@ -119,12 +123,12 @@ export function AppShell({ role, currentPath, userId, userName, userEmail, child
         />
         <Sidebar
           role={role}
-          currentPath={currentPath}
+          currentPath={activePath}
           userName={userName}
           userEmail={userEmail}
         />
         <div className="flex min-w-0 flex-col xl:ml-[var(--sidebar-width)] transition-[margin] duration-300">
-          <Header userId={userId} userName={userName} userRole={role} breadcrumbs={breadcrumbsFor(role, currentPath)} />
+          <Header userId={userId} userName={userName} userRole={role} breadcrumbs={breadcrumbsFor(role, activePath)} />
           <main className="min-w-0">
             {children}
           </main>
