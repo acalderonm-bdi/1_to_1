@@ -2,52 +2,11 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import {
-  Home, CalendarPlus, CheckSquare, Users, Sparkles, LayoutDashboard,
-  Grid, FileText, AlertTriangle, Repeat, Network, UsersRound, Settings, LogOut, X,
-  Bell, SlidersHorizontal, Download, RefreshCcw,
-} from 'lucide-react'
+import { LogOut, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAppShell } from '@/components/layout/app-shell'
+import { NAV_BY_ROLE, isNavItemActive } from '@/lib/nav'
 import type { UserRole } from '@/types/domain'
-
-interface NavItem {
-  key: string
-  label: string
-  icon: React.ComponentType<{ size?: number | string; className?: string }>
-  href: string
-  badge?: number
-  divider?: boolean
-}
-
-const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
-  collaborator: [
-    { key: 'col-dash', label: 'Inicio', icon: Home, href: '/colaborador' },
-    { key: 'col-acuerdos', label: 'Mis acuerdos', icon: CheckSquare, href: '/colaborador/acuerdos' },
-    { key: 'col-historial', label: 'Historial', icon: Repeat, href: '/colaborador/historial' },
-    { key: 'col-config', label: 'Configuración', icon: Settings, href: '/colaborador/configuracion', divider: true },
-  ],
-  leader: [
-    { key: 'lid-dash', label: 'Resumen', icon: LayoutDashboard, href: '/lider' },
-    { key: 'lid-equipo', label: 'Mi equipo', icon: Users, href: '/lider/equipo' },
-    { key: 'lid-1to1-new', label: 'Agendar 1:1', icon: CalendarPlus, href: '/colaborador/1to1/nueva' },
-    { key: 'lid-config', label: 'Configuración', icon: Settings, href: '/lider/configuracion', divider: true },
-  ],
-  hr: [
-    { key: 'rh-dash', label: 'Panel general', icon: LayoutDashboard, href: '/arquitectura-humana' },
-    { key: 'rh-mapa', label: 'Mapa de calor', icon: Grid, href: '/arquitectura-humana/mapa-calor' },
-    { key: 'rh-reportes', label: 'Reportes IA', icon: FileText, href: '/arquitectura-humana/reportes' },
-    { key: 'rh-disputas', label: 'Disputas', icon: AlertTriangle, href: '/arquitectura-humana/disputas' },
-    { key: 'rh-cadencias', label: 'Cadencias', icon: Repeat, href: '/arquitectura-humana/cadencias' },
-    { key: 'rh-estructura', label: 'Estructura', icon: Network, href: '/arquitectura-humana/estructura' },
-    { key: 'rh-notif', label: 'Notificaciones', icon: Bell, href: '/arquitectura-humana/notificaciones' },
-    { key: 'rh-params', label: 'Parámetros', icon: SlidersHorizontal, href: '/arquitectura-humana/parametros' },
-    { key: 'rh-export', label: 'Exportes', icon: Download, href: '/arquitectura-humana/exportes' },
-    { key: 'rh-sync', label: 'Sincronización', icon: RefreshCcw, href: '/arquitectura-humana/sincronizacion' },
-    { key: 'rh-usuarios', label: 'Usuarios', icon: UsersRound, href: '/arquitectura-humana/usuarios' },
-    { key: 'rh-config', label: 'Configuración', icon: Settings, href: '/arquitectura-humana/configuracion', divider: true },
-  ],
-}
 
 const ROLE_LABEL: Record<UserRole, string> = {
   collaborator: 'Colaborador',
@@ -102,12 +61,7 @@ export function Sidebar({ role, currentPath, userName, userEmail }: SidebarProps
       <nav className="sidebar__nav">
         {items.map(item => {
           const Icon = item.icon
-          const isActive =
-            currentPath === item.href ||
-            (item.href !== '/colaborador' &&
-              item.href !== '/lider' &&
-              item.href !== '/arquitectura-humana' &&
-              currentPath.startsWith(item.href))
+          const isActive = isNavItemActive(item, currentPath)
           return (
             <div key={item.key}>
               {item.divider && <div className="sidebar__divider" aria-hidden="true" />}

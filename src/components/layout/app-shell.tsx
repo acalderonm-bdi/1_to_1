@@ -6,6 +6,7 @@ import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 import { CommandPalette } from '@/components/layout/command-palette'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
+import { breadcrumbsFor } from '@/lib/nav'
 import type { UserRole } from '@/types/domain'
 
 interface AppShellContextValue {
@@ -123,7 +124,7 @@ export function AppShell({ role, currentPath, userId, userName, userEmail, child
           userEmail={userEmail}
         />
         <div className="flex min-w-0 flex-col xl:ml-[var(--sidebar-width)] transition-[margin] duration-300">
-          <Header userId={userId} userName={userName} userRole={role} />
+          <Header userId={userId} userName={userName} userRole={role} breadcrumbs={breadcrumbsFor(role, currentPath)} />
           <main className="min-w-0">
             {children}
           </main>
