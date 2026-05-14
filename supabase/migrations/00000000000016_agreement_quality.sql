@@ -9,7 +9,9 @@ create index idx_agreements_quality_low
   on public.agreements(ai_quality_score)
   where ai_quality_score is not null and ai_quality_score < 3;
 
--- Re-create the view to include the new quality columns
+-- Re-create the view to include the new quality columns.
+-- Postgres restriction: CREATE OR REPLACE VIEW must keep the existing columns
+-- in the same order/names; new columns MUST be appended at the end.
 create or replace view public.open_agreements_by_collaborator as
 select
   a.id,
@@ -20,15 +22,15 @@ select
   a.status,
   a.ai_generated,
   a.ai_confidence,
-  a.ai_quality_score,
-  a.ai_quality_warnings,
   a.created_at,
   a.updated_at,
   o.leader_id as original_leader_id,
   o.collaborator_id,
   current_lr.leader_id as current_leader_id,
   (o.leader_id <> current_lr.leader_id) as is_transferred,
-  o.scheduled_at as session_scheduled_at
+  o.scheduled_at as session_scheduled_at,
+  a.ai_quality_score,
+  a.ai_quality_warnings
 from public.agreements a
 join public.one_on_ones o on o.id = a.one_on_one_id
 left join public.leadership_relations current_lr
