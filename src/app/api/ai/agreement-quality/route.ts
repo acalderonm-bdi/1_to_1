@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
   const { description, responsibleName, dueDate } = parsed.data
 
-  const prompt = `Sos un asesor que evalúa la calidad de acuerdos en reuniones 1:1 según criterios SMART.
+  const prompt = `Sos un asesor que evalúa la calidad de acuerdos en reuniones 1:1 según criterios SMART y el alcance apropiado para ese contexto.
 
 Acuerdo:
 - Descripción: "${description}"
@@ -42,16 +42,18 @@ Evaluá según estos criterios:
 2. ¿Es medible? (hay un entregable verificable)
 3. ¿Es realista en el plazo dado?
 4. ¿Está bien escrito como compromiso accionable?
+5. ¿Está dentro del alcance de lo que un líder puede comprometer en una 1:1? Las 1:1 NO son el espacio para decidir aumentos de sueldo, promociones formales, contrataciones, despidos, presupuestos o cambios organizacionales — esas decisiones requieren RH, comité de compensación o ejecutivos. Si el acuerdo implica que el líder "otorgue" / "apruebe" / "decida" uno de esos temas, es out-of-scope. El framing correcto suele ser "escalar a RH", "recomendar para próxima revisión", "proponer al comité" — eso SÍ está en el alcance del líder.
 
 Respondé en JSON estricto con este shape:
 {
   "quality_score": number (0-5),
-  "warnings": [{"code": "ambiguous_wording", "message": "string", "suggestion": "string" | null}],
+  "warnings": [{"code": "ambiguous_wording" | "unrealistic_deadline" | "out_of_scope_for_11", "message": "string", "suggestion": "string" | null}],
   "refined_description": "string" | null
 }
 
-Códigos válidos para warnings: "ambiguous_wording", "unrealistic_deadline".
-Solo agregá refined_description si tenés una mejora concreta. Si el acuerdo está bien, devolvé score 5, warnings vacío, refined_description null.`
+Códigos válidos: "ambiguous_wording", "unrealistic_deadline", "out_of_scope_for_11".
+Si detectás out_of_scope_for_11, agregá refined_description proponiendo un reframing como acción de escalado/recomendación.
+Si el acuerdo está bien en todos los criterios, devolvé score 5, warnings vacío, refined_description null.`
 
   try {
     const client = getAIClient()

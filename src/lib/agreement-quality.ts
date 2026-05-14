@@ -26,6 +26,7 @@ export type QualityWarningCode =
   | 'ambiguous_wording'
   | 'no_measurable_outcome'
   | 'unrealistic_deadline'
+  | 'out_of_scope_for_11'
 
 export interface QualityWarning {
   code: QualityWarningCode
@@ -41,6 +42,21 @@ export interface QualityCheck {
 
 const MEASURABLE_VERBS =
   /\b(entreg|present|complet|enviar|firm|aprobar|implement|escrib|public|capacitar|formaliz|notificar|coordinar|finaliz|cumplir|resolver|estabilizar)\w*\b/i
+
+/**
+ * Temas que típicamente exceden el alcance de lo que se puede comprometer en
+ * una 1:1 entre líder y colaborador: compensación, promociones formales,
+ * contrataciones/desvinculaciones, decisiones de presupuesto. Estas
+ * resoluciones requieren intervención de RH, comité de compensación o
+ * ejecutivos. El compromiso accionable correcto suele ser "escalar / plantear
+ * a RH / proponer en la próxima revisión", no "otorgar / aprobar".
+ *
+ * Patrón laxo (mejor false-positive que dejar pasar uno real): si la
+ * descripción menciona estos sustantivos, mostramos warning soft. El usuario
+ * puede ignorarlo si reformuló como acción de escalado.
+ */
+const OUT_OF_SCOPE_KEYWORDS =
+  /\b(aumento\s+de\s+sueldo|aumento\s+salarial|sueldo|salario|compensaci[oó]n|bono|comisi[oó]n|promoci[oó]n|ascenso|asciender|promover|despid|finiquito|desvinculaci[oó]n|terminaci[oó]n\s+laboral|contrataci[oó]n\s+de|presupuesto|capex|opex)\b/i
 
 export function checkAgreementQuality(draft: AgreementDraft): QualityCheck {
   const warnings: QualityWarning[] = []
@@ -100,6 +116,16 @@ export function checkAgreementQuality(draft: AgreementDraft): QualityCheck {
       code: 'no_measurable_outcome',
       message:
         'No queda claro qué entregable se verificará. Usá un verbo accionable (entregar, presentar, completar…).',
+    })
+  }
+
+  if (OUT_OF_SCOPE_KEYWORDS.test(draft.description)) {
+    warnings.push({
+      code: 'out_of_scope_for_11',
+      message:
+        'Este compromiso menciona temas (compensación, promoción, contratación o presupuesto) que típicamente no se resuelven en una 1:1 — requieren RH, comité o ejecutivos. Reformulalo como una acción concreta dentro de lo que el líder sí puede hacer (ej: "Escalar a RH la solicitud de aumento", "Recomendar para la próxima revisión de promociones", "Proponer en el comité").',
+      suggestion:
+        'Reformular como acción de escalado/recomendación, no como decisión final',
     })
   }
 
