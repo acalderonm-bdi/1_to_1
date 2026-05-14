@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Save, Sparkles, Check, AlertCircle, Radio } from 'lucide-react'
+import { Sparkles, Check, AlertCircle, Radio } from 'lucide-react'
 import { saveMinute } from '@/lib/actions/minutes'
 import type { ExtractedAgreement } from '@/types/domain'
 
@@ -174,8 +174,8 @@ export function MinuteEditor({
           onClick={handleSave}
           disabled={isPending || !content.trim()}
         >
-          {isPending ? <span className="spinner" /> : <Save size={13} />}
-          <span>{isPending ? 'Guardando y procesando con IA…' : 'Guardar minuta'}</span>
+          {isPending ? <span className="spinner" /> : <Sparkles size={13} />}
+          <span>{isPending ? 'Extrayendo acuerdos con IA…' : 'Guardar y extraer acuerdos con IA'}</span>
         </button>
       </div>
     </div>
