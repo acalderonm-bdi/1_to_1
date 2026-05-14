@@ -40,21 +40,7 @@ export function VoboButton({ oneOnOneId, userVobo, partnerName, partnerVobo = nu
   }
 
   const partnerFirst = partnerName?.split(' ')[0] ?? 'la otra persona'
-
-  // Sin acuerdos no se puede aprobar todavía.
-  if (agreementsCount === 0) {
-    return (
-      <div className="vobo">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-          <h3 className="vobo__title" style={{ margin: 0 }}>¿Apruebas los acuerdos?</h3>
-          <ApprovalCounter mine={null} partner={null} />
-        </div>
-        <p className="vobo__sub">
-          Aún no hay acuerdos registrados. Agreguen al menos uno (manual o vía IA) para poder aprobar y cerrar la reunión.
-        </p>
-      </div>
-    )
-  }
+  const noAgreements = agreementsCount === 0
 
   // Ya voté
   if (myVobo !== null) {
@@ -100,14 +86,32 @@ export function VoboButton({ oneOnOneId, userVobo, partnerName, partnerVobo = nu
   return (
     <div className="vobo">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
-        <h3 className="vobo__title" style={{ margin: 0 }}>¿Apruebas los acuerdos registrados?</h3>
+        <h3 className="vobo__title" style={{ margin: 0 }}>
+          {noAgreements ? '¿Apruebas el cierre de esta 1:1?' : '¿Apruebas los acuerdos registrados?'}
+        </h3>
         <ApprovalCounter mine={null} partner={partnerVobo} />
       </div>
+      {noAgreements && (
+        <p
+          className="vobo__sub"
+          style={{
+            background: 'hsl(var(--warning) / 0.12)',
+            borderLeft: '3px solid hsl(var(--warning))',
+            padding: '8px 12px',
+            borderRadius: 6,
+            marginBottom: 8,
+          }}
+        >
+          Esta 1:1 se va a cerrar <strong>sin acuerdos registrados</strong>. Si fue un check-in o sesión de escucha, está bien — si se acordó algo, agreguen el compromiso antes de aprobar.
+        </p>
+      )}
       <p className="vobo__sub">
-        Tu aprobación confirma que la reunión se realizó y que los compromisos quedan tal como están listados arriba.
+        {noAgreements
+          ? 'Tu aprobación confirma que la reunión se realizó. No quedan compromisos pendientes.'
+          : 'Tu aprobación confirma que la reunión se realizó y que los compromisos quedan tal como están listados arriba.'}
         {partnerVobo === true && ` ${partnerFirst} ya aprobó — falta tu confirmación para cerrar.`}
         {partnerVobo === false && ` ${partnerFirst} indicó que no aprueba — si tú lo haces, se levantará una disputa.`}
-        {' '}Si modifican los acuerdos después, ambos deberán aprobar de nuevo.
+        {!noAgreements && ' Si modifican los acuerdos después, ambos deberán aprobar de nuevo.'}
       </p>
       <div className="vobo__buttons">
         <button
