@@ -2236,17 +2236,38 @@
 .meeting-grid__rail {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
+/* Sticky desde arriba, pero NO con max-height (recortaba VoBo cuando rail
+   superaba la altura del viewport). Si el rail es más alto que el viewport,
+   el browser hace scroll natural — el sticky lo mantiene a la vista hasta
+   que el documento haya scrolleado lo suficiente. */
 @media (min-width: 1180px) {
   .meeting-grid__rail {
     position: sticky;
-    top: 88px;
-    max-height: calc(100vh - 104px);
-    overflow-y: auto;
-    padding-right: 2px;
+    top: 24px;
+    align-self: start;
   }
+}
+
+/* Densidad interna del rail: ui-cards adentro con padding más justo */
+.meeting-grid__rail .ui-card {
+  padding: 12px 14px;
+}
+.meeting-grid__rail .ui-card__head {
+  padding: 0;
+  margin-bottom: 8px;
+}
+.meeting-grid__rail .ui-card__body {
+  padding: 0;
+}
+.meeting-grid__rail .ui-card__title {
+  font-size: 13.5px;
+}
+.meeting-grid__rail .ui-card__desc {
+  font-size: 11.5px;
+  margin-top: 2px;
 }
 
 .meeting-grid__full {

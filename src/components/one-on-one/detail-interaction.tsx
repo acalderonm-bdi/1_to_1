@@ -197,6 +197,7 @@ export function DetailInteraction({
         partnerVobo={partnerVobo}
         partnerName={partnerName}
         agreementsCount={initialAgreements.length}
+        compact={layout === 'split-with-rail'}
       />
     )
 

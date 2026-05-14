@@ -13,6 +13,8 @@ interface VoboButtonProps {
   partnerVobo?: boolean | null
   /** Si la 1:1 todavía no tiene acuerdos registrados, el VoBo está bloqueado. */
   agreementsCount: number
+  /** Si true, ajusta tamaños/copy para vivir en un rail angosto (~340px). */
+  compact?: boolean
 }
 
 function ApprovalCounter({ mine, partner }: { mine: boolean | null; partner: boolean | null }) {
@@ -27,7 +29,7 @@ function ApprovalCounter({ mine, partner }: { mine: boolean | null; partner: boo
   )
 }
 
-export function VoboButton({ oneOnOneId, userVobo, partnerName, partnerVobo = null, agreementsCount }: VoboButtonProps) {
+export function VoboButton({ oneOnOneId, userVobo, partnerName, partnerVobo = null, agreementsCount, compact = false }: VoboButtonProps) {
   const [myVobo, setMyVobo] = useState<boolean | null>(userVobo)
   const [isPending, startTransition] = useTransition()
   const { toast } = useToast()
@@ -90,12 +92,15 @@ export function VoboButton({ oneOnOneId, userVobo, partnerName, partnerVobo = nu
     )
   }
 
+  const btnSize = compact ? 'ui-btn--sm' : 'ui-btn--lg'
+  const titleStyle = compact ? { margin: 0, fontSize: 14 } : { margin: 0 }
+
   // No he votado
   return (
-    <div className="vobo">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
-        <h3 className="vobo__title" style={{ margin: 0 }}>
-          {noAgreements ? '¿Apruebas el cierre de esta 1:1?' : '¿Apruebas los acuerdos registrados?'}
+    <div className="vobo" style={compact ? { padding: 14 } : undefined}>
+      <div style={{ display: 'flex', flexDirection: compact ? 'column' : 'row', alignItems: compact ? 'flex-start' : 'center', gap: compact ? 6 : 10, marginBottom: 6, flexWrap: 'wrap' }}>
+        <h3 className="vobo__title" style={titleStyle}>
+          {noAgreements ? '¿Apruebas el cierre?' : '¿Apruebas los acuerdos?'}
         </h3>
         <ApprovalCounter mine={null} partner={partnerVobo} />
       </div>
@@ -105,40 +110,49 @@ export function VoboButton({ oneOnOneId, userVobo, partnerName, partnerVobo = nu
           style={{
             background: 'hsl(var(--warning) / 0.12)',
             borderLeft: '3px solid hsl(var(--warning))',
-            padding: '8px 12px',
+            padding: compact ? '6px 10px' : '8px 12px',
             borderRadius: 6,
             marginBottom: 8,
+            fontSize: compact ? 11.5 : undefined,
           }}
         >
-          Esta 1:1 se va a cerrar <strong>sin acuerdos registrados</strong>. Si fue un check-in o sesión de escucha, está bien — si se acordó algo, agreguen el compromiso antes de aprobar.
+          {compact ? (
+            <>Sin acuerdos registrados. Si fue check-in está bien; si se acordó algo, agreguen el compromiso antes de aprobar.</>
+          ) : (
+            <>Esta 1:1 se va a cerrar <strong>sin acuerdos registrados</strong>. Si fue un check-in o sesión de escucha, está bien — si se acordó algo, agreguen el compromiso antes de aprobar.</>
+          )}
         </p>
       )}
-      <p className="vobo__sub">
-        {noAgreements
-          ? 'Tu aprobación confirma que la reunión se realizó. No quedan compromisos pendientes.'
-          : 'Tu aprobación confirma que la reunión se realizó y que los compromisos quedan tal como están listados arriba.'}
-        {partnerVobo === true && ` ${partnerFirst} ya aprobó — falta tu confirmación para cerrar.`}
-        {partnerVobo === false && ` ${partnerFirst} indicó que no aprueba — si tú lo haces, se levantará una disputa.`}
-        {!noAgreements && ' Si modifican los acuerdos después, ambos deberán aprobar de nuevo.'}
+      <p className="vobo__sub" style={compact ? { fontSize: 11.5, marginBottom: 10 } : undefined}>
+        {compact
+          ? noAgreements
+            ? 'Confirma que la reunión se realizó.'
+            : 'Confirma que la reunión se realizó y los acuerdos quedan registrados.'
+          : noAgreements
+            ? 'Tu aprobación confirma que la reunión se realizó. No quedan compromisos pendientes.'
+            : 'Tu aprobación confirma que la reunión se realizó y que los compromisos quedan tal como están listados arriba.'}
+        {partnerVobo === true && ` ${partnerFirst} ya aprobó${compact ? '' : ' — falta tu confirmación para cerrar'}.`}
+        {partnerVobo === false && ` ${partnerFirst} indicó que no aprueba${compact ? '' : ' — si tú lo haces, se levantará una disputa'}.`}
+        {!noAgreements && !compact && ' Si modifican los acuerdos después, ambos deberán aprobar de nuevo.'}
       </p>
-      <div className="vobo__buttons">
+      <div className="vobo__buttons" style={compact ? { gap: 6 } : undefined}>
         <button
           type="button"
-          className="ui-btn ui-btn--success ui-btn--lg"
+          className={`ui-btn ui-btn--success ${btnSize}`}
           onClick={() => handleVobo(true)}
           disabled={isPending}
         >
-          {isPending ? <Loader2 size={15} className="spinner" /> : <Check size={15} />}
+          {isPending ? <Loader2 size={13} className="spinner" /> : <Check size={13} />}
           <span>Sí, apruebo</span>
         </button>
         <button
           type="button"
-          className="ui-btn ui-btn--danger-outline ui-btn--lg"
+          className={`ui-btn ui-btn--danger-outline ${btnSize}`}
           onClick={() => handleVobo(false)}
           disabled={isPending}
         >
-          <X size={15} />
-          <span>No estoy de acuerdo</span>
+          <X size={13} />
+          <span>{compact ? 'No apruebo' : 'No estoy de acuerdo'}</span>
         </button>
       </div>
     </div>
