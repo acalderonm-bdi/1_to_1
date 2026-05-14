@@ -135,14 +135,22 @@ export function VoboButton({ oneOnOneId, userVobo, partnerName, partnerVobo = nu
         {partnerVobo === false && ` ${partnerFirst} indicó que no aprueba${compact ? '' : ' — si tú lo haces, se levantará una disputa'}.`}
         {!noAgreements && !compact && ' Si modifican los acuerdos después, ambos deberán aprobar de nuevo.'}
       </p>
-      <div className="vobo__buttons" style={compact ? { gap: 6 } : undefined}>
+      <div
+        className="vobo__buttons"
+        style={
+          compact
+            ? { display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }
+            : undefined
+        }
+      >
         <button
           type="button"
           className={`ui-btn ui-btn--success ${btnSize}`}
           onClick={() => handleVobo(true)}
           disabled={isPending}
+          style={compact ? { width: '100%', justifyContent: 'center' } : undefined}
         >
-          {isPending ? <Loader2 size={13} className="spinner" /> : <Check size={13} />}
+          {isPending ? <Loader2 size={14} className="spinner" /> : <Check size={14} />}
           <span>Sí, apruebo</span>
         </button>
         <button
@@ -150,8 +158,9 @@ export function VoboButton({ oneOnOneId, userVobo, partnerName, partnerVobo = nu
           className={`ui-btn ui-btn--danger-outline ${btnSize}`}
           onClick={() => handleVobo(false)}
           disabled={isPending}
+          style={compact ? { width: '100%', justifyContent: 'center' } : undefined}
         >
-          <X size={13} />
+          <X size={14} />
           <span>{compact ? 'No apruebo' : 'No estoy de acuerdo'}</span>
         </button>
       </div>
