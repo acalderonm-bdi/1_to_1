@@ -48,6 +48,45 @@ CASO ESPECIAL: si en la minuta hay un compromiso DE TRABAJO legítimo (ej: ajust
 Si todo lo que detectás son temas personales sin un compromiso de trabajo concreto adjunto, devolvé { "agreements": [] }. La minuta queda en su forma libre (visible solo a los participantes); no creamos estructura visible a RH a partir de contenido íntimo.`
 }
 
+export function suggestQuestionsPrompt(context: {
+  collaboratorName: string
+  recentMeetings: Array<{ date: string; agreements: string[] }>
+  pendingAgreements: Array<{ description: string; dueDate: string | null; status: string }>
+}): string {
+  return `Eres un coach ejecutivo que ayuda a líderes a tener mejores conversaciones 1:1.
+
+Contexto del colaborador: ${context.collaboratorName}
+
+Últimas 1:1s:
+${context.recentMeetings.map(m => `- ${m.date}: ${m.agreements.join(', ') || 'Sin acuerdos registrados'}`).join('\n')}
+
+Acuerdos pendientes:
+${context.pendingAgreements.map(a => `- ${a.description} (vence: ${a.dueDate ?? 'sin fecha'}, estado: ${a.status})`).join('\n') || 'Ninguno'}
+
+Sugiere 5 preguntas para la próxima 1:1. Responde ÚNICAMENTE con JSON válido, sin markdown:
+{
+  "questions": [
+    {
+      "question": "Pregunta específica y abierta",
+      "rationale": "Por qué esta pregunta es relevante ahora",
+      "category": "desempeño|desarrollo|bienestar|seguimiento|feedback"
+    }
+  ]
+}
+
+Reglas:
+- Preguntas abiertas, no de sí/no
+- Basadas en el contexto real, no genéricas
+- En español, tono profesional pero cercano
+
+REGLAS DE PRIVACIDAD — críticas, no negociables:
+
+- Las preguntas deben ser sobre TRABAJO, desarrollo profesional, bienestar laboral, dinámica de equipo o feedback de la relación líder-colaborador.
+- NUNCA generes preguntas que indaguen en temas personales sensibles: salud (física/mental, terapia, medicación, ansiedad, depresión), vida familiar (pareja, hijos, divorcio, embarazo, planes familiares), situación financiera personal, creencias religiosas/políticas/ideológicas, orientación sexual o identidad de género, adicciones, situaciones legales personales.
+- Si el contexto del colaborador parece sugerir estos temas, NO los uses como pista para preguntar; respondé con preguntas neutras sobre carga, bloqueos, crecimiento profesional o cómo el líder puede apoyarlo en términos generales.
+- La categoría "bienestar" se refiere a carga de trabajo, energía, estrés laboral — NO a salud mental clínica, vida personal o relaciones íntimas.`
+}
+
 export function generateFollowupPlanPrompt(context: {
   collaboratorName: string
   meetingDate: string

@@ -5,6 +5,7 @@ import { Calendar, Clock, Video, MapPin, ChevronLeft, MoreHorizontal, ArrowRight
 import { STATUS_LABELS } from '@/lib/constants'
 import { AgendaList } from '@/components/one-on-one/agenda-list'
 import { DetailInteraction } from '@/components/one-on-one/detail-interaction'
+import { LeaderInsightPanel } from '@/components/one-on-one/leader-insight-panel'
 import { labelForReason } from '@/components/one-on-one/non-realization-modal'
 import { EmptyState } from '@/components/shared/empty-state'
 
@@ -203,6 +204,13 @@ export default async function LiderOneOnOneDetailPage({ params }: { params: { id
               </div>
             )}
           </div>
+        )}
+
+        {collaborator && (
+          <LeaderInsightPanel
+            collaboratorId={collaborator.id}
+            collaboratorName={collaborator.full_name}
+          />
         )}
 
         <div className="ui-card">

@@ -90,3 +90,9 @@ export interface ActionResult<T = undefined> {
   data?: T
   error?: string
 }
+
+export interface SuggestedQuestion {
+  question: string
+  rationale: string
+  category: 'desempeño' | 'desarrollo' | 'bienestar' | 'seguimiento' | 'feedback'
+}
