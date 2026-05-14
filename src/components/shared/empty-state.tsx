@@ -56,7 +56,7 @@ function EmptyArt({ kind }: { kind: Illustration }) {
         <svg viewBox="0 0 180 140" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <defs>
             <linearGradient id="emp-list-card" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="0%" stopColor="hsl(var(--card))" />
               <stop offset="100%" stopColor="hsl(var(--muted))" />
             </linearGradient>
             <linearGradient id="emp-list-stripe" x1="0" y1="0" x2="1" y2="0">
@@ -79,7 +79,7 @@ function EmptyArt({ kind }: { kind: Illustration }) {
         <svg viewBox="0 0 180 140" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <defs>
             <linearGradient id="emp-cal-bg" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="0%" stopColor="hsl(var(--card))" />
               <stop offset="100%" stopColor="hsl(var(--muted))" />
             </linearGradient>
           </defs>
@@ -112,10 +112,10 @@ function EmptyArt({ kind }: { kind: Illustration }) {
       return (
         <svg viewBox="0 0 180 140" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <ellipse cx="90" cy="124" rx="58" ry="5" fill={muted} opacity="0.6" />
-          <circle cx="78" cy="62" r="34" fill="#ffffff" stroke={stroke} strokeWidth="2" />
+          <circle cx="78" cy="62" r="34" fill="hsl(var(--card))" stroke={stroke} strokeWidth="2" />
           <circle cx="78" cy="62" r="34" stroke={accent} strokeWidth="3" strokeDasharray="6 8" opacity="0.4" />
           <line x1="106" y1="86" x2="132" y2="112" stroke={accent} strokeWidth="6" strokeLinecap="round" />
-          <line x1="106" y1="86" x2="132" y2="112" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
+          <line x1="106" y1="86" x2="132" y2="112" stroke="hsl(var(--card))" strokeWidth="2" strokeLinecap="round" />
           <path d="M62 62 Q78 50 94 62" stroke={muted} strokeWidth="3" fill="none" strokeLinecap="round" />
           <circle cx="68" cy="56" r="2" fill={muted} />
           <circle cx="88" cy="56" r="2" fill={muted} />

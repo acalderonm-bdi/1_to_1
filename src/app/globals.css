@@ -1056,14 +1056,14 @@
 .ui-btn--success:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 1px 0 rgba(255,255,255,0.18) inset, 0 12px 24px -6px color-mix(in oklab, var(--green-600) 70%, transparent); }
 .ui-btn--lime {
   background: linear-gradient(180deg, var(--lime-400), var(--lime-600));
-  color: #1a1f00; border-color: var(--lime-700);
+  color: hsl(70 100% 6%); border-color: var(--lime-700);
   box-shadow: 0 1px 0 rgba(255,255,255,0.30) inset, 0 6px 16px -6px color-mix(in oklab, var(--lime-500) 50%, transparent);
 }
 .ui-btn--lime:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 1px 0 rgba(255,255,255,0.30) inset, 0 12px 24px -6px color-mix(in oklab, var(--lime-500) 65%, transparent); }
 .ui-btn--danger-outline {
-  background: var(--bg-card); color: var(--red-700); border-color: var(--red-200);
+  background: var(--bg-card); color: hsl(var(--destructive)); border-color: hsl(var(--destructive) / 0.35);
 }
-.ui-btn--danger-outline:hover:not(:disabled) { background: var(--red-50); border-color: #fca5a5; }
+.ui-btn--danger-outline:hover:not(:disabled) { background: hsl(var(--destructive) / 0.08); border-color: hsl(var(--destructive) / 0.55); }
 .ui-btn--sm { padding: 5px 10px; font-size: 12px; border-radius: 7px; }
 .ui-btn--lg { padding: 11px 18px; font-size: 14px; border-radius: 10px; }
 .ui-btn--icon { padding: 8px; width: 32px; height: 32px; }
@@ -2214,5 +2214,10 @@
   }
   [data-theme="dark"] .shadow-neu {
     box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3), -1px -1px 2px rgba(255, 255, 255, 0.04);
+  }
+
+  /* Logo: invertimos luminosidad en dark mode hasta que exista asset /logo-dark.png */
+  [data-theme="dark"] .logo-img {
+    filter: invert(1) hue-rotate(180deg) brightness(0.95);
   }
 }

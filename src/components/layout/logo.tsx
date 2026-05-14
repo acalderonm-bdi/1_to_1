@@ -6,10 +6,9 @@ interface LogoProps {
   href?: string
 }
 
-// TODO(fusion): añadir variante dark (`/logo-dark.png`) cuando exista el asset.
-// El codebase usa `[data-theme="dark"]` (no `.dark`), así que cualquier swap
-// futuro debe hacerse vía atributo o vía conditional client-side, no con la
-// variante `dark:` de Tailwind.
+// Hasta que exista un asset `/logo-dark.png`, invertimos la luminosidad del
+// logo light en dark mode vía CSS (clase `logo-img` definida en globals.css)
+// para que se mantenga legible sobre el fondo oscuro.
 export function Logo({ collapsed = false, href = '/' }: LogoProps) {
   return (
     <Link href={href} className="flex items-center gap-2 px-6 py-5">
@@ -18,7 +17,7 @@ export function Logo({ collapsed = false, href = '/' }: LogoProps) {
         alt="1to1"
         width={collapsed ? 32 : 80}
         height={collapsed ? 32 : 80}
-        className={`${collapsed ? 'h-8' : 'h-20'} w-auto shrink-0`}
+        className={`logo-img ${collapsed ? 'h-8' : 'h-20'} w-auto shrink-0`}
         priority
       />
     </Link>

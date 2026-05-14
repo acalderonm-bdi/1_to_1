@@ -23,7 +23,17 @@ export function WarmthTrendChart({ data }: WarmthTrendChartProps) {
               fontSize={11}
             />
             <YAxis domain={[1, 5]} stroke="hsl(var(--muted-foreground))" fontSize={11} />
-            <Tooltip />
+            <Tooltip
+              contentStyle={{
+                background: 'hsl(var(--card))',
+                color: 'hsl(var(--card-foreground))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: '0.5rem',
+                fontSize: '0.75rem',
+              }}
+              labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+              itemStyle={{ color: 'hsl(var(--card-foreground))' }}
+            />
             <Line type="monotone" dataKey="avg_overall" stroke="hsl(var(--primary))" strokeWidth={2} />
           </LineChart>
         </ResponsiveContainer>
