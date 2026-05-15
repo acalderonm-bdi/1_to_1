@@ -21,6 +21,7 @@ import { CronExpressionParser } from 'cron-parser'
 import { generateAcuerdosCSV } from '@/lib/exports/acuerdos-csv'
 import { generateCalidezCSV } from '@/lib/exports/calidez-csv'
 import { generateCumplimientoCSV } from '@/lib/exports/cumplimiento-csv'
+import { notifyHRReport } from '@/lib/slack/notify'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { ScheduledReportType } from '@/types/domain'
 
@@ -82,6 +83,23 @@ export async function GET(request: NextRequest) {
     console.log(
       `[cron-reports] would send ${csv.filename} to ${report.recipients.join(', ')}`,
     )
+
+    // Slack al canal RH (best-effort). El helper hace skip si no hay
+    // SLACK_BOT_TOKEN, y guardamos contra falla de la API.
+    const slackChannel = process.env.SLACK_DEFAULT_CHANNEL
+    if (slackChannel) {
+      const lineCount = (csv.content.match(/\n/g)?.length ?? 1) - 1
+      const summary = [
+        `Archivo: \`${csv.filename}\` (${Math.max(lineCount, 0)} filas)`,
+        `Destinatarios: ${report.recipients.join(', ')}`,
+        `Descargar: <${process.env.NEXT_PUBLIC_APP_URL ?? ''}/arquitectura-humana/exportes|/arquitectura-humana/exportes>`,
+      ].join('\n')
+      const slackRes = await notifyHRReport(slackChannel, report.name, summary)
+      if (!slackRes.sent && !slackRes.skipped) {
+        // eslint-disable-next-line no-console
+        console.warn(`[cron-reports] Slack notify falló: ${slackRes.error}`)
+      }
+    }
 
     for (const recipient of report.recipients) {
       const { data: userRow } = (await admin

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createCalendarEvent, deleteCalendarEvent } from '@/lib/google/calendar'
+import { notifyDispute } from '@/lib/slack/notify'
 import { getOrgSetting } from '@/lib/org-settings'
 import type { ActionResult, OneOnOne } from '@/types/domain'
 
@@ -247,6 +248,32 @@ export async function markNonRealization(
     resource_id: parsed.data.oneOnOneId,
     metadata: { reason: newReason, has_note: Boolean(parsed.data.note) },
   })
+
+  // Slack a canal RH cuando se genera disputa. Best-effort: el helper ya hace
+  // skip si falta SLACK_BOT_TOKEN, y acá guardamos contra falla de la API.
+  const slackChannel = process.env.SLACK_DEFAULT_CHANNEL
+  if (goToDispute && slackChannel) {
+    const { data: people } = await supabase
+      .from('users')
+      .select('id, full_name')
+      .in('id', [meeting.leader_id, meeting.collaborator_id])
+      .returns<Array<{ id: string; full_name: string }>>()
+    const leader = people?.find((p) => p.id === meeting.leader_id)
+    const collab = people?.find((p) => p.id === meeting.collaborator_id)
+    const meetingDate = scheduledAtRaw
+      ? new Date(scheduledAtRaw).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
+      : 'fecha desconocida'
+    const slackRes = await notifyDispute(
+      slackChannel,
+      leader?.full_name ?? 'Líder',
+      collab?.full_name ?? 'Colaborador',
+      meetingDate,
+      parsed.data.oneOnOneId,
+    )
+    if (!slackRes.sent && !slackRes.skipped) {
+      console.warn('[markNonRealization] Slack notifyDispute falló:', slackRes.error)
+    }
+  }
 
   revalidatePath(`/colaborador/1to1/${parsed.data.oneOnOneId}`)
   revalidatePath(`/lider/1to1/${parsed.data.oneOnOneId}`)
