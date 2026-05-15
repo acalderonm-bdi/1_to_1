@@ -58,7 +58,8 @@ export async function GET(request: NextRequest) {
         leader.slack_user_id,
         leader.full_name,
         collaborator?.full_name ?? 'tu colaborador',
-        daysSince
+        daysSince,
+        rel.collaborator_id,
       )
       notified++
     }

@@ -31,6 +31,11 @@ interface NotifyByEmailInput {
   html: string
   /** Fallback texto plano opcional. Recomendado para mejor entregabilidad. */
   text?: string
+  /**
+   * Rol del destinatario primario para construir el link "Configurar
+   * notificaciones" del footer. Default: 'collaborator'.
+   */
+  recipientRole?: 'collaborator' | 'leader' | 'hr'
 }
 
 /**
@@ -39,9 +44,15 @@ interface NotifyByEmailInput {
  *
  * El template usa estilos inline para máxima compatibilidad con Gmail/Outlook.
  */
-function wrapHtml(inner: string): string {
+function configurationPathFor(role: 'collaborator' | 'leader' | 'hr'): string {
+  if (role === 'leader') return '/lider/configuracion'
+  if (role === 'hr') return '/arquitectura-humana/configuracion'
+  return '/colaborador/configuracion'
+}
+
+function wrapHtml(inner: string, role: 'collaborator' | 'leader' | 'hr' = 'collaborator'): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const configureUrl = `${appUrl}/configuracion/notificaciones`
+  const configureUrl = `${appUrl}${configurationPathFor(role)}`
   return `<!DOCTYPE html>
 <html>
   <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1a1a1a;">
@@ -82,7 +93,7 @@ export async function notifyByEmail(input: NotifyByEmailInput): Promise<EmailRes
       from,
       to: input.to,
       subject: input.subject,
-      html: wrapHtml(input.html),
+      html: wrapHtml(input.html, input.recipientRole ?? 'collaborator'),
       text: input.text,
     })
     if (result.error) {

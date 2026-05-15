@@ -26,6 +26,35 @@ interface RecipientRow {
   email: string | null
   full_name: string | null
   slack_user_id: string | null
+  role: 'collaborator' | 'leader' | 'hr'
+}
+
+/**
+ * Devuelve el path correcto para deep-link según trigger × rol del destinatario.
+ * Los crons no conocen el ID del recurso específico (depende del trigger),
+ * así que linkamos a la vista que contiene el contexto (ej. mapa de calor
+ * para HR ante cumplimiento bajo).
+ */
+function linkForTrigger(
+  trigger: NotificationRuleRow['trigger_type'],
+  role: RecipientRow['role'],
+): string {
+  switch (trigger) {
+    case 'cumplimiento_bajo':
+      return role === 'hr' ? '/arquitectura-humana/mapa-calor' : '/lider/equipo'
+    case 'acuerdo_vencido':
+      return role === 'collaborator' ? '/colaborador/acuerdos' : '/lider/equipo'
+    case 'disputa_nueva':
+      return role === 'hr' ? '/arquitectura-humana/disputas' : role === 'leader' ? '/lider/equipo' : '/colaborador/historial'
+    case 'vobo_pendiente':
+      return role === 'collaborator' ? '/colaborador/historial' : '/lider/equipo'
+    case 'calidez_baja':
+      return '/arquitectura-humana/mapa-calor'
+    case 'reminder_pre_1to1':
+      return role === 'collaborator' ? '/colaborador' : '/lider'
+    default:
+      return role === 'hr' ? '/arquitectura-humana' : role === 'leader' ? '/lider' : '/colaborador'
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -138,7 +167,7 @@ export async function GET(request: NextRequest) {
       // dispatcher can actually deliver to email/slack per channel.
       const { data: userRow } = await admin
         .from('users')
-        .select('id, email, full_name, slack_user_id')
+        .select('id, email, full_name, slack_user_id, role')
         .eq('id', recipientId)
         .single<RecipientRow>()
       if (!userRow) continue
@@ -146,6 +175,7 @@ export async function GET(request: NextRequest) {
       const fullName = userRow.full_name ?? ''
       const title = `[${rule.name}]`
       const body = `Trigger: ${rule.trigger_type}`
+      const deepLink = linkForTrigger(rule.trigger_type, userRow.role)
 
       for (const channel of rule.channels) {
         // TODO (Fase 7.A — opt-out granular): antes de enviar, consultar
@@ -163,7 +193,7 @@ export async function GET(request: NextRequest) {
             channel: 'in_app',
             title,
             content: body,
-            link: '/colaborador',
+            link: deepLink,
           })
           delivered = !error
           failedReason = error?.message ?? null
@@ -173,10 +203,15 @@ export async function GET(request: NextRequest) {
             failedReason = 'EMAIL_NOT_CONFIGURED'
           } else {
             // Escapar texto de DB antes de meter en HTML (XSS prevention en email client).
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+            const absoluteDeepLink = `${appUrl}${deepLink}`
             const res = await notifyByEmail({
               to: [userRow.email],
               subject: `[1to1] ${rule.name}`,
-              html: `<p>Hola ${escapeHtml(fullName)}, se disparó la notificación "${escapeHtml(rule.name)}" (${escapeHtml(rule.trigger_type)}).</p>`,
+              html:
+                `<p>Hola ${escapeHtml(fullName)}, se disparó la notificación "${escapeHtml(rule.name)}" (${escapeHtml(rule.trigger_type)}).</p>` +
+                `<p><a href="${absoluteDeepLink}" style="background:#ED6134;color:white;padding:8px 16px;border-radius:6px;text-decoration:none;display:inline-block;">Ver en 1to1</a></p>`,
+              recipientRole: userRow.role,
             })
             delivered = res.sent
             failedReason = res.error ?? (res.skipped ? 'EMAIL_NOT_CONFIGURED' : null)
@@ -186,7 +221,7 @@ export async function GET(request: NextRequest) {
             delivered = false
             failedReason = 'SLACK_USER_NOT_LINKED'
           } else {
-            const res = await notifySlackGeneric(userRow.slack_user_id, rule.name, body)
+            const res = await notifySlackGeneric(userRow.slack_user_id, rule.name, body, deepLink)
             delivered = res.sent
             failedReason = res.error ?? (res.skipped ? 'SLACK_NOT_CONFIGURED' : null)
           }
