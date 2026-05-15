@@ -36,6 +36,7 @@
     "@radix-ui/react-tabs": "^1.1.0",
     "@radix-ui/react-toast": "^1.2.0",
     "@radix-ui/react-tooltip": "^1.1.0",
+    "@sentry/nextjs": "^10.53.1",
     "@slack/web-api": "^7.3.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.46.1",

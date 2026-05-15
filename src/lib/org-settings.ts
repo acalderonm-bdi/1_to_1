@@ -53,10 +53,10 @@ export async function getOrgSetting<K extends SettingKey>(key: K): Promise<Setti
   const schema = SETTING_SCHEMAS[key]
   const supabase = createClient()
   const { data } = await supabase
-    .from('org_settings' as never)
+    .from('org_settings')
     .select('value')
-    .eq('key' as never, key)
-    .maybeSingle() as unknown as { data: { value: unknown } | null }
+    .eq('key', key)
+    .maybeSingle()
   const parsed = schema.safeParse(data?.value)
   const value = (parsed.success ? parsed.data : schema.parse(undefined)) as SettingValue<K>
   cache.set(key, { value, at: Date.now() })
@@ -72,12 +72,12 @@ export async function setOrgSetting<K extends SettingKey>(
   const parsed = schema.safeParse(value)
   if (!parsed.success) throw new Error(`Invalid value for ${key}: ${parsed.error.message}`)
   const supabase = createClient()
-  const { error } = await supabase.from('org_settings' as never).upsert({
+  const { error } = await supabase.from('org_settings').upsert({
     key,
     value: parsed.data,
     updated_by: userId,
     updated_at: new Date().toISOString(),
-  } as never)
+  })
   if (error) throw error
   cache.delete(key)
   return parsed.data as SettingValue<K>

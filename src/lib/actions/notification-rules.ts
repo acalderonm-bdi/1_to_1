@@ -41,8 +41,8 @@ export async function createNotificationRule(
   const parsed = ruleSchema.safeParse(input)
   if (!parsed.success) return { success: false, error: 'Datos inválidos' }
 
-  const insertResult = (await guard.supabase
-    .from('notification_rules' as never)
+  const insertResult = await guard.supabase
+    .from('notification_rules')
     .insert({
       name: parsed.data.name,
       enabled: parsed.data.enabled,
@@ -51,12 +51,9 @@ export async function createNotificationRule(
       audience: parsed.data.audience,
       channels: parsed.data.channels,
       created_by: guard.user.id,
-    } as never)
+    })
     .select('id')
-    .single()) as unknown as {
-    data: { id: string } | null
-    error: { message: string } | null
-  }
+    .single()
 
   if (insertResult.error || !insertResult.data) {
     return { success: false, error: insertResult.error?.message ?? 'No se pudo crear' }
@@ -79,7 +76,7 @@ export async function updateNotificationRule(
   if (!parsed.success) return { success: false, error: 'Datos inválidos' }
 
   const { error } = await guard.supabase
-    .from('notification_rules' as never)
+    .from('notification_rules')
     .update({
       name: parsed.data.name,
       enabled: parsed.data.enabled,
@@ -87,7 +84,7 @@ export async function updateNotificationRule(
       threshold: parsed.data.threshold,
       audience: parsed.data.audience,
       channels: parsed.data.channels,
-    } as never)
+    })
     .eq('id', id)
 
   if (error) return { success: false, error: error.message }
@@ -106,8 +103,8 @@ export async function toggleNotificationRule(
   }
 
   const { error } = await guard.supabase
-    .from('notification_rules' as never)
-    .update({ enabled } as never)
+    .from('notification_rules')
+    .update({ enabled })
     .eq('id', id)
 
   if (error) return { success: false, error: error.message }
@@ -123,7 +120,7 @@ export async function deleteNotificationRule(id: string): Promise<ActionResult> 
   }
 
   const { error } = await guard.supabase
-    .from('notification_rules' as never)
+    .from('notification_rules')
     .delete()
     .eq('id', id)
 
@@ -141,28 +138,25 @@ export async function testFireRule(
     return { success: false, error: 'ID inválido' }
   }
 
-  const ruleResult = (await guard.supabase
-    .from('notification_rules' as never)
+  const ruleResult = await guard.supabase
+    .from('notification_rules')
     .select('id, name')
     .eq('id', id)
-    .single()) as unknown as {
-    data: { id: string; name: string } | null
-    error: { message: string } | null
-  }
+    .single()
 
   if (ruleResult.error || !ruleResult.data) {
     return { success: false, error: ruleResult.error?.message ?? 'Regla no encontrada' }
   }
 
   const { error: insErr } = await guard.supabase
-    .from('notification_dispatches' as never)
+    .from('notification_dispatches')
     .insert({
       rule_id: ruleResult.data.id,
       recipient_id: guard.user.id,
       channel: 'in_app',
       context: { test_fire: true, rule_name: ruleResult.data.name },
       status: 'sent',
-    } as never)
+    })
 
   if (insErr) return { success: false, error: insErr.message }
 

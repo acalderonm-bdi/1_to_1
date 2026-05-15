@@ -18,14 +18,11 @@ export async function createDepartment(
   const parsed = createSchema.safeParse(input)
   if (!parsed.success) return { success: false, error: 'Datos inválidos' }
 
-  const insertResult = (await guard.supabase
+  const insertResult = await guard.supabase
     .from('departments')
-    .insert({ name: parsed.data.name, parent_id: parsed.data.parentId ?? null } as never)
+    .insert({ name: parsed.data.name, parent_id: parsed.data.parentId ?? null })
     .select('id')
-    .single()) as unknown as {
-    data: { id: string } | null
-    error: { message: string } | null
-  }
+    .single()
 
   if (insertResult.error || !insertResult.data) {
     return { success: false, error: insertResult.error?.message ?? 'No se pudo crear' }
@@ -51,7 +48,7 @@ export async function renameDepartment(
 
   const { error } = await guard.supabase
     .from('departments')
-    .update({ name: parsed.data.name } as never)
+    .update({ name: parsed.data.name })
     .eq('id', parsed.data.id)
 
   if (error) return { success: false, error: error.message }

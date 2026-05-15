@@ -13,13 +13,13 @@ export default async function ExportesPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const scheduledResult = (await supabase
-    .from('scheduled_reports' as never)
+  const scheduledResult = await supabase
+    .from('scheduled_reports')
     .select('*')
-    .order('created_at', { ascending: false })) as unknown as {
-    data: ScheduledReportRow[] | null
-  }
-  const scheduledReports = scheduledResult.data ?? []
+    .order('created_at', { ascending: false })
+  // DB type uses `report_type: string`; narrow to the domain union because
+  // writes are zod-validated against the same union in `scheduled-reports.ts`.
+  const scheduledReports = (scheduledResult.data ?? []) as unknown as ScheduledReportRow[]
 
   return (
     <div className="page">

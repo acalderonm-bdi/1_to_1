@@ -34,22 +34,42 @@ export default async function ConfiguracionLiderPage() {
   const profile = rawProfile as { full_name: string; email: string } | null
 
   // F6: agregados de calidez personales (líder ve solo agregados de su propio equipo).
-  const aggQuery = (await supabase
-    .from('warmth_metrics_by_leader' as never)
+  const aggQuery = await supabase
+    .from('warmth_metrics_by_leader')
     .select('*')
-    .eq('leader_id' as never, user.id)
-    .maybeSingle()) as unknown as { data: WarmthAggregate | null }
-  const agg = aggQuery.data
+    .eq('leader_id', user.id)
+    .maybeSingle()
+  // View row columns are nullable; the consumer (`Metric`) only renders when
+  // there is at least one response, so map nulls to 0 at the boundary.
+  const aggRow = aggQuery.data
+  const agg: WarmthAggregate | null = aggRow && aggRow.leader_id
+    ? {
+        leader_id: aggRow.leader_id,
+        response_count: aggRow.response_count ?? 0,
+        avg_felt_heard: aggRow.avg_felt_heard ?? 0,
+        avg_comfortable_sharing: aggRow.avg_comfortable_sharing ?? 0,
+        avg_leader_engaged: aggRow.avg_leader_engaged ?? 0,
+        avg_conversation_quality: aggRow.avg_conversation_quality ?? 0,
+        avg_clarity_after_session: aggRow.avg_clarity_after_session ?? 0,
+        avg_overall: aggRow.avg_overall ?? 0,
+      }
+    : null
 
-  const trendQuery = (await supabase
-    .from('warmth_trend_by_leader_month' as never)
+  const trendQuery = await supabase
+    .from('warmth_trend_by_leader_month')
     .select('month, avg_overall, response_count')
-    .eq('leader_id' as never, user.id)
-    .order('month' as never, { ascending: true })
-    .limit(6)) as unknown as {
-      data: Array<{ month: string; avg_overall: number; response_count: number }> | null
-    }
-  const trend = trendQuery.data ?? []
+    .eq('leader_id', user.id)
+    .order('month', { ascending: true })
+    .limit(6)
+  const trend = (trendQuery.data ?? [])
+    .filter((r): r is { month: string; avg_overall: number | null; response_count: number | null } =>
+      r.month !== null,
+    )
+    .map((r) => ({
+      month: r.month,
+      avg_overall: r.avg_overall ?? 0,
+      response_count: r.response_count ?? 0,
+    }))
 
   return (
     <div className="page">

@@ -48,11 +48,9 @@ export async function createAgreement(
     due_date: parsed.data.dueDate ?? null,
     ai_generated: parsed.data.aiGenerated,
     ai_confidence: parsed.data.aiConfidence ?? null,
-    // Las columnas ai_quality_* viven en el esquema (Fase A) pero todavía no
-    // están en los tipos generados — castear a never para sortear el chequeo.
     ai_quality_score: quality.score,
     ai_quality_warnings: quality.warnings.map(w => w.code),
-  } as never
+  }
 
   const { data, error } = await supabase
     .from('agreements')

@@ -10,10 +10,10 @@
  *
  * Auth: `Authorization: Bearer ${CRON_SECRET}`.
  *
- * NOTE on table casts: `notification_rules`/`notification_dispatches` and the
- * `compliance_metrics` view are not yet present in the generated
- * `database.types.ts` (per `src/types/database.augmentation.ts`). We cast with
- * `as never` on `.from()` and narrow the result with `as unknown as`.
+ * Note: rows from `notification_rules` come back with DB-level types
+ * (`trigger_type: string`, `audience: string[]`, etc.). We narrow to the
+ * stricter domain `NotificationRuleRow` shape at the boundary because writes
+ * are zod-validated against the union types in `notification-rules.ts`.
  */
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -36,15 +36,12 @@ export async function GET(request: NextRequest) {
 
   const admin = createAdminClient()
 
-  const rulesResult = (await admin
-    .from('notification_rules' as never)
+  const rulesResult = await admin
+    .from('notification_rules')
     .select('*')
-    .eq('enabled' as never, true)) as unknown as {
-    data: NotificationRuleRow[] | null
-    error: { message: string } | null
-  }
+    .eq('enabled', true)
 
-  const rules = rulesResult.data ?? []
+  const rules = (rulesResult.data ?? []) as unknown as NotificationRuleRow[]
   let totalDispatched = 0
 
   // Cache HR user list (used by multiple triggers).
@@ -67,12 +64,10 @@ export async function GET(request: NextRequest) {
         const thresholdPct = typeof rule.threshold?.value === 'number' ? rule.threshold.value : 50
         const thresholdRate = thresholdPct / 100
 
-        const lowResult = (await admin
-          .from('compliance_metrics' as never)
+        const lowResult = await admin
+          .from('compliance_metrics')
           .select('department_id, compliance_rate')
-          .lt('compliance_rate' as never, thresholdRate)) as unknown as {
-          data: Array<{ department_id: string | null; compliance_rate: number | null }> | null
-        }
+          .lt('compliance_rate', thresholdRate)
         const lowDeptIds = (lowResult.data ?? [])
           .map((r) => r.department_id)
           .filter((x): x is string => !!x)
@@ -141,11 +136,11 @@ export async function GET(request: NextRequest) {
     for (const recipientId of recipients) {
       // Pre-fetch recipient profile (email, slack_user_id, full_name) so the
       // dispatcher can actually deliver to email/slack per channel.
-      const { data: userRow } = (await admin
+      const { data: userRow } = await admin
         .from('users')
         .select('id, email, full_name, slack_user_id')
         .eq('id', recipientId)
-        .single()) as unknown as { data: RecipientRow | null }
+        .single<RecipientRow>()
       if (!userRow) continue
 
       const fullName = userRow.full_name ?? ''
@@ -197,14 +192,14 @@ export async function GET(request: NextRequest) {
         // For now we only persist status; failedReason is computed for future use.
         void failedReason
         const { error } = await admin
-          .from('notification_dispatches' as never)
+          .from('notification_dispatches')
           .insert({
             rule_id: rule.id,
             recipient_id: recipientId,
             channel,
             context: { trigger: rule.trigger_type, rule_name: rule.name },
             status: delivered ? 'sent' : 'failed',
-          } as never)
+          })
         if (!error && delivered) {
           totalDispatched++
         }

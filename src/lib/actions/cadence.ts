@@ -23,12 +23,12 @@ export async function upsertGlobalCadence(
     .from('cadence_configs')
     .select('id')
     .eq('scope_type', 'global')
-    .maybeSingle() as unknown as { data: { id: string } | null }
+    .maybeSingle()
 
   if (existing) {
     const { error } = await supabase
       .from('cadence_configs')
-      .update({ frequency_days: parsed.data.frequencyDays } as never)
+      .update({ frequency_days: parsed.data.frequencyDays })
       .eq('id', existing.id)
     if (error) return { success: false, error: error.message }
   } else {
@@ -38,7 +38,7 @@ export async function upsertGlobalCadence(
         scope_type: 'global',
         frequency_days: parsed.data.frequencyDays,
         created_by: user.id,
-      } as never)
+      })
     if (error) return { success: false, error: error.message }
   }
 
@@ -69,12 +69,12 @@ export async function upsertDepartmentCadence(
     .select('id')
     .eq('scope_type', 'department')
     .eq('scope_id', parsed.data.departmentId)
-    .maybeSingle() as unknown as { data: { id: string } | null }
+    .maybeSingle()
 
   if (existing) {
     const { error } = await supabase
       .from('cadence_configs')
-      .update({ frequency_days: parsed.data.frequencyDays } as never)
+      .update({ frequency_days: parsed.data.frequencyDays })
       .eq('id', existing.id)
     if (error) return { success: false, error: error.message }
   } else {
@@ -85,7 +85,7 @@ export async function upsertDepartmentCadence(
         scope_id: parsed.data.departmentId,
         frequency_days: parsed.data.frequencyDays,
         created_by: user.id,
-      } as never)
+      })
     if (error) return { success: false, error: error.message }
   }
 

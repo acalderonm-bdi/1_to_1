@@ -16,9 +16,6 @@ const STATUS_TONE: Record<string, string> = {
 
 interface Participant { id: string; full_name: string; email: string }
 interface Marker { id: string; full_name: string }
-// Las columnas non_realization_note/marked_by/marked_at fueron añadidas en la
-// migración 7b pero todavía no están en el tipo `Database` generado. Las
-// reflejamos manualmente acá (ver `src/types/database.augmentation.ts`).
 interface MeetingDetail {
   id: string; scheduled_at: string; duration_minutes: number
   modality: string; location: string | null; meet_link: string | null
@@ -67,11 +64,11 @@ export default async function OneOnOneDetailPage({ params }: { params: { id: str
     .from('vobos').select('user_id, confirmed').eq('one_on_one_id', params.id)
 
   // F6: ¿el colaborador ya respondió la encuesta de calidez? Gate del VoBo.
-  const warmthCountQuery = (await supabase
-    .from('meeting_warmth_responses' as never)
+  const warmthCountQuery = await supabase
+    .from('meeting_warmth_responses')
     .select('id', { count: 'exact', head: true })
-    .eq('one_on_one_id' as never, params.id)
-    .eq('collaborator_id' as never, user.id)) as unknown as { count: number | null }
+    .eq('one_on_one_id', params.id)
+    .eq('collaborator_id', user.id)
   const hasWarmthResponse = (warmthCountQuery.count ?? 0) > 0
 
   const { data: rawPrevAgreements } = await supabase

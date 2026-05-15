@@ -46,13 +46,13 @@ export async function submitWarmthResponse(
     conversation_quality: parsed.data.conversationQuality,
     clarity_after_session: parsed.data.clarityAfterSession,
     free_comment: parsed.data.freeComment ?? null,
-  } as never
+  }
 
-  const insertResult = (await supabase
-    .from('meeting_warmth_responses' as never)
+  const insertResult = await supabase
+    .from('meeting_warmth_responses')
     .insert(insertPayload)
     .select('id')
-    .single()) as unknown as { data: { id: string } | null; error: { message: string } | null }
+    .single()
 
   if (insertResult.error) return { success: false, error: insertResult.error.message }
   if (!insertResult.data) return { success: false, error: 'No se pudo crear la respuesta' }

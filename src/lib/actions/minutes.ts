@@ -134,12 +134,10 @@ export async function saveMinute(
             )
             return {
               ...row,
-              // Columnas ai_quality_* existen en esquema (Fase A) pero aún no
-              // están en los tipos generados — castear vía never al final.
               ai_quality_score: quality.score,
               ai_quality_warnings: quality.warnings.map(w => w.code),
             }
-          }) as never
+          })
 
           const { error: insErr } = await supabase.from('agreements').insert(enrichedRows)
           if (!insErr) extractedCount = rows.length

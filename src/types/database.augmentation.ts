@@ -1,111 +1,23 @@
 /**
- * Manual type augmentation for new tables/columns added in mejoras-1to1.
+ * Manual type augmentation: domain-level narrowing for tables whose columns
+ * are stored as generic `string`/`Json` at the DB level but actually carry a
+ * narrower meaning enforced by zod schemas in the server actions.
  *
- * These types reflect the schema introduced by migrations 7a/7b/8/9/10/11
- * (Phase A of `docs/superpowers/plans/2026-05-13-mejoras-1to1-pack-a-b.md`).
+ * Most types previously declared here (warmth_*, org_settings, meeting_warmth_*,
+ * justification columns, transfer banner, ai_quality_*, open_agreements view)
+ * are now present in the generated `database.types.ts` and have been removed
+ * from this file. What remains are unions that the DB cannot express:
  *
- * Background: `pnpm db:types` regenerates `database.types.ts` against the
- * REMOTE Supabase project. As of this commit the remote DB still lacks the
- * Phase A migrations (they live only locally), so the regenerated file would
- * NOT contain these types and would in fact drift from the local code.
- * Once the migrations are pushed and `pnpm db:types` runs cleanly, the file
- * below can be deleted and the canonical generated types in
- * `database.types.ts` will provide them.
+ *   - notification_rules.trigger_type   → NotificationTriggerType
+ *   - notification_rules.audience       → NotificationAudience[]
+ *   - notification_rules.channels       → NotificationChannelExt[]
+ *   - notification_rules.threshold      → structured object (Json at the DB)
+ *   - notification_dispatches.channel/status → narrowed unions
+ *   - scheduled_reports.report_type     → ScheduledReportType
+ *
+ * Writes go through zod (see notification-rules.ts, scheduled-reports.ts),
+ * so reads narrowing to these aliases is sound at the boundary.
  */
-
-export type NonRealizationReasonExtended =
-  | 'reagendada'
-  | 'cancelada_cargas'
-  | 'ausencia'
-  | 'emergencia'
-  | 'vacaciones'
-  | 'sin_justificacion'
-
-export interface OneOnOneJustificationExtension {
-  non_realization_note: string | null
-  non_realization_marked_by: string | null
-  non_realization_marked_at: string | null
-}
-
-export interface AgreementQualityExtension {
-  ai_quality_score: number | null
-  ai_quality_warnings: string[]
-}
-
-export interface LeadershipRelationsDismissalExtension {
-  transfer_banner_dismissed_at: string | null
-}
-
-export interface UserWarmthOptIn {
-  allow_share_warmth_comments: boolean
-}
-
-export interface OpenAgreementByCollaborator {
-  id: string
-  one_on_one_id: string
-  description: string
-  responsible_id: string
-  due_date: string | null
-  status: 'pendiente' | 'parcial' // view filters to these statuses
-  ai_generated: boolean
-  ai_confidence: number | null
-  ai_quality_score: number | null
-  ai_quality_warnings: string[]
-  created_at: string
-  updated_at: string
-  original_leader_id: string
-  collaborator_id: string
-  current_leader_id: string | null
-  is_transferred: boolean
-  session_scheduled_at: string
-}
-
-export interface MeetingWarmthResponse {
-  id: string
-  one_on_one_id: string
-  collaborator_id: string
-  felt_heard: number
-  comfortable_sharing: number
-  leader_engaged: number
-  conversation_quality: number
-  clarity_after_session: number
-  free_comment: string | null
-  created_at: string
-}
-
-export interface WarmthMetricsByLeader {
-  leader_id: string
-  response_count: number
-  avg_felt_heard: number
-  avg_comfortable_sharing: number
-  avg_leader_engaged: number
-  avg_conversation_quality: number
-  avg_clarity_after_session: number
-  avg_overall: number
-}
-
-export interface WarmthMetricsByDepartment {
-  department_id: string | null
-  department_name: string | null
-  response_count: number
-  avg_overall: number
-}
-
-export interface WarmthTrendByLeaderMonth {
-  leader_id: string
-  month: string
-  response_count: number
-  avg_overall: number
-}
-
-// ===== Configs RH (Wave 1 foundation) =====
-
-export interface OrgSettingRow {
-  key: string
-  value: unknown
-  updated_by: string | null
-  updated_at: string
-}
 
 export type NotificationTriggerType =
   | 'cumplimiento_bajo'
@@ -134,16 +46,6 @@ export interface NotificationRuleRow {
   created_by: string | null
   created_at: string
   updated_at: string
-}
-
-export interface NotificationDispatchRow {
-  id: string
-  rule_id: string | null
-  recipient_id: string
-  channel: NotificationChannelExt
-  context: Record<string, unknown>
-  status: 'sent' | 'failed' | 'skipped'
-  created_at: string
 }
 
 export type ScheduledReportType =

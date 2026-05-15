@@ -13,9 +13,6 @@
  *   queda con el audit trail.
  *
  * Notas de tipos:
- *   - `scheduled_reports` y `notification_dispatches` aún no aparecen
- *     en `database.types.ts` (ver `database.augmentation.ts`). Usamos
- *     `as never` en `.from()` y narrow del resultado con `as unknown as`.
  *   - `cron-parser` v5 expone `CronExpressionParser.parse(expr).next()`
  *     que devuelve un `CronDate` con `.toISOString()`.
  */
@@ -65,8 +62,8 @@ export async function createScheduledReport(
     return { success: false, error: 'Cron expression inválida' }
   }
 
-  const insertResult = (await guard.supabase
-    .from('scheduled_reports' as never)
+  const insertResult = await guard.supabase
+    .from('scheduled_reports')
     .insert({
       name: parsed.data.name,
       report_type: parsed.data.reportType,
@@ -75,12 +72,9 @@ export async function createScheduledReport(
       filters: parsed.data.filters ?? null,
       next_run_at: nextRun,
       created_by: guard.user.id,
-    } as never)
+    })
     .select('id')
-    .single()) as unknown as {
-    data: { id: string } | null
-    error: { message: string } | null
-  }
+    .single()
 
   if (insertResult.error || !insertResult.data) {
     return {
@@ -104,8 +98,8 @@ export async function toggleScheduledReport(
   }
 
   const { error } = await guard.supabase
-    .from('scheduled_reports' as never)
-    .update({ enabled } as never)
+    .from('scheduled_reports')
+    .update({ enabled })
     .eq('id', id)
 
   if (error) return { success: false, error: error.message }
@@ -121,7 +115,7 @@ export async function deleteScheduledReport(id: string): Promise<ActionResult> {
   }
 
   const { error } = await guard.supabase
-    .from('scheduled_reports' as never)
+    .from('scheduled_reports')
     .delete()
     .eq('id', id)
 
@@ -139,20 +133,11 @@ export async function runReportNow(
     return { success: false, error: 'ID inválido' }
   }
 
-  const reportResult = (await guard.supabase
-    .from('scheduled_reports' as never)
+  const reportResult = await guard.supabase
+    .from('scheduled_reports')
     .select('id, name, report_type, recipients, schedule_cron')
     .eq('id', id)
-    .single()) as unknown as {
-    data: {
-      id: string
-      name: string
-      report_type: ScheduledReportType
-      recipients: string[]
-      schedule_cron: string
-    } | null
-    error: { message: string } | null
-  }
+    .single()
 
   if (reportResult.error || !reportResult.data) {
     return {
@@ -161,7 +146,11 @@ export async function runReportNow(
     }
   }
 
-  const report = reportResult.data
+  // `report_type` is a string column at the DB level; the domain narrowing to
+  // `ScheduledReportType` is enforced by the zod schema on write.
+  const report = reportResult.data as typeof reportResult.data & {
+    report_type: ScheduledReportType
+  }
 
   // Generar el CSV correspondiente.
   let csv: { filename: string; content: string }
@@ -188,16 +177,16 @@ export async function runReportNow(
 
   let dispatched = 0
   for (const recipient of report.recipients) {
-    const { data: userRow } = (await guard.supabase
+    const { data: userRow } = await guard.supabase
       .from('users')
       .select('id')
       .eq('email', recipient)
-      .maybeSingle()) as unknown as { data: { id: string } | null }
+      .maybeSingle()
 
     if (!userRow) continue
 
     const { error: insErr } = await guard.supabase
-      .from('notification_dispatches' as never)
+      .from('notification_dispatches')
       .insert({
         rule_id: null,
         recipient_id: userRow.id,
@@ -209,7 +198,7 @@ export async function runReportNow(
           manual_run: true,
         },
         status: 'sent',
-      } as never)
+      })
 
     if (!insErr) dispatched++
   }
@@ -223,11 +212,11 @@ export async function runReportNow(
   }
 
   await guard.supabase
-    .from('scheduled_reports' as never)
+    .from('scheduled_reports')
     .update({
       last_run_at: new Date().toISOString(),
       next_run_at: nextRun,
-    } as never)
+    })
     .eq('id', id)
 
   revalidatePath('/arquitectura-humana/exportes')

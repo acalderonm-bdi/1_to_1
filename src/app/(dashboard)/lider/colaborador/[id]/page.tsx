@@ -9,7 +9,6 @@ import { STATUS_LABELS, AGREEMENT_LABELS } from '@/lib/constants'
 import { EmptyState } from '@/components/shared/empty-state'
 import { TransferBanner } from '@/components/shared/transfer-banner'
 import { getOrgSetting } from '@/lib/org-settings'
-import type { OpenAgreementByCollaborator } from '@/types/domain'
 
 const STATUS_TONE: Record<string, string> = {
   agendada: 'blue', realizada: 'green', no_realizada: 'red', en_disputa: 'orange',
@@ -36,8 +35,6 @@ export default async function LeaderCollabProfile({ params }: { params: { id: st
   const departmentName = (Array.isArray(collab.department) ? collab.department[0] : collab.department)?.name ?? null
 
   // Validar que sea mi colaborador (relación activa) o que sea HR.
-  // F4: `transfer_banner_dismissed_at` aún no está en los tipos Database
-  // generados, casteamos el select de leadership_relations.
   const [relationRes, { data: myProfile }] = await Promise.all([
     supabase.from('leadership_relations')
       .select('id, leader_id, started_at, ended_at, transfer_banner_dismissed_at')
@@ -47,10 +44,7 @@ export default async function LeaderCollabProfile({ params }: { params: { id: st
       .maybeSingle(),
     supabase.from('users').select('role').eq('id', user.id).single<{ role: string }>(),
   ])
-  const relation = relationRes.data as unknown as {
-    id: string; leader_id: string; started_at: string; ended_at: string | null
-    transfer_banner_dismissed_at: string | null
-  } | null
+  const relation = relationRes.data
   const isMyCollab = !!relation
   const isHr = myProfile?.role === 'hr'
   if (!isMyCollab && !isHr) redirect('/lider')
@@ -85,18 +79,21 @@ export default async function LeaderCollabProfile({ params }: { params: { id: st
   }
 
   // F4: traer acuerdos abiertos desde la view (incluye is_transferred y
-  // original_leader_id). La view aún no está en los tipos generados; casteamos
-  // el resultado al tipo augmentado.
+  // original_leader_id). View columns are nullable, so cuidamos null en el map.
   const openAgreementsRes = await supabase
-    .from('open_agreements_by_collaborator' as never)
+    .from('open_agreements_by_collaborator')
     .select('*')
-    .eq('collaborator_id' as never, params.id)
-    .order('due_date' as never, { ascending: true, nullsFirst: false })
-  const openAgreements = (openAgreementsRes.data ?? []) as unknown as OpenAgreementByCollaborator[]
+    .eq('collaborator_id', params.id)
+    .order('due_date', { ascending: true, nullsFirst: false })
+  const openAgreements = openAgreementsRes.data ?? []
   const transferredMap = new Map<string, boolean>(
-    openAgreements.map(a => [a.id, a.is_transferred])
+    openAgreements
+      .filter((a): a is typeof a & { id: string; is_transferred: boolean } =>
+        a.id !== null && a.is_transferred !== null,
+      )
+      .map((a) => [a.id, a.is_transferred]),
   )
-  const transferredCount = openAgreements.filter(a => a.is_transferred).length
+  const transferredCount = openAgreements.filter((a) => a.is_transferred).length
 
   // Decidir si mostramos el banner: yo soy el líder actual, no lo he descartado,
   // hay al menos un acuerdo transferido y el setting global `transfer_banner_enabled`

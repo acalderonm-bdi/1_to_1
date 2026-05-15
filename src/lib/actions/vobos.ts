@@ -32,11 +32,11 @@ export async function submitVobo(
 
   // Gate F6: el VoBo del colaborador requiere haber respondido la encuesta de calidez.
   if (parsed.data.confirmed && (meeting as { collaborator_id: string }).collaborator_id === user.id) {
-    const warmthQuery = (await supabase
-      .from('meeting_warmth_responses' as never)
+    const warmthQuery = await supabase
+      .from('meeting_warmth_responses')
       .select('id', { count: 'exact', head: true })
-      .eq('one_on_one_id' as never, parsed.data.oneOnOneId)
-      .eq('collaborator_id' as never, user.id)) as unknown as { count: number | null }
+      .eq('one_on_one_id', parsed.data.oneOnOneId)
+      .eq('collaborator_id', user.id)
 
     if (!warmthQuery.count || warmthQuery.count === 0) {
       return {

@@ -23,15 +23,15 @@ export default async function MapaCalorPage() {
   }>
 
   // F6: calidez por líder. Las views no exponen FK alias, así que hacemos lookup separado.
-  const rawByLeaderQuery = (await supabase
-    .from('warmth_metrics_by_leader' as never)
+  const rawByLeaderQuery = await supabase
+    .from('warmth_metrics_by_leader')
     .select('leader_id, response_count, avg_overall')
-    .order('avg_overall' as never, { ascending: true })) as unknown as {
-      data: Array<{ leader_id: string; response_count: number; avg_overall: number }> | null
-    }
+    .order('avg_overall', { ascending: true })
   const rawByLeader = rawByLeaderQuery.data ?? []
 
-  const leaderIds = rawByLeader.map((r) => r.leader_id)
+  const leaderIds = rawByLeader
+    .map((r) => r.leader_id)
+    .filter((id): id is string => id !== null)
   const nameMap = new Map<string, string>()
   if (leaderIds.length > 0) {
     const { data: leaders } = await supabase
@@ -44,27 +44,20 @@ export default async function MapaCalorPage() {
   }
 
   const byLeader = rawByLeader.map((r) => ({
-    label: nameMap.get(r.leader_id) ?? 'Sin nombre',
-    avg: Number(r.avg_overall),
-    count: r.response_count,
+    label: (r.leader_id && nameMap.get(r.leader_id)) ?? 'Sin nombre',
+    avg: Number(r.avg_overall ?? 0),
+    count: r.response_count ?? 0,
   }))
 
   // F6: calidez por departamento.
-  const byDeptQuery = (await supabase
-    .from('warmth_metrics_by_department' as never)
+  const byDeptQuery = await supabase
+    .from('warmth_metrics_by_department')
     .select('*')
-    .order('avg_overall' as never, { ascending: true })) as unknown as {
-      data: Array<{
-        department_id: string | null
-        department_name: string | null
-        response_count: number
-        avg_overall: number
-      }> | null
-    }
+    .order('avg_overall', { ascending: true })
   const byDept = (byDeptQuery.data ?? []).map((r) => ({
     label: r.department_name ?? 'Sin departamento',
-    avg: Number(r.avg_overall),
-    count: r.response_count,
+    avg: Number(r.avg_overall ?? 0),
+    count: r.response_count ?? 0,
   }))
 
   function tone(rate: number | null): 'green' | 'amber' | 'orange' | 'red' {

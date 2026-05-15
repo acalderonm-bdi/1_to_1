@@ -11,8 +11,6 @@
  * `check-thresholds`). Usa `createAdminClient` para bypass RLS,
  * idéntico al cron de notificaciones.
  *
- * Tipos: `scheduled_reports` y `notification_dispatches` no están en
- * `database.types.ts`, casteamos con `as never` / `as unknown as`.
  */
 import { NextResponse, type NextRequest } from 'next/server'
 
@@ -51,16 +49,15 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient()
   const nowIso = new Date().toISOString()
 
-  const dueResult = (await admin
-    .from('scheduled_reports' as never)
+  const dueResult = await admin
+    .from('scheduled_reports')
     .select('id, name, report_type, recipients, schedule_cron')
-    .eq('enabled' as never, true)
-    .lte('next_run_at' as never, nowIso)) as unknown as {
-    data: DueReportRow[] | null
-    error: { message: string } | null
-  }
+    .eq('enabled', true)
+    .lte('next_run_at', nowIso)
 
-  const reports = dueResult.data ?? []
+  // `report_type` is `string` in the generated types; narrow at the boundary
+  // because writes are zod-validated against the `ScheduledReportType` union.
+  const reports = (dueResult.data ?? []) as unknown as DueReportRow[]
   let totalDispatched = 0
 
   for (const report of reports) {
@@ -102,16 +99,16 @@ export async function GET(request: NextRequest) {
     }
 
     for (const recipient of report.recipients) {
-      const { data: userRow } = (await admin
+      const { data: userRow } = await admin
         .from('users')
         .select('id')
         .eq('email', recipient)
-        .maybeSingle()) as unknown as { data: { id: string } | null }
+        .maybeSingle()
 
       if (!userRow) continue
 
       const { error: insErr } = await admin
-        .from('notification_dispatches' as never)
+        .from('notification_dispatches')
         .insert({
           rule_id: null,
           recipient_id: userRow.id,
@@ -123,7 +120,7 @@ export async function GET(request: NextRequest) {
             cron_dispatch: true,
           },
           status: 'sent',
-        } as never)
+        })
 
       if (!insErr) totalDispatched++
     }
@@ -131,11 +128,11 @@ export async function GET(request: NextRequest) {
     const nextRun = safeNextRun(report.schedule_cron)
 
     await admin
-      .from('scheduled_reports' as never)
+      .from('scheduled_reports')
       .update({
         last_run_at: nowIso,
         next_run_at: nextRun,
-      } as never)
+      })
       .eq('id', report.id)
   }
 

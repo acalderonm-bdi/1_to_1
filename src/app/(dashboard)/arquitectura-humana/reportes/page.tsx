@@ -9,8 +9,7 @@ import { getOrgSetting } from '@/lib/org-settings'
 const SEVERITY_TONE: Record<string, string> = { info: 'blue', warning: 'amber', critical: 'red' }
 const SEVERITY_LABELS: Record<string, string> = { info: 'Informativo', warning: 'Atención', critical: 'Crítico' }
 
-// F1: tipo manual del select de baja calidad. Las columnas ai_quality_*
-// existen en el esquema (Fase A) pero aún no están en los tipos generados.
+// F1: tipo del select de baja calidad (acuerdos con score IA bajo el umbral).
 interface LowQualityAgreement {
   id: string
   description: string
@@ -37,8 +36,6 @@ export default async function ReportesPage() {
 
   // F1: acuerdos abiertos con score IA bajo el umbral configurable
   // (`agreement_quality_threshold`, default 3.0) — candidatos a reescritura.
-  // Las columnas ai_quality_* aún no están en los tipos generados, casteamos
-  // los filtros con `as never` y el resultado vía `unknown`.
   const { data: rawLowQuality } = await supabase
     .from('agreements')
     .select(`
@@ -50,26 +47,20 @@ export default async function ReportesPage() {
       status,
       responsible:users!agreements_responsible_id_fkey(full_name)
     `)
-    .lt('ai_quality_score' as never, qualityThreshold)
+    .lt('ai_quality_score', qualityThreshold)
     .in('status', ['pendiente', 'parcial'])
-    .order('ai_quality_score' as never, { ascending: true })
+    .order('ai_quality_score', { ascending: true })
     .limit(20)
 
-  const lowQualityList = ((rawLowQuality ?? []) as unknown as Array<{
-    id: string
-    description: string
-    ai_quality_score: number | null
-    ai_quality_warnings: string[] | null
-    due_date: string | null
-    status: 'pendiente' | 'parcial'
-    responsible: { full_name: string } | { full_name: string }[] | null
-  }>).map<LowQualityAgreement>(a => ({
+  const lowQualityList = (rawLowQuality ?? []).map<LowQualityAgreement>((a) => ({
     id: a.id,
     description: a.description,
     ai_quality_score: a.ai_quality_score,
     ai_quality_warnings: a.ai_quality_warnings ?? [],
     due_date: a.due_date,
-    status: a.status,
+    // Filter is `.in('status', ['pendiente', 'parcial'])` so the DB-level enum
+    // is safely narrowed here.
+    status: a.status as 'pendiente' | 'parcial',
     responsible: Array.isArray(a.responsible) ? a.responsible[0] ?? null : a.responsible,
   }))
 

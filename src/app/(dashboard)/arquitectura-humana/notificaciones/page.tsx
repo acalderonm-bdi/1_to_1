@@ -9,14 +9,14 @@ export default async function NotificacionesPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const rulesResult = (await supabase
-    .from('notification_rules' as never)
+  const rulesResult = await supabase
+    .from('notification_rules')
     .select('*')
-    .order('created_at', { ascending: false })) as unknown as {
-    data: NotificationRuleRow[] | null
-  }
+    .order('created_at', { ascending: false })
 
-  const rules = rulesResult.data ?? []
+  // DB-level types use `string`/`Json` for unioned columns; narrow at the
+  // boundary because writes go through zod schemas in `notification-rules.ts`.
+  const rules = (rulesResult.data ?? []) as unknown as NotificationRuleRow[]
 
   return (
     <div className="page">

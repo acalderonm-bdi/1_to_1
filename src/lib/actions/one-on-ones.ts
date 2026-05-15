@@ -154,11 +154,6 @@ export async function cancelOneOnOne(
 // ---------------------------------------------------------------------------
 // F2 — Justificación de sesiones (markNonRealization)
 // ---------------------------------------------------------------------------
-// Las nuevas columnas `non_realization_note`, `non_realization_marked_by` y
-// `non_realization_marked_at` ya existen en el schema local (migración 7b),
-// pero el tipo `Database` generado por `pnpm db:types` apunta al schema remoto
-// que aún no las refleja. Por eso los payloads que las usan se castean con
-// `as never` (ver `src/types/database.augmentation.ts`).
 const markNonRealizationSchema = z.object({
   oneOnOneId: z.string().uuid(),
   reason: z.enum([
@@ -224,14 +219,13 @@ export async function markNonRealization(
   const newReason = parsed.data.reason
   const goToDispute = Boolean(previousReason && previousReason !== newReason)
 
-  // Cast: type augmentation aún no propagada al tipo Database generado.
   const updatePayload = {
-    status: goToDispute ? 'en_disputa' : 'no_realizada',
+    status: (goToDispute ? 'en_disputa' : 'no_realizada') as 'en_disputa' | 'no_realizada',
     non_realization_reason: newReason,
     non_realization_note: parsed.data.note ?? null,
     non_realization_marked_by: user.id,
     non_realization_marked_at: new Date().toISOString(),
-  } as never
+  }
 
   const { error: updateErr } = await supabase
     .from('one_on_ones')
@@ -284,10 +278,6 @@ export async function markNonRealization(
 // ---------------------------------------------------------------------------
 // F4 — Histórico al cambio de líder (dismissTransferBanner)
 // ---------------------------------------------------------------------------
-// La columna `transfer_banner_dismissed_at` (migración 8) existe en el schema
-// local pero el tipo `Database` generado por `pnpm db:types` apunta al schema
-// remoto que aún no la refleja. Por eso el payload se castea con `as never`
-// (ver `src/types/database.augmentation.ts`).
 const dismissTransferBannerSchema = z.object({
   leadershipRelationId: z.string().uuid(),
 })
@@ -303,10 +293,8 @@ export async function dismissTransferBanner(
   const parsed = dismissTransferBannerSchema.safeParse(input)
   if (!parsed.success) return { success: false, error: 'Datos inválidos' }
 
-  // Cast: `transfer_banner_dismissed_at` aún no está en los tipos Database
-  // generados. La operación es idempotente — un dismiss repetido sólo
-  // reescribe el timestamp.
-  const updatePayload = { transfer_banner_dismissed_at: new Date().toISOString() } as never
+  // La operación es idempotente — un dismiss repetido sólo reescribe el timestamp.
+  const updatePayload = { transfer_banner_dismissed_at: new Date().toISOString() }
 
   const { error } = await supabase
     .from('leadership_relations')

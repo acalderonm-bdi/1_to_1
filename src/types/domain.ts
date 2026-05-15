@@ -1,44 +1,20 @@
 import type { Database } from './database.types'
 import type {
-  AgreementQualityExtension,
-  LeadershipRelationsDismissalExtension,
-  MeetingWarmthResponse,
-  NonRealizationReasonExtended,
   NotificationAudience,
   NotificationChannelExt,
-  NotificationDispatchRow,
   NotificationRuleRow,
   NotificationTriggerType,
-  OneOnOneJustificationExtension,
-  OpenAgreementByCollaborator,
-  OrgSettingRow,
   ScheduledReportRow,
   ScheduledReportType,
-  UserWarmthOptIn,
-  WarmthMetricsByDepartment,
-  WarmthMetricsByLeader,
-  WarmthTrendByLeaderMonth,
 } from './database.augmentation'
 
 export type {
-  AgreementQualityExtension,
-  LeadershipRelationsDismissalExtension,
-  MeetingWarmthResponse,
-  NonRealizationReasonExtended,
   NotificationAudience,
   NotificationChannelExt,
-  NotificationDispatchRow,
   NotificationRuleRow,
   NotificationTriggerType,
-  OneOnOneJustificationExtension,
-  OpenAgreementByCollaborator,
-  OrgSettingRow,
   ScheduledReportRow,
   ScheduledReportType,
-  UserWarmthOptIn,
-  WarmthMetricsByDepartment,
-  WarmthMetricsByLeader,
-  WarmthTrendByLeaderMonth,
 }
 
 export type User = Database['public']['Tables']['users']['Row']
@@ -51,7 +27,6 @@ export type Minute = Database['public']['Tables']['minutes']['Row']
 export type Agreement = Database['public']['Tables']['agreements']['Row']
 export type AgreementFollowup = Database['public']['Tables']['agreement_followups']['Row']
 export type Vobo = Database['public']['Tables']['vobos']['Row']
-export type AIInsight = Database['public']['Tables']['ai_insights']['Row']
 export type AIReport = Database['public']['Tables']['ai_reports']['Row']
 export type Notification = Database['public']['Tables']['notifications']['Row']
 export type ComplianceMetric = Database['public']['Views']['compliance_metrics']['Row']

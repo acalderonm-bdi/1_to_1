@@ -8,7 +8,6 @@ import {
 import { STATUS_LABELS, AGREEMENT_LABELS, ROLE_LABELS } from '@/lib/constants'
 import { EmptyState } from '@/components/shared/empty-state'
 import { UserAdminControls } from '@/components/arquitectura-humana/user-admin-controls'
-import type { OpenAgreementByCollaborator } from '@/types/domain'
 
 const STATUS_TONE: Record<string, string> = {
   agendada: 'blue', realizada: 'green', no_realizada: 'red', en_disputa: 'orange',
@@ -95,16 +94,17 @@ export default async function HrUserProfile({ params }: { params: { id: string }
   }>
 
   // F4: enriquecemos los acuerdos abiertos con `is_transferred` desde la view.
-  // La view aún no está en los tipos generados, casteamos.
   const openAgreementsRes = await supabase
-    .from('open_agreements_by_collaborator' as never)
+    .from('open_agreements_by_collaborator')
     .select('id, is_transferred')
-    .eq('collaborator_id' as never, params.id)
-  const openAgreementsView = (openAgreementsRes.data ?? []) as unknown as Pick<
-    OpenAgreementByCollaborator, 'id' | 'is_transferred'
-  >[]
+    .eq('collaborator_id', params.id)
+  const openAgreementsView = openAgreementsRes.data ?? []
   const transferredMap = new Map<string, boolean>(
-    openAgreementsView.map(a => [a.id, a.is_transferred])
+    openAgreementsView
+      .filter((a): a is { id: string; is_transferred: boolean } =>
+        a.id !== null && a.is_transferred !== null,
+      )
+      .map((a) => [a.id, a.is_transferred]),
   )
 
   // Auditoría (acciones sobre este usuario)

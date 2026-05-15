@@ -115,6 +115,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "agreement_followups_agreement_id_fkey"
+            columns: ["agreement_id"]
+            isOneToOne: false
+            referencedRelation: "open_agreements_by_collaborator"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "agreement_followups_reported_by_id_fkey"
             columns: ["reported_by_id"]
             isOneToOne: false
@@ -134,6 +141,8 @@ export type Database = {
         Row: {
           ai_confidence: number | null
           ai_generated: boolean
+          ai_quality_score: number | null
+          ai_quality_warnings: string[]
           created_at: string
           description: string
           due_date: string | null
@@ -146,6 +155,8 @@ export type Database = {
         Insert: {
           ai_confidence?: number | null
           ai_generated?: boolean
+          ai_quality_score?: number | null
+          ai_quality_warnings?: string[]
           created_at?: string
           description: string
           due_date?: string | null
@@ -158,6 +169,8 @@ export type Database = {
         Update: {
           ai_confidence?: number | null
           ai_generated?: boolean
+          ai_quality_score?: number | null
+          ai_quality_warnings?: string[]
           created_at?: string
           description?: string
           due_date?: string | null
@@ -180,61 +193,6 @@ export type Database = {
             columns: ["responsible_id"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ai_insights: {
-        Row: {
-          collaborator_id: string
-          content: Json
-          created_at: string
-          id: string
-          leader_id: string
-          one_on_one_id: string | null
-          type: string
-          used: boolean
-        }
-        Insert: {
-          collaborator_id: string
-          content: Json
-          created_at?: string
-          id?: string
-          leader_id: string
-          one_on_one_id?: string | null
-          type: string
-          used?: boolean
-        }
-        Update: {
-          collaborator_id?: string
-          content?: Json
-          created_at?: string
-          id?: string
-          leader_id?: string
-          one_on_one_id?: string | null
-          type?: string
-          used?: boolean
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ai_insights_collaborator_id_fkey"
-            columns: ["collaborator_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_insights_leader_id_fkey"
-            columns: ["leader_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_insights_one_on_one_id_fkey"
-            columns: ["one_on_one_id"]
-            isOneToOne: false
-            referencedRelation: "one_on_ones"
             referencedColumns: ["id"]
           },
         ]
@@ -409,6 +367,7 @@ export type Database = {
           id: string
           leader_id: string
           started_at: string
+          transfer_banner_dismissed_at: string | null
         }
         Insert: {
           collaborator_id: string
@@ -417,6 +376,7 @@ export type Database = {
           id?: string
           leader_id: string
           started_at?: string
+          transfer_banner_dismissed_at?: string | null
         }
         Update: {
           collaborator_id?: string
@@ -425,6 +385,7 @@ export type Database = {
           id?: string
           leader_id?: string
           started_at?: string
+          transfer_banner_dismissed_at?: string | null
         }
         Relationships: [
           {
@@ -439,6 +400,60 @@ export type Database = {
             columns: ["leader_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_warmth_responses: {
+        Row: {
+          clarity_after_session: number
+          collaborator_id: string
+          comfortable_sharing: number
+          conversation_quality: number
+          created_at: string
+          felt_heard: number
+          free_comment: string | null
+          id: string
+          leader_engaged: number
+          one_on_one_id: string
+        }
+        Insert: {
+          clarity_after_session: number
+          collaborator_id: string
+          comfortable_sharing: number
+          conversation_quality: number
+          created_at?: string
+          felt_heard: number
+          free_comment?: string | null
+          id?: string
+          leader_engaged: number
+          one_on_one_id: string
+        }
+        Update: {
+          clarity_after_session?: number
+          collaborator_id?: string
+          comfortable_sharing?: number
+          conversation_quality?: number
+          created_at?: string
+          felt_heard?: number
+          free_comment?: string | null
+          id?: string
+          leader_engaged?: number
+          one_on_one_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_warmth_responses_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_warmth_responses_one_on_one_id_fkey"
+            columns: ["one_on_one_id"]
+            isOneToOne: false
+            referencedRelation: "one_on_ones"
             referencedColumns: ["id"]
           },
         ]
@@ -484,6 +499,98 @@ export type Database = {
             columns: ["one_on_one_id"]
             isOneToOne: false
             referencedRelation: "one_on_ones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_dispatches: {
+        Row: {
+          channel: string
+          context: Json
+          created_at: string
+          id: string
+          recipient_id: string
+          rule_id: string | null
+          status: string
+        }
+        Insert: {
+          channel: string
+          context: Json
+          created_at?: string
+          id?: string
+          recipient_id: string
+          rule_id?: string | null
+          status?: string
+        }
+        Update: {
+          channel?: string
+          context?: Json
+          created_at?: string
+          id?: string
+          recipient_id?: string
+          rule_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_dispatches_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_dispatches_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "notification_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_rules: {
+        Row: {
+          audience: string[]
+          channels: string[]
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          id: string
+          name: string
+          threshold: Json | null
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          audience?: string[]
+          channels?: string[]
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          name: string
+          threshold?: Json | null
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          audience?: string[]
+          channels?: string[]
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          name?: string
+          threshold?: Json | null
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -544,6 +651,9 @@ export type Database = {
           location: string | null
           meet_link: string | null
           modality: Database["public"]["Enums"]["meeting_modality"]
+          non_realization_marked_at: string | null
+          non_realization_marked_by: string | null
+          non_realization_note: string | null
           non_realization_reason:
             | Database["public"]["Enums"]["non_realization_reason"]
             | null
@@ -562,6 +672,9 @@ export type Database = {
           location?: string | null
           meet_link?: string | null
           modality: Database["public"]["Enums"]["meeting_modality"]
+          non_realization_marked_at?: string | null
+          non_realization_marked_by?: string | null
+          non_realization_note?: string | null
           non_realization_reason?:
             | Database["public"]["Enums"]["non_realization_reason"]
             | null
@@ -580,6 +693,9 @@ export type Database = {
           location?: string | null
           meet_link?: string | null
           modality?: Database["public"]["Enums"]["meeting_modality"]
+          non_realization_marked_at?: string | null
+          non_realization_marked_by?: string | null
+          non_realization_note?: string | null
           non_realization_reason?:
             | Database["public"]["Enums"]["non_realization_reason"]
             | null
@@ -609,10 +725,103 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "one_on_ones_non_realization_marked_by_fkey"
+            columns: ["non_realization_marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_reports: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          filters: Json | null
+          format: string
+          id: string
+          last_run_at: string | null
+          name: string
+          next_run_at: string | null
+          recipients: string[]
+          report_type: string
+          schedule_cron: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          filters?: Json | null
+          format?: string
+          id?: string
+          last_run_at?: string | null
+          name: string
+          next_run_at?: string | null
+          recipients?: string[]
+          report_type: string
+          schedule_cron: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          filters?: Json | null
+          format?: string
+          id?: string
+          last_run_at?: string | null
+          name?: string
+          next_run_at?: string | null
+          recipients?: string[]
+          report_type?: string
+          schedule_cron?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_reports_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
         ]
       }
       users: {
         Row: {
+          allow_share_warmth_comments: boolean
           avatar_url: string | null
           created_at: string
           department_id: string | null
@@ -627,6 +836,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_share_warmth_comments?: boolean
           avatar_url?: string | null
           created_at?: string
           department_id?: string | null
@@ -641,6 +851,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_share_warmth_comments?: boolean
           avatar_url?: string | null
           created_at?: string
           department_id?: string | null
@@ -727,11 +938,143 @@ export type Database = {
         }
         Relationships: []
       }
+      open_agreements_by_collaborator: {
+        Row: {
+          ai_confidence: number | null
+          ai_generated: boolean | null
+          ai_quality_score: number | null
+          ai_quality_warnings: string[] | null
+          collaborator_id: string | null
+          created_at: string | null
+          current_leader_id: string | null
+          description: string | null
+          due_date: string | null
+          id: string | null
+          is_transferred: boolean | null
+          one_on_one_id: string | null
+          original_leader_id: string | null
+          responsible_id: string | null
+          session_scheduled_at: string | null
+          status: Database["public"]["Enums"]["agreement_status"] | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agreements_one_on_one_id_fkey"
+            columns: ["one_on_one_id"]
+            isOneToOne: false
+            referencedRelation: "one_on_ones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agreements_responsible_id_fkey"
+            columns: ["responsible_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leadership_relations_leader_id_fkey"
+            columns: ["current_leader_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "one_on_ones_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "one_on_ones_leader_id_fkey"
+            columns: ["original_leader_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pending_alerts: {
+        Row: {
+          actor_id: string | null
+          alert_type: string | null
+          detected_at: string | null
+          metadata: Json | null
+          severity: string | null
+          subject_id: string | null
+        }
+        Relationships: []
+      }
+      warmth_metrics_by_department: {
+        Row: {
+          avg_overall: number | null
+          department_id: string | null
+          department_name: string | null
+          response_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_metrics"
+            referencedColumns: ["department_id"]
+          },
+          {
+            foreignKeyName: "users_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warmth_metrics_by_leader: {
+        Row: {
+          avg_clarity_after_session: number | null
+          avg_comfortable_sharing: number | null
+          avg_conversation_quality: number | null
+          avg_felt_heard: number | null
+          avg_leader_engaged: number | null
+          avg_overall: number | null
+          leader_id: string | null
+          response_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "one_on_ones_leader_id_fkey"
+            columns: ["leader_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warmth_trend_by_leader_month: {
+        Row: {
+          avg_overall: number | null
+          leader_id: string | null
+          month: string | null
+          response_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "one_on_ones_leader_id_fkey"
+            columns: ["leader_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       is_hr: { Args: never; Returns: boolean }
       is_leader_of: { Args: { p_collaborator_id: string }; Returns: boolean }
       is_participant: { Args: { p_one_on_one_id: string }; Returns: boolean }
+      refresh_pending_alerts: { Args: never; Returns: undefined }
     }
     Enums: {
       agreement_status: "pendiente" | "cumplido" | "parcial" | "no_cumplido"
@@ -744,6 +1087,8 @@ export type Database = {
         | "cancelada_cargas"
         | "ausencia"
         | "sin_justificacion"
+        | "emergencia"
+        | "vacaciones"
       notification_channel: "in_app" | "email" | "slack"
       user_role: "collaborator" | "leader" | "hr"
     }
@@ -886,6 +1231,8 @@ export const Constants = {
         "cancelada_cargas",
         "ausencia",
         "sin_justificacion",
+        "emergencia",
+        "vacaciones",
       ],
       notification_channel: ["in_app", "email", "slack"],
       user_role: ["collaborator", "leader", "hr"],

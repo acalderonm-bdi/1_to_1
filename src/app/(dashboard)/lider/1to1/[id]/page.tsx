@@ -17,9 +17,6 @@ const STATUS_TONE: Record<string, string> = {
 
 interface Participant { id: string; full_name: string; email: string }
 interface Marker { id: string; full_name: string }
-// Las columnas non_realization_note/marked_by/marked_at fueron añadidas en la
-// migración 7b pero todavía no están en el tipo `Database` generado. Las
-// reflejamos manualmente acá (ver `src/types/database.augmentation.ts`).
 interface MeetingRow {
   id: string; scheduled_at: string; duration_minutes: number
   modality: string; location: string | null; meet_link: string | null; status: string
