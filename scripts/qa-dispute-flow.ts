@@ -69,8 +69,11 @@ async function markFromUI(page: Page, role: 'lider' | 'colaborador', meetingId: 
   await page.goto(`${BASE}/${role}/1to1/${meetingId}`, { waitUntil: 'networkidle' })
   await page.waitForTimeout(800)
 
-  // Busca el botón que abre el modal de "marcar como no realizada"
-  const trigger = page.getByRole('button', { name: /no realizada|marcar.*no|justificar/i }).first()
+  // Acepta tanto "Marcar como no realizada" (primer marcado) como
+  // "Marcar con otro motivo" (segundo participante → disputa)
+  const trigger = page
+    .getByRole('button', { name: /marcar como no realizada|marcar con otro motivo/i })
+    .first()
   await trigger.click()
   await page.waitForTimeout(500)
 
@@ -108,39 +111,15 @@ async function main() {
     console.log('  ✓ screenshot 1-lider-marcada.png')
     await ctxL.close()
 
-    // ============ PASO 2: Colab marca con motivo DIFERENTE → disputa ============
-    // NOTA: la UI actual NO permite que el segundo participante marque cuando
-    // status='no_realizada' (NonRealizationCTA solo se muestra con status='agendada').
-    // Bug conocido — la disputa no se puede generar via UI hoy.
-    // Simulamos el paso 2 via DB + notifyDispute para mostrar el flujo completo.
-    console.log('\n[2/3] Pedro (colab) marca con motivo distinto → disputa (simulado via DB)')
-    const { notifyDispute } = await import('../src/lib/slack/notify')
-
-    // Setear status='en_disputa' y registrar el segundo motivo
-    await sb
-      .from('one_on_ones')
-      .update({
-        status: 'en_disputa',
-        non_realization_reason: 'sin_justificacion',
-        non_realization_marked_by: PEDRO_ID,
-        non_realization_marked_at: new Date().toISOString(),
-      } as never)
-      .eq('id', meetingId)
-
-    // Disparar notifyDispute igual que lo haría markNonRealization cuando goToDispute=true
-    const slackChannel = process.env.SLACK_DEFAULT_CHANNEL ?? ''
-    const meetingDate = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
-    const dispRes = await notifyDispute(slackChannel, 'Carolina Méndez', 'Pedro Ramírez', meetingDate, meetingId)
-    console.log('  notifyDispute →', dispRes)
-
-    // Screenshot post-disputa desde la vista del colab
+    // ============ PASO 2: Colab ve "Marcar con otro motivo" → disputa (UI real) ============
+    console.log('\n[2/3] Pedro (colab) marca con motivo distinto → genera disputa via UI')
     const ctxC = await browser.newContext({ viewport: { width: 1440, height: 900 } })
     const pageC = await ctxC.newPage()
+    pageC.on('pageerror', (e) => console.error('  [pageerror]', e.message))
     await login(pageC, COLAB.email, COLAB.password)
-    await pageC.goto(`${BASE}/colaborador/1to1/${meetingId}`, { waitUntil: 'networkidle' })
-    await pageC.waitForTimeout(800)
-    await pageC.screenshot({ path: join(OUT, '2-colab-vista-disputa.png'), fullPage: false })
-    console.log('  ✓ screenshot 2-colab-vista-disputa.png')
+    await markFromUI(pageC, 'colaborador', meetingId, 'Sin justificación')
+    await pageC.screenshot({ path: join(OUT, '2-colab-marcado-disputa.png'), fullPage: false })
+    console.log('  ✓ screenshot 2-colab-marcado-disputa.png')
     await ctxC.close()
 
     // Pequeña espera para que la action complete + Slack post

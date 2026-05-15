@@ -200,6 +200,8 @@ export default async function OneOnOneDetailPage({ params }: { params: { id: str
               oneOnOneId={meeting.id}
               scheduledAt={meeting.scheduled_at}
               status={meeting.status}
+              currentUserId={user.id}
+              markedById={meeting.non_realization_marked_by ?? null}
             />
             <button type="button" className="ui-btn ui-btn--ghost ui-btn--icon" aria-label="Más opciones">
               <MoreHorizontal size={16} />
