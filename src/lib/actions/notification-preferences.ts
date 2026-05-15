@@ -3,22 +3,15 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
-import type { ActionResult, NotificationTriggerType } from '@/types/domain'
-
-// Mirror of the union exposed by `src/types/database.augmentation.ts`. Kept
-// here as a literal tuple so zod can validate input at the action boundary
-// (the DB stores plain text and has no FK to an enum).
-export const TRIGGER_TYPES = [
-  'cumplimiento_bajo',
-  'acuerdo_vencido',
-  'vobo_pendiente',
-  'calidez_baja',
-  'disputa_nueva',
-  'reminder_pre_1to1',
-] as const satisfies readonly NotificationTriggerType[]
-
-export const CHANNELS = ['in_app', 'email', 'slack'] as const
-export type PreferenceChannel = (typeof CHANNELS)[number]
+import {
+  CHANNELS,
+  TRIGGER_TYPES,
+  isKnownChannel,
+  isKnownTrigger,
+  type NotificationPreference,
+  type SetPreferenceInput,
+} from '@/lib/notifications/preferences-config'
+import type { ActionResult } from '@/types/domain'
 
 const triggerEnum = z.enum(TRIGGER_TYPES)
 const channelEnum = z.enum(CHANNELS)
@@ -28,14 +21,6 @@ const setPreferenceSchema = z.object({
   channel: channelEnum,
   enabled: z.boolean(),
 })
-
-export type SetPreferenceInput = z.infer<typeof setPreferenceSchema>
-
-export interface NotificationPreference {
-  trigger_type: NotificationTriggerType
-  channel: PreferenceChannel
-  enabled: boolean
-}
 
 interface PreferenceRow {
   trigger_type: string
@@ -61,7 +46,6 @@ export async function getMyPreferences(): Promise<ActionResult<NotificationPrefe
 
   if (error) return { success: false, error: error.message }
 
-  // Index existing rows by composite key, then fill in defaults for the rest.
   const rowsByKey = new Map<string, PreferenceRow>()
   for (const row of (data ?? []) as PreferenceRow[]) {
     rowsByKey.set(`${row.trigger_type}::${row.channel}`, row)
@@ -121,12 +105,4 @@ export async function setPreference(
   revalidatePath('/colaborador/configuracion')
   revalidatePath('/lider/configuracion')
   return { success: true }
-}
-
-function isKnownTrigger(value: string): value is NotificationTriggerType {
-  return (TRIGGER_TYPES as readonly string[]).includes(value)
-}
-
-function isKnownChannel(value: string): value is PreferenceChannel {
-  return (CHANNELS as readonly string[]).includes(value)
 }

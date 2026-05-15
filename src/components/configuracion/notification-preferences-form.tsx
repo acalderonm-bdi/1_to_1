@@ -2,13 +2,13 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useToast } from '@/hooks/use-toast'
+import { setPreference } from '@/lib/actions/notification-preferences'
 import {
   CHANNELS,
   TRIGGER_TYPES,
-  setPreference,
   type NotificationPreference,
   type PreferenceChannel,
-} from '@/lib/actions/notification-preferences'
+} from '@/lib/notifications/preferences-config'
 import type { NotificationTriggerType } from '@/types/domain'
 
 interface NotificationPreferencesFormProps {
