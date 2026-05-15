@@ -1,8 +1,6 @@
 {
   "crons": [
     { "path": "/api/cron/check-cadence", "schedule": "0 9 * * 1" },
-    { "path": "/api/cron/notify-due-agreements", "schedule": "0 8 * * *" },
-    { "path": "/api/cron/check-thresholds", "schedule": "0 9 * * *" },
-    { "path": "/api/cron/send-scheduled-reports", "schedule": "0 10 * * *" }
+    { "path": "/api/cron/check-thresholds", "schedule": "0 9 * * *" }
   ]
 }
