@@ -66,3 +66,28 @@ export async function notifyDispute(
     return { sent: false, error: String(err) }
   }
 }
+
+/**
+ * Generic Slack DM helper. Posts `*${title}*\n${body}` to the given user/channel.
+ * Used by the notification dispatcher (cron/check-thresholds) where a specific
+ * template is not yet available for the trigger type. Same skipped/error
+ * contract as the other helpers above.
+ */
+export async function notifySlackGeneric(
+  slackUserId: string,
+  title: string,
+  body: string
+): Promise<SlackResult> {
+  const client = getSlackClient()
+  if (!client) return { sent: false, skipped: true }
+
+  try {
+    await client.chat.postMessage({
+      channel: slackUserId,
+      text: `*${title}*\n${body}`,
+    })
+    return { sent: true }
+  } catch (err) {
+    return { sent: false, error: String(err) }
+  }
+}

@@ -17,7 +17,16 @@
  */
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { escapeHtml, notifyByEmail } from '@/lib/email/notify'
+import { notifySlackGeneric } from '@/lib/slack/notify'
 import type { NotificationRuleRow } from '@/types/domain'
+
+interface RecipientRow {
+  id: string
+  email: string | null
+  full_name: string | null
+  slack_user_id: string | null
+}
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
@@ -130,7 +139,63 @@ export async function GET(request: NextRequest) {
     }
 
     for (const recipientId of recipients) {
+      // Pre-fetch recipient profile (email, slack_user_id, full_name) so the
+      // dispatcher can actually deliver to email/slack per channel.
+      const { data: userRow } = (await admin
+        .from('users')
+        .select('id, email, full_name, slack_user_id')
+        .eq('id', recipientId)
+        .single()) as unknown as { data: RecipientRow | null }
+      if (!userRow) continue
+
+      const fullName = userRow.full_name ?? ''
+      const title = `[${rule.name}]`
+      const body = `Trigger: ${rule.trigger_type}`
+
       for (const channel of rule.channels) {
+        let delivered = false
+        let failedReason: string | null = null
+
+        if (channel === 'in_app') {
+          const { error } = await admin.from('notifications').insert({
+            user_id: recipientId,
+            channel: 'in_app',
+            title,
+            content: body,
+            link: '/colaborador',
+          })
+          delivered = !error
+          failedReason = error?.message ?? null
+        } else if (channel === 'email') {
+          if (!userRow.email) {
+            delivered = false
+            failedReason = 'EMAIL_NOT_CONFIGURED'
+          } else {
+            // Escapar texto de DB antes de meter en HTML (XSS prevention en email client).
+            const res = await notifyByEmail({
+              to: [userRow.email],
+              subject: `[1to1] ${rule.name}`,
+              html: `<p>Hola ${escapeHtml(fullName)}, se disparó la notificación "${escapeHtml(rule.name)}" (${escapeHtml(rule.trigger_type)}).</p>`,
+            })
+            delivered = res.sent
+            failedReason = res.error ?? (res.skipped ? 'EMAIL_NOT_CONFIGURED' : null)
+          }
+        } else if (channel === 'slack') {
+          if (!userRow.slack_user_id) {
+            delivered = false
+            failedReason = 'SLACK_USER_NOT_LINKED'
+          } else {
+            const res = await notifySlackGeneric(userRow.slack_user_id, rule.name, body)
+            delivered = res.sent
+            failedReason = res.error ?? (res.skipped ? 'SLACK_NOT_CONFIGURED' : null)
+          }
+        }
+
+        // NOTE: `notification_dispatches.failed_reason` column does not exist yet
+        // (see migration 00000000000020). TODO: add column in a future migration
+        // and persist `failedReason` so the matrix can show real delivery state.
+        // For now we only persist status; failedReason is computed for future use.
+        void failedReason
         const { error } = await admin
           .from('notification_dispatches' as never)
           .insert({
@@ -138,9 +203,9 @@ export async function GET(request: NextRequest) {
             recipient_id: recipientId,
             channel,
             context: { trigger: rule.trigger_type, rule_name: rule.name },
-            status: 'sent',
+            status: delivered ? 'sent' : 'failed',
           } as never)
-        if (!error) {
+        if (!error && delivered) {
           totalDispatched++
         }
         // Cooldown unique-index violations are expected and ignored.
