@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { Settings } from 'lucide-react'
 import { SettingsShell } from '@/components/settings/settings-shell'
 import { WarmthTrendChart } from '@/components/arquitectura-humana/warmth-trend-chart'
+import { NotificationPreferencesForm } from '@/components/configuracion/notification-preferences-form'
+import { getMyPreferences } from '@/lib/actions/notification-preferences'
 
 interface WarmthAggregate {
   leader_id: string
@@ -71,6 +73,9 @@ export default async function ConfiguracionLiderPage() {
       response_count: r.response_count ?? 0,
     }))
 
+  const prefsResult = await getMyPreferences()
+  const initialPreferences = prefsResult.success ? (prefsResult.data ?? []) : []
+
   return (
     <div className="page">
       <div className="page__head">
@@ -111,6 +116,10 @@ export default async function ConfiguracionLiderPage() {
           </p>
         </section>
       )}
+
+      <section style={{ marginBottom: '1rem' }}>
+        <NotificationPreferencesForm initialPreferences={initialPreferences} />
+      </section>
 
       <SettingsShell
         role="leader"

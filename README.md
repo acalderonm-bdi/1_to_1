@@ -1,495 +1,198 @@
-# Sistema de Seguimiento de 1:1s
+# 1to1
 
-Plataforma web interna para la gestión, agendado y seguimiento de reuniones uno a uno (1:1) entre colaboradores y líderes, con visibilidad para el área de **Arquitectura Humana** sobre el cumplimiento y la salud organizacional. Incorpora **inteligencia artificial** para estructurar acuerdos, dar acompañamiento al líder y detectar patrones que requieran atención.
+Sistema interno de B-Drive para gestionar reuniones 1:1 entre líderes y colaboradores, registrar acuerdos, monitorear cumplimiento y dar visibilidad a Arquitectura Humana (RH). Aproximadamente 400 usuarios, single-tenant.
 
----
+Stack: Next.js 14 (App Router) + Supabase (Postgres + Auth + Realtime + RLS) sobre Vercel. La lógica de negocio vive en **server actions** (`src/lib/actions/`), no hay capa REST. Crons en Vercel disparan notificaciones a Slack/Email. IA (Anthropic Claude) se usa para extraer acuerdos del minuta y sugerir preguntas al líder.
 
-## 📋 Tabla de Contenidos
+Este README está pensado para un dev que entra al equipo y va a mantener el código. Para el spec funcional original ver el git history. Para el plan de hardening activo ver [`docs/HARDENING_PLAN.md`](docs/HARDENING_PLAN.md).
 
-- [Contexto y Propósito](#contexto-y-propósito)
-- [Objetivos](#objetivos)
-- [Alcance](#alcance)
-- [Roles del Sistema](#roles-del-sistema)
-- [Funcionalidades](#funcionalidades)
-- [Flujo de una 1:1](#flujo-de-una-11)
-- [Inteligencia Artificial en el Sistema](#inteligencia-artificial-en-el-sistema)
-- [Privacidad y Seguridad](#privacidad-y-seguridad)
-- [Validación de Cumplimiento](#validación-de-cumplimiento)
-- [Stack Tecnológico](#stack-tecnológico)
-- [Arquitectura](#arquitectura)
-- [Modelo de Datos](#modelo-de-datos)
-- [Integraciones](#integraciones)
-- [Instalación y Configuración](#instalación-y-configuración)
-- [Variables de Entorno](#variables-de-entorno)
-- [Estructura del Proyecto](#estructura-del-proyecto)
-- [Fases de Implementación](#fases-de-implementación)
-- [Equipo](#equipo)
-
----
-
-## Contexto y Propósito
-
-Las reuniones 1:1 son una práctica fundamental para el desarrollo de las personas, la alineación de expectativas y la detección temprana de problemas en los equipos. Sin embargo, su realización suele ser inconsistente y Arquitectura Humana carece de visibilidad sobre si efectivamente están ocurriendo, con qué frecuencia y si están generando valor real (compromisos que se cumplen).
-
-Este sistema busca **profesionalizar la práctica de 1:1s** en la organización (≈400 colaboradores), brindando:
-
-- A los **colaboradores**: un espacio para preparar, registrar y dar seguimiento a sus 1:1s.
-- A los **líderes**: una herramienta de gestión + acompañamiento con IA para hacer mejores 1:1s.
-- A **Arquitectura Humana**: visibilidad de los acuerdos, su cumplimiento, reportes automatizados y mapas de calor por área.
-
----
-
-## Objetivos
-
-1. Estandarizar la práctica de 1:1s entre líderes y colaboradores.
-2. Facilitar el agendado, registro y seguimiento de cada reunión.
-3. Estructurar los acuerdos con IA para garantizar claridad y trazabilidad.
-4. Acompañar al líder con sugerencias inteligentes para hacer mejores 1:1s.
-5. Brindar a Arquitectura Humana mapas de calor, reportes y alertas automatizadas.
-6. Generar accountability real sobre el cumplimiento de compromisos.
-
----
-
-## Alcance
-
-### Dentro del alcance
-
-- Reuniones 1:1 entre líder directo y colaborador.
-- Modalidad virtual (Google Meet) y presencial.
-- Integración con Google Workspace (SSO + Calendar).
-- Notificaciones a Slack ante incumplimientos.
-- Procesamiento de minutas con IA.
-- Acompañamiento al líder con sugerencias de IA.
-- Dashboards diferenciados por rol.
-- Mapa de calor organizacional por áreas.
-
-### Fuera del alcance (por ahora)
-
-- Reuniones grupales o de equipo.
-- Evaluaciones de desempeño formales.
-- Gestión de objetivos (OKRs/KPIs).
-- Grabación o transcripción de conversaciones.
-- Integraciones con otros calendarios (Outlook, etc.).
-
----
-
-## Roles del Sistema
-
-| Rol | Descripción | Permisos clave |
-|-----|-------------|----------------|
-| **Colaborador** | Cualquier persona de la organización | Agendar 1:1s con su líder, capturar acuerdos, dar VoBo, ver su historial, reportar cumplimiento de acuerdos previos |
-| **Líder** | Personas con reportes directos | Todo lo del colaborador + dashboard de su equipo + sugerencias de IA + recordatorios de cadencia |
-| **Arquitectura Humana** | Equipo de RH | Dashboards globales, mapa de calor por áreas, alertas de incumplimiento, **visibilidad de acuerdos y su cumplimiento**, reportes automáticos generados por IA, validación del seguimiento del líder |
-
----
-
-## Funcionalidades
-
-### Gestión de 1:1s
-
-- Agendado de reuniones con selección de modalidad (virtual o presencial)
-- **Calendarización automática** en Google Calendar
-- Generación automática de link de Google Meet para reuniones virtuales
-- Captura de ubicación para reuniones presenciales
-- Reagendado y cancelación con motivo
-
-### Minuta y Acuerdos
-
-- **Plantilla de minuta** con campos estructurados
-- Captura de acuerdos por ambos participantes al finalizar la 1:1
-- **Procesamiento con IA**: el texto libre se transforma en una lista estructurada de acuerdos (descripción, responsable, fecha objetivo)
-- Visibilidad compartida de los acuerdos entre líder, colaborador y Arquitectura Humana
-- Historial de acuerdos por persona
-
-### VoBo (Validación de Realización)
-
-- Al finalizar la 1:1, **ambos participantes deben confirmar de forma independiente** que la reunión se realizó
-- Si ambos confirman → 1:1 marcada como realizada
-- Si discrepan → estado "en disputa" para revisión de Arquitectura Humana
-- En la **siguiente 1:1**, antes de dar el VoBo, el sistema pregunta sobre los acuerdos previos (cumplidos, parciales, no cumplidos, con justificación)
-
-### Acompañamiento al Líder con IA
-
-- Sugerencias de **preguntas inteligentes** basadas en el historial del colaborador
-- **Planes de seguimiento** generados a partir de la minuta
-- Recomendaciones para asegurar el cumplimiento de los acuerdos
-- Tips contextuales según patrones detectados (ej. acuerdos repetidamente incumplidos)
-
-### Notificaciones
-
-- **Slack**: alerta automática cuando no se realiza una 1:1 según cadencia
-- **Email**: recordatorios de reuniones, confirmaciones, vencimiento de acuerdos
-- **In-app**: notificaciones operativas
-
-### Dashboard del Colaborador
-
-- Próximas 1:1s
-- Acuerdos pendientes propios
-- Historial de sus 1:1s
-- Espacio para preparar agenda pre-reunión
-
-### Dashboard del Líder
-
-- Vista de todas las 1:1s con su equipo
-- Próximas reuniones agendadas
-- Recordatorios de cadencia
-- Acuerdos pendientes por colaborador
-- Sugerencias de IA por persona
-- Historial completo por colaborador
-
-### Dashboard de Arquitectura Humana
-
-- **Mapa de calor** por áreas: cumplimiento de 1:1s a nivel organizacional
-- Métricas por líder, área y empresa
-- **Visibilidad de acuerdos generados** y su estado de cumplimiento
-- Alertas de líderes que no cumplen cadencia
-- **Reportes automáticos generados por IA** cuando se detectan patrones (ej. acuerdos sistemáticamente no cumplidos, 1:1s sin contenido relevante, escalada de problemas)
-- Casos en disputa para revisión
-- Configuración de cadencias esperadas
-- Gestión de la estructura organizacional
-- Herramientas de validación del seguimiento del líder a compromisos
-
----
-
-## Flujo de una 1:1
-
-```
-1. AGENDADO
-   └─> Colaborador o líder agenda → Google Calendar (auto) → Notificación
-
-2. PRE-REUNIÓN
-   └─> Ambos pueden agregar temas a la agenda compartida (privada)
-
-3. REUNIÓN (virtual o presencial)
-   └─> Conversación libre, sin grabación
-
-4. POST-REUNIÓN
-   ├─> Ambos capturan los acuerdos en la plantilla de minuta
-   ├─> IA procesa el texto → lista estructurada de acuerdos
-   ├─> Acuerdos quedan visibles para líder, colaborador y Arquitectura Humana
-   ├─> Ambos dan VoBo independiente de que la 1:1 se realizó
-   └─> Si hay discrepancia → "en disputa" → revisión de Arquitectura Humana
-
-5. ENTRE 1:1s
-   ├─> Slack avisa si pasó la cadencia sin nueva 1:1
-   ├─> IA prepara sugerencias para el líder de cara a la siguiente
-   └─> Recordatorios de acuerdos próximos a vencer
-
-6. SIGUIENTE 1:1
-   └─> Antes del VoBo: revisión de acuerdos previos (cumplido / parcial / no cumplido)
-       └─> IA analiza patrones; si detecta problemas → reporte a Arquitectura Humana
-```
-
----
-
-## Inteligencia Artificial en el Sistema
-
-La IA se usa de forma transparente y con un propósito claro en cuatro lugares:
-
-### 1. Estructuración de acuerdos
-Toma el texto libre de la minuta y lo convierte en una lista limpia: descripción del acuerdo, responsable, fecha objetivo, criterios de cumplimiento.
-
-### 2. Acompañamiento al líder
-Sugiere preguntas relevantes para la siguiente 1:1 basadas en el historial del colaborador, los acuerdos pendientes y patrones detectados.
-
-### 3. Análisis de seguimiento
-Cuando el colaborador o líder reportan cumplimiento (o falta de él) de acuerdos previos, la IA analiza patrones: ¿se repiten incumplimientos? ¿Las 1:1s tienen contenido sustancial? ¿Hay señales de problemas que requieren atención?
-
-### 4. Reportes automáticos a Arquitectura Humana
-Si la IA detecta patrones que requieren atención (ej. múltiples 1:1s sin acuerdos, incumplimiento sistemático, escalada de tensiones), genera un reporte agregado para Arquitectura Humana con conclusiones y recomendaciones.
-
-> La IA procesa contenido únicamente para los fines anteriores. No se almacena más allá de lo necesario y no se usa para entrenar modelos externos.
-
----
-
-## Privacidad y Seguridad
-
-> **Principio rector**: la información se segmenta según el rol. Los acuerdos formales son visibles para Arquitectura Humana para garantizar accountability; el espacio de preparación y trabajo personal sigue siendo privado entre los participantes.
-
-### Lo que ven los participantes (líder + colaborador)
-- La minuta cruda y los acuerdos
-- La agenda compartida pre-reunión
-- Histórico completo de sus 1:1s
-
-### Lo que ve Arquitectura Humana
-- Metadata: fecha, duración, modalidad, estado (realizada / no realizada / en disputa)
-- **Acuerdos estructurados** generados por IA (descripción, responsable, fecha objetivo)
-- **Estado de cumplimiento** de cada acuerdo (cumplido / parcial / no cumplido)
-- Reportes automáticos generados por IA con conclusiones y recomendaciones
-- Mapas de calor y métricas por área
-- Casos en disputa para arbitraje
-
-### Lo que NO ve Arquitectura Humana
-- La minuta cruda (texto libre antes del procesamiento de IA)
-- La agenda pre-reunión (preparación privada de los participantes)
-- Audio o video (no se graba bajo ninguna circunstancia)
-
-### Marco legal
-- El uso del sistema y la visibilidad de Arquitectura Humana sobre los acuerdos está cubierto en el contrato laboral de los colaboradores.
-- Cumplimiento con **LFPDPPP** (Ley Federal de Protección de Datos Personales en Posesión de los Particulares).
-
-### Controles técnicos
-- **Row Level Security (RLS)** en Supabase a nivel base de datos
-- **Autenticación SSO** vía Google Workspace
-- Logs de auditoría para accesos sensibles
-
----
-
-## Validación de Cumplimiento
-
-Una 1:1 se considera **realizada** cuando:
-
-1. **Ambos participantes dan VoBo** post-reunión (mecanismo principal).
-2. Hay **acuerdos capturados** en la minuta.
-3. Para reuniones virtuales: confirmación automática vía Google Meet (ambos se conectaron).
-
-### Estados posibles de la 1:1
-
-- `agendada`: futura
-- `realizada`: ambas partes dieron VoBo
-- `no_realizada`: con motivo (reagendada, cancelada por cargas, ausencia, sin justificación)
-- `en_disputa`: los participantes reportan estados diferentes → revisión de Arquitectura Humana
-
-### Estados de acuerdos
-
-- `pendiente`: aún no llega su fecha objetivo
-- `cumplido`: ambas partes lo confirman
-- `parcial`: avance pero no completado
-- `no_cumplido`: con justificación opcional
-
----
-
-## Stack Tecnológico
+## Stack
 
 | Capa | Tecnología |
-|------|------------|
-| Frontend | Next.js 14+ (App Router), TypeScript, React |
-| Estilos | Tailwind CSS, shadcn/ui |
-| Backend | Next.js API Routes / Server Actions |
-| Base de datos | PostgreSQL (vía Supabase) |
-| Auth | Supabase Auth + Google Workspace SSO |
-| ORM | Prisma o Supabase Client |
-| Calendario | Google Calendar API |
-| Videoconferencia | Google Meet (vía Calendar API) |
-| Inteligencia Artificial | Anthropic Claude API |
-| Notificaciones | Slack API, Resend (email) |
-| Hosting | Vercel |
-| CI/CD | GitLab CI/CD |
+|---|---|
+| Framework | Next.js 14.2 (App Router, Server Actions, RSC) |
+| UI | Tailwind v3 + shadcn/ui (Radix primitives) |
+| DB / Auth / Realtime | Supabase (Postgres + RLS + `@supabase/ssr` + supabase-js Realtime) |
+| Notificaciones | Slack Web API (`@slack/web-api`), Resend (email) |
+| IA | Anthropic SDK (`@anthropic-ai/sdk`, modelo Claude) |
+| Observabilidad | Sentry (`@sentry/nextjs`) |
+| Calendar | Google Calendar API (OAuth scope adicional al SSO) |
+| Forms / Validación | react-hook-form + zod |
+| Tests | Vitest (unit) + Playwright (E2E) |
+| Hosting | Vercel (incluye crons via `vercel.json`) |
 
----
+## Estructura del repo
 
-## Arquitectura
+| Path | Qué hay ahí |
+|---|---|
+| `src/app/(auth)/` | Login page (Supabase Auth con magic link / Google SSO) |
+| `src/app/(dashboard)/colaborador/` | Vistas del colaborador: 1:1, acuerdos, historial, configuración |
+| `src/app/(dashboard)/lider/` | Vistas del líder: agenda, equipo, colaborador detalle |
+| `src/app/(dashboard)/arquitectura-humana/` | Vistas RH: cadencias, disputas, mapa de calor, reportes, notificaciones, parámetros, sincronización, usuarios |
+| `src/app/api/auth/callback/` | OAuth callback (Google → Supabase Auth) |
+| `src/app/api/cron/` | 4 endpoints disparados por Vercel cron, protegidos con `CRON_SECRET` |
+| `src/app/api/ai/` | Endpoints de IA: extract-agreements, suggest-questions, analyze-patterns, agreement-quality |
+| `src/app/api/exports/[type]/` | Exports CSV/PDF |
+| `src/app/api/health/` | Health check público (DB + Slack + email config) |
+| `src/lib/actions/` | **Toda la lógica de negocio.** Server actions (`'use server'`). Una file por dominio: `one-on-ones`, `agreements`, `vobos`, `disputes`, `warmth`, `cadence`, `minutes`, `users`, `departments`, `notification-rules`, `scheduled-reports`, `reports`, `org-settings`, `exports` |
+| `src/lib/supabase/` | Clientes Supabase: `client.ts` (browser), `server.ts` (RSC/actions), `admin.ts` (service role, bypass RLS, solo crons y scripts) |
+| `src/lib/slack/` | `client.ts` (singleton) + `notify.ts` (helpers tipados por trigger) |
+| `src/lib/email/` | `client.ts` (Resend) + `notify.ts` + `templates/` |
+| `src/lib/google/calendar.ts` | Crear/borrar eventos Calendar y obtener Meet link |
+| `src/lib/ai/` | Prompts y clients Anthropic |
+| `src/lib/exports/` | Generación de CSV/PDF |
+| `src/components/ui/` | shadcn primitives |
+| `src/components/{one-on-one,arquitectura-humana,layout,shared,settings}/` | Componentes de dominio |
+| `src/hooks/` | `use-realtime-meeting`, `use-realtime-notifications`, `use-user`, `use-toast`, `use-keyboard-shortcuts` |
+| `src/types/database.types.ts` | Generado por `pnpm db:types` — no editar a mano |
+| `src/types/domain.ts` | Tipos de dominio (`ActionResult<T>`, `OneOnOne`, etc.) |
+| `src/middleware.ts` | Auth gate + inyección de `x-pathname` |
+| `supabase/migrations/` | SQL versionado (numerado `0000000000NNNN_*.sql`). Source of truth del schema |
+| `scripts/` | Setup, seed, QA visual, helpers Slack, verify |
+| `docs/` | Auditorías, runbooks y plan de hardening |
+| `sentry.*.config.ts` | Configs Sentry (client/server/edge) |
+| `instrumentation.ts` | Hook de instrumentación de Next |
+| `vercel.json` | Definición de los 4 crons |
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                     Cliente (Browser)                    │
-│              Next.js App Router + React                  │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────┐
-│              Next.js Server (Vercel)                     │
-│      API Routes / Server Actions / Middleware            │
-└──┬──────────┬──────────┬──────────┬──────────┬─────────┘
-   │          │          │          │          │
-   ▼          ▼          ▼          ▼          ▼
-┌──────┐  ┌────────┐  ┌──────┐  ┌──────┐  ┌────────┐
-│Supa- │  │ Google │  │Claude│  │Slack │  │ Resend │
-│base  │  │  APIs  │  │ AI   │  │ API  │  │(Email) │
-│(DB + │  │(Cal +  │  │      │  │      │  │        │
-│ Auth)│  │ Meet)  │  │      │  │      │  │        │
-└──────┘  └────────┘  └──────┘  └──────┘  └────────┘
-```
+## Setup local
 
----
+### Prerequisitos
 
-## Modelo de Datos
-
-Entidades principales:
-
-- **users**: información sincronizada con Google Workspace
-- **departments**: áreas de la organización
-- **leadership_relations**: relación líder ↔ colaborador (multinivel)
-- **cadence_configs**: cadencias esperadas (por área o global)
-- **one_on_ones**: cada reunión con su metadata
-- **agenda_items**: temas pre-reunión (privados a los participantes)
-- **minutes**: minuta cruda capturada por ambos (privada a los participantes)
-- **agreements**: acuerdos estructurados por IA (visibles para Arquitectura Humana)
-- **agreement_followups**: seguimiento de cumplimiento de acuerdos
-- **vobos**: confirmaciones independientes por participante
-- **ai_insights**: sugerencias generadas por IA para líderes
-- **ai_reports**: reportes automáticos a Arquitectura Humana
-- **notifications**: notificaciones in-app, slack y email
-- **audit_logs**: registro de accesos sensibles
-
----
-
-## Integraciones
-
-### Google Workspace
-- **SSO**: autenticación vía OAuth 2.0
-- **Calendar API**: creación, actualización y eliminación de eventos
-- **Meet**: generación automática de links para reuniones virtuales
-- **Directory API**: sincronización de la estructura organizacional
-
-### Slack
-- Webhook o bot oficial para notificaciones de incumplimiento
-
-### Anthropic Claude (IA)
-- Estructuración de minutas
-- Generación de sugerencias para líderes
-- Análisis de patrones y reportes
-
-### Resend
-- Notificaciones transaccionales por email
-
----
-
-## Instalación y Configuración
-
-### Requisitos previos
-- Node.js 20+
-- pnpm (recomendado) o npm
-- Cuenta de Supabase
-- Proyecto en Google Cloud con Calendar API habilitada
-- API Key de Anthropic
-- Bot/Webhook de Slack
-- Cuenta de Resend
+- Node 20 LTS
+- pnpm 9 (`corepack enable && corepack prepare pnpm@9 --activate`)
+- Supabase CLI (`brew install supabase/tap/supabase` o ver [supabase.com/docs/guides/local-development/cli](https://supabase.com/docs/guides/local-development/cli))
+- Google Chrome estable instalado (los scripts QA en `scripts/qa-*.ts` y `scripts/screenshot.ts` usan Chrome del sistema porque chromium-de-playwright no anda confiable en Ubuntu 26.04)
+- Acceso al proyecto Supabase de B-Drive (pedirle a Ariel/lead técnico)
 
 ### Pasos
 
+1. Clonar e instalar:
+
+   ```bash
+   git clone <repo-url> 1to1
+   cd 1to1
+   pnpm install
+   ```
+
+2. Copiar y rellenar env vars:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   Los secrets reales están en 1Password/Bitwarden del equipo. Variables obligatorias mínimas: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GOOGLE_CLIENT_ID/SECRET`, `ANTHROPIC_API_KEY`, `CRON_SECRET`. Slack/Resend/Sentry son opcionales (el sistema degrada silenciosamente si faltan — ver `/api/health`).
+
+3. Linkear CLI al proyecto remoto y aplicar migrations:
+
+   ```bash
+   pnpm supabase link --project-ref $SUPABASE_PROJECT_REF
+   pnpm supabase migration list --linked        # ver qué falta aplicar
+   pnpm supabase db push --linked               # si trabajás contra remote dev
+   pnpm db:types                                # regenerar src/types/database.types.ts
+   ```
+
+4. Levantar:
+
+   ```bash
+   pnpm dev
+   ```
+
+   App en http://localhost:3000.
+
+5. Login con usuarios demo (seedeados por `pnpm db:seed`):
+
+   - `lider.tech@demo.com` — líder con equipo (3 colaboradores)
+   - `dev3@demo.com` — colaborador
+   - `admin@b-drive.com.mx` — RH/Arquitectura Humana (creado por `pnpm db:create-admin` usando `ADMIN_EMAIL/ADMIN_PASSWORD` de `.env.local`)
+
+   Password demo: `Demo1234!` (ver `scripts/seed.ts`).
+
+## Comandos comunes
+
 ```bash
-# Clonar el repositorio
-git clone https://gitlab.com/[organizacion]/sistema-1to1.git
-cd sistema-1to1
+# Desarrollo
+pnpm dev                       # Next.js dev server, hot reload
+pnpm build                     # build de producción
+pnpm start                     # corre el build (post-build)
 
-# Instalar dependencias
-pnpm install
+# Calidad
+pnpm tsc -b                    # typecheck en build mode (mismo que CI — usa este, no --noEmit)
+pnpm lint                      # next lint (eslint-config-next)
+pnpm test                      # vitest run (unit)
+pnpm test:watch                # vitest watch
+pnpm test:e2e                  # playwright test
+pnpm test:e2e:ui               # playwright en modo UI
 
-# Configurar variables de entorno
-cp .env.example .env.local
-# Editar .env.local con tus credenciales
+# DB
+pnpm db:types                  # regenera src/types/database.types.ts desde el schema remoto
+pnpm db:push                   # supabase db push (aplica migrations locales)
+pnpm db:reset                  # supabase db reset --linked (DESTRUCTIVO)
+pnpm db:seed                   # corre scripts/seed.ts (depts + users demo + cadencia + agreements de prueba)
+pnpm db:create-admin           # crea/promueve a HR el usuario ADMIN_EMAIL
 
-# Ejecutar migraciones de base de datos
-pnpm db:migrate
+pnpm supabase migration list --linked     # ver qué migrations están aplicadas en remote
+pnpm supabase db push --linked            # push de migrations al remote linkeado
+pnpm supabase db pull                     # baja schema remoto a migration nueva
 
-# Iniciar en modo desarrollo
+# Verificación y QA
+pnpm verify                    # scripts/verify.ts: chequea env + DB + roles
+pnpm screenshot                # captura set de screenshots con Chrome del sistema
+```
+
+CI corre `pnpm tsc -b` y `pnpm test`. Localmente conviene correr lo mismo antes de commit; `--noEmit` puede pasar y `-b` fallar por imports muertos / referencias rotas.
+
+## Deploy
+
+Hosting en Vercel, branch `main` → production. Cualquier push a `main` triggea deploy.
+
+- **Env vars**: gestionadas en Vercel dashboard (Production scope). Para el procedimiento de rotación de cada secret, ver [`docs/runbook-rotation.md`](docs/runbook-rotation.md).
+- **Crons**: definidos en `vercel.json` (4 jobs). Vercel los expone en su dashboard con su próxima ejecución.
+- **Health check**: `https://<host>/api/health` retorna 200 si DB + Slack + email están OK. Servirlo a un uptime monitor externo.
+- **Sentry**: source maps se suben en build cuando `SENTRY_AUTH_TOKEN/ORG/PROJECT` están seteadas en el environment de CI/Vercel.
+
+Staging: existe (o debería existir post Fase 5.3) un proyecto Vercel + Supabase paralelo `1to1-staging.b-drive.com.mx`. Branch dedicada o preview deploys.
+
+## Troubleshooting
+
+**`vendor-chunks not found` o errores raros de webpack al hacer `pnpm dev`.** Cache de `.next` corrupto, típicamente porque corriste `pnpm build` mientras `pnpm dev` estaba activo (o viceversa). Fix:
+
+```bash
+rm -rf .next
 pnpm dev
 ```
 
----
+**`tsc errors` en código que tocaste después de una migration de Supabase** (ej. columna nueva, tipo cambiado). El generated `database.types.ts` está desactualizado:
 
-## Variables de Entorno
-
-```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-
-# Google OAuth
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_REDIRECT_URI=
-
-# Anthropic (IA)
-ANTHROPIC_API_KEY=
-
-# Slack
-SLACK_BOT_TOKEN=
-SLACK_WEBHOOK_URL=
-
-# Email
-RESEND_API_KEY=
-
-# App
-NEXT_PUBLIC_APP_URL=
+```bash
+pnpm db:types
+pnpm tsc -b
 ```
 
----
+Si después de regenerar siguen errores con `as never`, es el problema documentado en `docs/types-audit.md` — el tipo `Database` está mal inferido para algunos `Insert`/`Update`. Ver allí el workaround.
 
-## Estructura del Proyecto
+**Login no funciona / 500 al loguearse / `users` table no encontrada.** Probable que la DB esté en otro estado del schema que el código espera. Validá:
 
-```
-sistema-1to1/
-├── app/                        # Next.js App Router
-│   ├── (auth)/                 # Rutas de autenticación
-│   ├── (dashboard)/            # Rutas autenticadas
-│   │   ├── colaborador/
-│   │   ├── lider/
-│   │   └── arquitectura-humana/
-│   ├── api/                    # API Routes
-│   └── layout.tsx
-├── components/                 # Componentes React
-│   ├── ui/                     # shadcn/ui
-│   └── features/               # Componentes por feature
-├── lib/                        # Utilidades
-│   ├── supabase/
-│   ├── google/
-│   ├── ai/                     # Integración con Claude
-│   ├── slack/
-│   └── email/
-├── prisma/                     # Schema y migraciones
-├── public/
-├── types/                      # TypeScript types
-└── README.md
+```bash
+pnpm supabase migration list --linked
 ```
 
----
+Si hay rows con `Local | Remote` desfaseado, hacé `pnpm supabase db push --linked` (si tu local va adelante) o reseteá tu local. Después regenerá types.
 
-## Fases de Implementación
+**Slack DM no llega aunque el código dice `success`.** El user destinatario probablemente no tiene `slack_user_id` cargado en `public.users`. Correr `pnpm tsx scripts/sync-slack-ids.ts` (matchea por email). El dispatcher hace `skipped: true` silencioso si falta.
 
-### Fase 1 — Fundación
-- [ ] Auth con Google Workspace
-- [ ] Estructura organizacional (líder ↔ colaborador, áreas)
-- [ ] Vistas base por rol (colaborador, líder, arquitectura humana)
-- [ ] Agendado de 1:1s con sync a Google Calendar
+**Google Calendar no crea el evento al agendar.** El líder tiene que haber loggeado con Google OAuth (no magic link) en la sesión actual. El `provider_token` solo lo da Google SSO y vive solo durante esa sesión. Si llegaron por magic link, no hay token y el agendado funciona pero sin Calendar (ver `scheduleOneOnOne` en `src/lib/actions/one-on-ones.ts`).
 
-### Fase 2 — Minuta y VoBo
-- [ ] Plantilla de minuta para captura de acuerdos
-- [ ] Procesamiento con IA: texto libre → lista estructurada de acuerdos
-- [ ] VoBo independiente por ambas partes
-- [ ] Estado "en disputa" cuando hay discrepancia
-- [ ] Visibilidad compartida de acuerdos (incluyendo Arquitectura Humana)
+**Tests Playwright no abren browser en WSL/Ubuntu 26.04.** Usar Chrome del sistema, no chromium-bundled. Los scripts QA en `scripts/qa-*.ts` ya están configurados así; para Playwright tests propios, setear `channel: 'chrome'` en el config.
 
-### Fase 3 — Seguimiento de Acuerdos
-- [ ] Pregunta de cumplimiento de acuerdos previos antes del VoBo
-- [ ] Estados de acuerdos (pendiente, cumplido, parcial, no cumplido)
-- [ ] Análisis con IA de patrones de cumplimiento
-- [ ] Reportes automáticos a Arquitectura Humana cuando se detectan patrones
+## Documentación adicional
 
-### Fase 4 — Acompañamiento al Líder
-- [ ] Sugerencias de IA con preguntas para la siguiente 1:1
-- [ ] Planes de seguimiento basados en la minuta
-- [ ] Recomendaciones contextuales por colaborador
-
-### Fase 5 — Arquitectura Humana
-- [ ] Dashboard global de cumplimiento
-- [ ] Mapa de calor por áreas
-- [ ] Configuración de cadencias
-- [ ] Alertas e incumplimientos
-- [ ] Herramientas de validación del seguimiento del líder
-
-### Fase 6 — Notificaciones e Integraciones
-- [ ] Notificaciones a Slack ante incumplimientos
-- [ ] Recordatorios por email
-- [ ] Notificaciones in-app
-
-### Fase 7 — Pulido y Despliegue
-- [ ] Optimización de UX
-- [ ] Pruebas con usuarios piloto
-- [ ] Despliegue en producción
-
----
-
-## Equipo
-
-- **Sponsor**: Arquitectura Humana
-- **Product Owner**: [Por definir]
-- **Desarrollo**: [Por definir]
-- **Diseño**: [Por definir]
-
----
-
-## Licencia
-
-Proyecto interno — Uso restringido a la organización.
+| Documento | Propósito |
+|---|---|
+| [`docs/architecture.md`](docs/architecture.md) | Diagrama de componentes + flujos críticos + decisiones arquitectónicas |
+| [`docs/HARDENING_PLAN.md`](docs/HARDENING_PLAN.md) | Plan vigente para llegar a prod-ready (fases 0–7, olas) |
+| [`docs/runbook-rotation.md`](docs/runbook-rotation.md) | Cuándo y cómo rotar cada secret sin downtime |
+| [`docs/rls-audit.md`](docs/rls-audit.md) | Auditoría de policies RLS vs server actions |
+| [`docs/notif-matrix.md`](docs/notif-matrix.md) | Matriz trigger × channel del dispatcher de notificaciones |
+| [`docs/types-audit.md`](docs/types-audit.md) | Inventario de `as never` y plan de eliminación |
+| [`docs/layout-state-audit.md`](docs/layout-state-audit.md) | Auditoría de `currentPath` server-side en componentes client |
+| [`docs/OLA-1-SPEC.md`](docs/OLA-1-SPEC.md) | Spec de la ola actual de trabajo paralelo |

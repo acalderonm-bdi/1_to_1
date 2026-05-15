@@ -42,3 +42,4 @@ next-env.d.ts
 
 # QA artifacts (screenshots locales, no se versionan)
 .qa-screenshots/
+test-results/

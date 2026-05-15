@@ -148,6 +148,12 @@ export async function GET(request: NextRequest) {
       const body = `Trigger: ${rule.trigger_type}`
 
       for (const channel of rule.channels) {
+        // TODO (Fase 7.A — opt-out granular): antes de enviar, consultar
+        // `notification_preferences` con
+        //   (user_id = recipientId, trigger_type = rule.trigger_type, channel)
+        // y si `enabled = false` saltar este recipient/channel. Si no hay
+        // row, asumir habilitado (default opt-in). Ver
+        // `src/lib/actions/notification-preferences.ts` + migration 25.
         let delivered = false
         let failedReason: string | null = null
 

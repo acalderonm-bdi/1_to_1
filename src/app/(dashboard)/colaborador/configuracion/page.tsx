@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Settings } from 'lucide-react'
 import { SettingsShell } from '@/components/settings/settings-shell'
+import { NotificationPreferencesForm } from '@/components/configuracion/notification-preferences-form'
+import { getMyPreferences } from '@/lib/actions/notification-preferences'
 
 export default async function ConfiguracionColaboradorPage() {
   const supabase = createClient()
@@ -12,6 +14,9 @@ export default async function ConfiguracionColaboradorPage() {
     .from('users').select('full_name, email').eq('id', user.id).single()
   const profile = rawProfile as { full_name: string; email: string } | null
 
+  const prefsResult = await getMyPreferences()
+  const initialPreferences = prefsResult.success ? (prefsResult.data ?? []) : []
+
   return (
     <div className="page">
       <div className="page__head">
@@ -21,6 +26,11 @@ export default async function ConfiguracionColaboradorPage() {
           <p className="page__subtitle">Personaliza tu experiencia en 1to1.</p>
         </div>
       </div>
+
+      <section style={{ marginBottom: '1rem' }}>
+        <NotificationPreferencesForm initialPreferences={initialPreferences} />
+      </section>
+
       <SettingsShell
         role="collaborator"
         user={{
