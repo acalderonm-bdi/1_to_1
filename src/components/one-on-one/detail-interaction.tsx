@@ -225,14 +225,12 @@ export function DetailInteraction({
         <div className="meeting-grid">
           <div className="meeting-grid__main">
             {notesCard}
+            {agreementsCard}
           </div>
           <aside className="meeting-grid__rail">
             {rail}
             {voboBlock}
           </aside>
-        </div>
-        <div className="meeting-grid__full">
-          {agreementsCard}
         </div>
       </>
     )
