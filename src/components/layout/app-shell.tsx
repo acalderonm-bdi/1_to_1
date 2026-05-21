@@ -59,7 +59,7 @@ export function AppShell({ role, currentPath, userId, userName, userEmail, child
       '?': openCmdK,
     }
     if (role === 'leader') {
-      base['g a'] = go('/colaborador/1to1/nueva')
+      base['g a'] = go('/lider/1to1/nueva')
       base['g e'] = go('/lider/equipo')
       base['g s'] = go('/lider/configuracion')
     }

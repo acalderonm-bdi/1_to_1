@@ -121,7 +121,7 @@ export default async function LiderPage() {
           </p>
         </div>
         <div className="page__actions">
-          <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--accent">
+          <Link href="/lider/1to1/nueva" className="ui-btn ui-btn--accent">
             <Plus size={14} /> <span>Agendar 1:1</span>
           </Link>
         </div>
@@ -262,7 +262,7 @@ export default async function LiderPage() {
                     )}
                   </div>
                   <Link
-                    href={next ? `/lider/1to1/${next.id}` : '/colaborador/1to1/nueva'}
+                    href={next ? `/lider/1to1/${next.id}` : '/lider/1to1/nueva'}
                     className="ui-btn ui-btn--outline ui-btn--sm"
                   >
                     {next ? 'Ver' : 'Agendar'} <ArrowRight size={12} />

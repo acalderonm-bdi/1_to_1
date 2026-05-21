@@ -46,7 +46,7 @@ export function CommandPalette({ open, onClose, role }: CommandPaletteProps) {
       leader: [
         { id: 'lid-dash', group: 'Navegación', label: 'Resumen', icon: LayoutDashboard, kbd: 'g h', run: go('/lider') },
         { id: 'lid-team', group: 'Navegación', label: 'Mi equipo', icon: Users, kbd: 'g e', run: go('/lider/equipo') },
-        { id: 'lid-new', group: 'Navegación', label: 'Agendar 1:1', icon: CalendarPlus, kbd: 'g a', run: go('/colaborador/1to1/nueva') },
+        { id: 'lid-new', group: 'Navegación', label: 'Agendar 1:1', icon: CalendarPlus, kbd: 'g a', run: go('/lider/1to1/nueva') },
         { id: 'lid-config', group: 'Navegación', label: 'Configuración', icon: Settings, kbd: 'g s', run: go('/lider/configuracion') },
       ],
       hr: [

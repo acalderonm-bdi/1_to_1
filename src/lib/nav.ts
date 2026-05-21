@@ -27,7 +27,7 @@ export const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   leader: [
     { key: 'lid-dash', label: 'Resumen', icon: LayoutDashboard, href: '/lider' },
     { key: 'lid-equipo', label: 'Mi equipo', icon: Users, href: '/lider/equipo' },
-    { key: 'lid-1to1-new', label: 'Agendar 1:1', icon: CalendarPlus, href: '/colaborador/1to1/nueva' },
+    { key: 'lid-1to1-new', label: 'Agendar 1:1', icon: CalendarPlus, href: '/lider/1to1/nueva' },
     { key: 'lid-config', label: 'Configuración', icon: Settings, href: '/lider/configuracion', divider: true },
   ],
   hr: [

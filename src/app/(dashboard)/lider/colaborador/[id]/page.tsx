@@ -187,7 +187,7 @@ export default async function LeaderCollabProfile({ params }: { params: { id: st
               )}
             </div>
           </div>
-          <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--accent">
+          <Link href="/lider/1to1/nueva" className="ui-btn ui-btn--accent">
             <Plus size={14} /> <span>Agendar 1:1</span>
           </Link>
         </div>
@@ -327,7 +327,7 @@ export default async function LeaderCollabProfile({ params }: { params: { id: st
               title="Sin historial"
               description="No has tenido 1:1s con esta persona aún."
               action={
-                <Link href="/colaborador/1to1/nueva" className="ui-btn ui-btn--accent">
+                <Link href="/lider/1to1/nueva" className="ui-btn ui-btn--accent">
                   <Plus size={13} /> <span>Agendar primera 1:1</span>
                 </Link>
               }

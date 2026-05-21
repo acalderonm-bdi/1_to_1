@@ -29,7 +29,7 @@ export async function notifyMissedMeeting(
   // Link accionable: el líder arma una nueva 1:1 con este colaborador.
   // Si no tenemos el id, fallback al equipo del líder.
   const link = collaboratorId
-    ? absoluteUrl(`/colaborador/1to1/nueva?colab=${collaboratorId}`)
+    ? absoluteUrl(`/lider/1to1/nueva?colab=${collaboratorId}`)
     : absoluteUrl('/lider/equipo')
 
   try {
