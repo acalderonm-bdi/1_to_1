@@ -228,7 +228,6 @@ export function DetailInteraction({
           </div>
           <aside className="meeting-grid__rail">
             {rail}
-            {warmthBlock}
             {voboBlock}
           </aside>
         </div>
