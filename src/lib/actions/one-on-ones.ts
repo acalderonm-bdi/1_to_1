@@ -43,6 +43,10 @@ export async function scheduleOneOnOne(
 
   const { collaboratorId, scheduledAt, durationMinutes, modality, location, meetLink } = parsed.data
 
+  if (collaboratorId === user.id) {
+    return { success: false, error: 'No puedes agendar una 1:1 contigo mismo' }
+  }
+
   const { data, error } = await supabase
     .from('one_on_ones')
     .insert({
