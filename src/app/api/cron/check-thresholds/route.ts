@@ -17,6 +17,8 @@
  */
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { runDueAgreementsNotifications } from '@/lib/cron/due-agreements'
+import { runScheduledReports } from '@/lib/cron/scheduled-reports'
 import { escapeHtml, notifyByEmail } from '@/lib/email/notify'
 import { notifySlackGeneric } from '@/lib/slack/notify'
 import type { NotificationRuleRow } from '@/types/domain'
@@ -249,5 +251,17 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ rules_evaluated: rules.length, total_dispatched: totalDispatched })
+  // Plan Hobby: solo 2 cron jobs agendables en Vercel. Este cron diario también
+  // dispara los avisos de "acuerdo por vencer mañana" y los reportes programados
+  // pendientes (granularidad diaria). Sus rutas standalone quedan para trigger
+  // manual. Ver vercel.json y docs/architecture.md.
+  const due_agreements = await runDueAgreementsNotifications(admin)
+  const scheduled_reports = await runScheduledReports(admin)
+
+  return NextResponse.json({
+    rules_evaluated: rules.length,
+    total_dispatched: totalDispatched,
+    due_agreements,
+    scheduled_reports,
+  })
 }

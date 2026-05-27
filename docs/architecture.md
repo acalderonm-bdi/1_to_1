@@ -139,14 +139,16 @@ Vercel cron (lunes 09:00) ──GET /api/cron/check-cadence──▶ Next route
 
 Frecuencia: `0 9 * * 1` (lunes 9am, ver `vercel.json`). Auth: header `Authorization: Bearer ${CRON_SECRET}`. Si el líder no tiene `slack_user_id` (no sincronizado), se hace skip silencioso — correr `scripts/sync-slack-ids.ts` para resolver.
 
-Crons relacionados:
+Crons relacionados. El plan **Hobby** de Vercel limita a **2 cron jobs, máx 1/día**, así que solo los 2 primeros están agendados en `vercel.json`; los otros 2 corren **plegados dentro de `check-thresholds`** (lógica compartida en `src/lib/cron/`) y quedan invocables manualmente con `CRON_SECRET`:
 
-| Endpoint | Schedule | Qué hace |
+| Endpoint | Schedule (vercel.json) | Qué hace |
 |---|---|---|
-| `/api/cron/check-cadence` | `0 9 * * 1` | DM al líder si excedió N días sin 1:1 |
-| `/api/cron/notify-due-agreements` | `0 8 * * *` | Notifica acuerdos próximos a vencer |
-| `/api/cron/check-thresholds` | `*/30 * * * *` | Dispatcher de `notification_rules`: chequea triggers configurables (calidez baja, vobo pendiente, etc.) |
-| `/api/cron/send-scheduled-reports` | `0 * * * *` | Envía reportes RH programados (CSV/PDF por email) |
+| `/api/cron/check-cadence` | `0 9 * * 1` (agendado) | DM al líder si excedió N días sin 1:1 |
+| `/api/cron/check-thresholds` | `0 9 * * *` (agendado) | Dispatcher de `notification_rules` (calidez baja, vobo pendiente, etc.) **+ plega** `runDueAgreementsNotifications` y `runScheduledReports` a diario |
+| `/api/cron/notify-due-agreements` | manual / plegado | Notifica acuerdos por vencer mañana (`runDueAgreementsNotifications`) |
+| `/api/cron/send-scheduled-reports` | manual / plegado | Reportes RH programados, granularidad diaria (`runScheduledReports`) |
+
+> Para frecuencia sub-diaria (p.ej. reportes por hora) hay que pasar a Vercel Pro y agendar los 4 crons por separado en `vercel.json`.
 
 ### Disputa de no-realización
 

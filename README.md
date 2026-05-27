@@ -30,7 +30,7 @@ Este README está pensado para un dev que entra al equipo y va a mantener el có
 | `src/app/(dashboard)/lider/` | Vistas del líder: agenda, equipo, colaborador detalle |
 | `src/app/(dashboard)/arquitectura-humana/` | Vistas RH: cadencias, disputas, mapa de calor, reportes, notificaciones, parámetros, sincronización, usuarios |
 | `src/app/api/auth/callback/` | OAuth callback (Google → Supabase Auth) |
-| `src/app/api/cron/` | 4 endpoints disparados por Vercel cron, protegidos con `CRON_SECRET` |
+| `src/app/api/cron/` | 4 endpoints cron protegidos con `CRON_SECRET`. Solo 2 están agendados en `vercel.json` (límite plan Hobby: máx 2 crons, 1/día); los otros 2 (`notify-due-agreements`, `send-scheduled-reports`) corren plegados dentro de `check-thresholds` y quedan invocables manualmente. Ver sección Deploy |
 | `src/app/api/ai/` | Endpoints de IA: extract-agreements, suggest-questions, analyze-patterns, agreement-quality |
 | `src/app/api/exports/[type]/` | Exports CSV/PDF |
 | `src/app/api/health/` | Health check público (DB + Slack + email config) |
@@ -52,7 +52,7 @@ Este README está pensado para un dev que entra al equipo y va a mantener el có
 | `docs/` | Auditorías, runbooks y plan de hardening |
 | `sentry.*.config.ts` | Configs Sentry (client/server/edge) |
 | `instrumentation.ts` | Hook de instrumentación de Next |
-| `vercel.json` | Definición de los 4 crons |
+| `vercel.json` | Definición de los 2 crons agendados (`check-cadence` semanal + `check-thresholds` diario; límite plan Hobby) |
 
 ## Setup local
 
@@ -146,7 +146,7 @@ CI corre `pnpm tsc -b` y `pnpm test`. Localmente conviene correr lo mismo antes 
 Hosting en Vercel, branch `main` → production. Cualquier push a `main` triggea deploy.
 
 - **Env vars**: gestionadas en Vercel dashboard (Production scope). Para el procedimiento de rotación de cada secret, ver [`docs/runbook-rotation.md`](docs/runbook-rotation.md).
-- **Crons**: definidos en `vercel.json` (4 jobs). Vercel los expone en su dashboard con su próxima ejecución.
+- **Crons**: el plan **Hobby** de Vercel permite máx **2 cron jobs**, ejecutables **1 vez al día**. `vercel.json` agenda los 2 críticos: `check-cadence` (`0 9 * * 1`, lunes) y `check-thresholds` (`0 9 * * *`, diario). Este último, además del dispatcher de `notification_rules`, dispara a diario `runDueAgreementsNotifications` (avisos de acuerdo por vencer) y `runScheduledReports` (reportes programados, granularidad diaria). Las rutas `/api/cron/notify-due-agreements` y `/api/cron/send-scheduled-reports` siguen invocables manualmente con `CRON_SECRET`. Para frecuencia sub-diaria (p.ej. reportes por hora) se requiere upgrade a Vercel Pro y agendar los 4 crons por separado.
 - **Health check**: `https://<host>/api/health` retorna 200 si DB + Slack + email están OK. Servirlo a un uptime monitor externo.
 - **Sentry**: source maps se suben en build cuando `SENTRY_AUTH_TOKEN/ORG/PROJECT` están seteadas en el environment de CI/Vercel.
 

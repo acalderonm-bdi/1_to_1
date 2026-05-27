@@ -1,4 +1,14 @@
+/**
+ * Ruta cron: notify-due-agreements (trigger manual).
+ *
+ * NO está agendada en `vercel.json` (plan Hobby permite solo 2 crons). La
+ * lógica vive en `runDueAgreementsNotifications` y el cron diario
+ * `check-thresholds` la dispara a diario. Esta ruta queda para invocación
+ * manual con `Authorization: Bearer ${CRON_SECRET}`.
+ */
 import { NextResponse, type NextRequest } from 'next/server'
+
+import { runDueAgreementsNotifications } from '@/lib/cron/due-agreements'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(request: NextRequest) {
@@ -8,41 +18,7 @@ export async function GET(request: NextRequest) {
   }
 
   const admin = createAdminClient()
+  const result = await runDueAgreementsNotifications(admin)
 
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const tomorrowStr = tomorrow.toISOString().split('T')[0]
-
-  const { data: dueTomorrow } = await admin
-    .from('agreements')
-    .select('id, description, responsible_id, users!agreements_responsible_id_fkey(full_name, role)')
-    .eq('status', 'pendiente')
-    .eq('due_date', tomorrowStr)
-
-  // Link role-aware: colab → /colaborador/acuerdos; líder con acuerdo asignado → /lider/equipo
-  function linkForResponsible(role: string | undefined): string {
-    if (role === 'leader') return '/lider/equipo'
-    if (role === 'hr') return '/arquitectura-humana'
-    return '/colaborador/acuerdos'
-  }
-
-  const { error } = await admin.from('notifications').insert(
-    (dueTomorrow ?? []).map((agr) => {
-      const userRel = (agr as { users?: { role?: string } | { role?: string }[] }).users
-      const role = Array.isArray(userRel) ? userRel[0]?.role : userRel?.role
-      return {
-        user_id: agr.responsible_id,
-        channel: 'in_app' as const,
-        title: 'Acuerdo por vencer',
-        content: `Tu acuerdo "${agr.description}" vence mañana`,
-        link: linkForResponsible(role),
-      }
-    }),
-  )
-
-  return NextResponse.json({
-    ok: true,
-    notified: dueTomorrow?.length ?? 0,
-    error: error?.message ?? null,
-  })
+  return NextResponse.json({ ok: true, ...result })
 }
