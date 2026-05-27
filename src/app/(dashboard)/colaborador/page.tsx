@@ -19,7 +19,7 @@ export default async function ColaboradorPage() {
   const { data: rawUpcoming } = await supabase
     .from('one_on_ones')
     .select('id, scheduled_at, modality, location, meet_link, status, leader_id')
-    .or(`leader_id.eq.${user.id},collaborator_id.eq.${user.id}`)
+    .eq('collaborator_id', user.id)
     .eq('status', 'agendada')
     .gte('scheduled_at', startOfToday.toISOString())
     .order('scheduled_at', { ascending: true })
@@ -34,7 +34,7 @@ export default async function ColaboradorPage() {
   const { data: rawPast } = await supabase
     .from('one_on_ones')
     .select('id, scheduled_at, modality, status, leader_id, vobos!left(user_id)')
-    .or(`leader_id.eq.${user.id},collaborator_id.eq.${user.id}`)
+    .eq('collaborator_id', user.id)
     .eq('status', 'agendada')
     .lt('scheduled_at', startOfToday.toISOString())
     .order('scheduled_at', { ascending: false })
@@ -63,7 +63,7 @@ export default async function ColaboradorPage() {
   const { count: realizedCount } = await supabase
     .from('one_on_ones')
     .select('id', { count: 'exact', head: true })
-    .or(`leader_id.eq.${user.id},collaborator_id.eq.${user.id}`)
+    .eq('collaborator_id', user.id)
     .eq('status', 'realizada')
 
   const { count: completedAgreements } = await supabase

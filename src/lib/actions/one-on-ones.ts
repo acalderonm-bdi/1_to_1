@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { getActiveRelationFlags } from '@/lib/relations'
 import { createCalendarEvent, deleteCalendarEvent } from '@/lib/google/calendar'
 import { notifyDispute } from '@/lib/slack/notify'
 import { getOrgSetting } from '@/lib/org-settings'
@@ -31,14 +32,19 @@ export async function scheduleOneOnOne(
     return { success: false, error: 'Datos inválidos' }
   }
 
-  // Defense: solo líder o HR pueden agendar.
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single<{ role: string }>()
-  if (profile?.role !== 'leader' && profile?.role !== 'hr') {
-    return { success: false, error: 'Solo líderes pueden agendar 1:1s' }
+  // Defense: puede agendar quien lidera a alguien (relación activa) o RH.
+  const { isLeader } = await getActiveRelationFlags(supabase, user.id)
+  let canSchedule = isLeader
+  if (!canSchedule) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single<{ role: string }>()
+    canSchedule = profile?.role === 'hr'
+  }
+  if (!canSchedule) {
+    return { success: false, error: 'Solo quien lidera un equipo puede agendar 1:1s' }
   }
 
   const { collaboratorId, scheduledAt, durationMinutes, modality, location, meetLink } = parsed.data

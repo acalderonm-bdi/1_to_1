@@ -6,7 +6,7 @@ import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 import { CommandPalette } from '@/components/layout/command-palette'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
-import { breadcrumbsFor } from '@/lib/nav'
+import { breadcrumbsFor, navFor } from '@/lib/nav'
 import type { UserRole } from '@/types/domain'
 
 interface AppShellContextValue {
@@ -28,6 +28,8 @@ export function useAppShell() {
 
 interface AppShellProps {
   role: UserRole
+  isLeader: boolean
+  isCollaborator: boolean
   currentPath: string
   userId: string
   userName: string
@@ -35,7 +37,7 @@ interface AppShellProps {
   children: React.ReactNode
 }
 
-export function AppShell({ role, currentPath, userId, userName, userEmail, children }: AppShellProps) {
+export function AppShell({ role, isLeader, isCollaborator, currentPath, userId, userName, userEmail, children }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [cmdkOpen, setCmdkOpen] = useState(false)
   // `currentPath` viene del server layout (header x-pathname) y NO se actualiza
@@ -50,7 +52,12 @@ export function AppShell({ role, currentPath, userId, userName, userEmail, child
   const openCmdK = useCallback(() => setCmdkOpen(true), [])
   const closeCmdK = useCallback(() => setCmdkOpen(false), [])
 
-  const homePath = role === 'leader' ? '/lider' : role === 'hr' ? '/arquitectura-humana' : '/colaborador'
+  // Dashboard de entrada: RH manda; si no, lidera→/lider, else personal.
+  const homePath = role === 'hr' ? '/arquitectura-humana' : isLeader ? '/lider' : '/colaborador'
+  const navItems = useMemo(
+    () => navFor({ role, isLeader, isCollaborator }),
+    [role, isLeader, isCollaborator],
+  )
 
   const shortcuts = useMemo(() => {
     const go = (path: string) => () => router.push(path)
@@ -58,24 +65,22 @@ export function AppShell({ role, currentPath, userId, userName, userEmail, child
       'g h': go(homePath),
       '?': openCmdK,
     }
-    if (role === 'leader') {
+    if (isLeader) {
       base['g a'] = go('/lider/1to1/nueva')
       base['g e'] = go('/lider/equipo')
-      base['g s'] = go('/lider/configuracion')
     }
-    if (role === 'collaborator') {
+    if (isCollaborator) {
       base['g k'] = go('/colaborador/acuerdos')
-      base['g s'] = go('/colaborador/configuracion')
     }
     if (role === 'hr') {
       base['g m'] = go('/arquitectura-humana/mapa-calor')
       base['g r'] = go('/arquitectura-humana/reportes')
       base['g d'] = go('/arquitectura-humana/disputas')
       base['g u'] = go('/arquitectura-humana/usuarios')
-      base['g s'] = go('/arquitectura-humana/configuracion')
     }
+    base['g s'] = go(role === 'hr' ? '/arquitectura-humana/configuracion' : isLeader ? '/lider/configuracion' : '/colaborador/configuracion')
     return base
-  }, [role, router, homePath, openCmdK])
+  }, [role, isLeader, isCollaborator, router, homePath, openCmdK])
 
   useKeyboardShortcuts(shortcuts, !cmdkOpen && !drawerOpen)
 
@@ -123,12 +128,13 @@ export function AppShell({ role, currentPath, userId, userName, userEmail, child
         />
         <Sidebar
           role={role}
+          items={navItems}
           currentPath={activePath}
           userName={userName}
           userEmail={userEmail}
         />
         <div className="flex min-w-0 flex-col xl:ml-[var(--sidebar-width)] transition-[margin] duration-300">
-          <Header userId={userId} userName={userName} userRole={role} breadcrumbs={breadcrumbsFor(role, activePath)} />
+          <Header userId={userId} userName={userName} userRole={role} breadcrumbs={breadcrumbsFor(activePath)} />
           <main className="min-w-0">
             {children}
           </main>

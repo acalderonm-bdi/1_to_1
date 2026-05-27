@@ -6,17 +6,8 @@ export default async function ColaboradorLayout({ children }: { children: React.
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single<{ role: string }>()
-
-  if (profile?.role !== 'collaborator') {
-    if (profile?.role === 'hr') redirect('/arquitectura-humana')
-    if (profile?.role === 'leader') redirect('/lider')
-    redirect('/login')
-  }
-
+  // Acceso por relación: /colaborador es "tus propios 1:1" (hacia arriba con tu
+  // líder). Cualquier usuario autenticado entra — incluidos líderes que también
+  // reportan a alguien y RH. Las queries de cada página filtran por participante.
   return <>{children}</>
 }
