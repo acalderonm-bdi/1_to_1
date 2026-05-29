@@ -21,6 +21,30 @@ export interface CadenceResult {
   error?: string
 }
 
+/**
+ * Construye el aviso de cadencia (pura, testeable). `daysSince === null` =
+ * nunca tuvieron 1:1 → mensaje de "primera"; si no, "hace N días".
+ */
+export function cadenceMessage(
+  daysSince: number | null,
+  cadenceDays: number,
+  collaboratorName: string,
+): { title: string; content: string; days: number } {
+  const colName = collaboratorName || 'tu colaborador'
+  if (daysSince == null) {
+    return {
+      days: cadenceDays,
+      title: 'Aún sin tu primera 1:1',
+      content: `Aún no has tenido una 1:1 con ${colName}. Agenda la primera.`,
+    }
+  }
+  return {
+    days: daysSince,
+    title: 'Sin reunión hace varios días',
+    content: `Han pasado ${daysSince} días desde tu última 1:1 con ${colName}. Agenda la próxima.`,
+  }
+}
+
 export async function runCadenceCheck(admin: AdminClient): Promise<CadenceResult> {
   const { data: overdue, error } = await admin
     .from('overdue_relations')
@@ -50,13 +74,8 @@ export async function runCadenceCheck(admin: AdminClient): Promise<CadenceResult
       .maybeSingle()
     if (pending) { skipped++; continue }
 
-    const hasHistory = row.days_since != null
-    const days = hasHistory ? row.days_since! : (row.cadence_days ?? 0)
     const colName = row.collaborator_name ?? 'tu colaborador'
-    const title = hasHistory ? 'Sin reunión hace varios días' : 'Aún sin tu primera 1:1'
-    const content = hasHistory
-      ? `Han pasado ${days} días desde tu última 1:1 con ${colName}. Agenda la próxima.`
-      : `Aún no has tenido una 1:1 con ${colName}. Agenda la primera.`
+    const { title, content, days } = cadenceMessage(row.days_since, row.cadence_days ?? 0, row.collaborator_name ?? '')
 
     await admin.from('notifications').insert({
       user_id: row.leader_id, channel: 'in_app', title, content, link: deepLink,

@@ -133,7 +133,7 @@ export default function LoginPage() {
             />
           </div>
           {error && (
-            <div className="ui-field-error" role="alert">
+            <div className="ui-field-error" role="alert" data-testid="login-error">
               <AlertCircle size={13} /> {error}
             </div>
           )}
@@ -150,7 +150,7 @@ export default function LoginPage() {
             Sincronizaremos tu calendario para mostrar tus 1:1s automáticamente.
           </p>
           {error && (
-            <div className="ui-field-error" role="alert">
+            <div className="ui-field-error" role="alert" data-testid="login-error">
               <AlertCircle size={13} /> {error}
             </div>
           )}

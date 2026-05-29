@@ -35,11 +35,11 @@ test.describe('login + role redirect', () => {
   // TODO: hay 2 elementos role="alert" en la página (uno por tab Correo/Google);
   // el getByRole('alert') es ambiguo. Refactor: agregar data-testid al alert
   // activo o filtrar por tab. Saltado para no bloquear CI por selector.
-  test.fixme('login fallido muestra mensaje de error', async ({ page }) => {
+  test('login fallido muestra mensaje de error', async ({ page }) => {
     await login(page, 'noexiste@demo.com', 'WrongPassword1!')
 
-    // El error usa role="alert" en el form.
-    const alert = page.getByRole('alert')
+    // data-testid evita la ambigüedad de los 2 role="alert" (un tab cada uno).
+    const alert = page.getByTestId('login-error')
     await expect(alert).toBeVisible({ timeout: 10_000 })
     await expect(alert).toContainText(/correo o contraseña/i)
 
