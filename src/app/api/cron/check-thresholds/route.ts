@@ -19,6 +19,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runDueAgreementsNotifications } from '@/lib/cron/due-agreements'
 import { runScheduledReports } from '@/lib/cron/scheduled-reports'
+import { assertCronAuth } from '@/lib/cron/auth'
 import { escapeHtml, notifyByEmail } from '@/lib/email/notify'
 import { notifySlackGeneric } from '@/lib/slack/notify'
 import type { NotificationRuleRow } from '@/types/domain'
@@ -60,10 +61,8 @@ function linkForTrigger(
 }
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authErr = assertCronAuth(request)
+  if (authErr) return authErr
 
   const admin = createAdminClient()
 
@@ -90,15 +89,17 @@ export async function GET(request: NextRequest) {
 
     switch (rule.trigger_type) {
       case 'cumplimiento_bajo': {
-        // The `compliance_metrics` view aggregates per department
-        // (compliance_rate as a fraction 0-1; the rule threshold uses percent).
+        // `compliance_metrics.compliance_rate` viene como PORCENTAJE 0-100 (la
+        // vista multiplica por 100). El umbral de la regla también es 0-100, así
+        // que se comparan DIRECTAMENTE — NO dividir entre 100 (bug histórico que
+        // dejaba la alarma muda salvo a 0%). No normalizar la vista a 0-1: la usan
+        // mapa-calor y exports/cumplimiento-csv con la convención 0-100.
         const thresholdPct = typeof rule.threshold?.value === 'number' ? rule.threshold.value : 50
-        const thresholdRate = thresholdPct / 100
 
         const lowResult = await admin
           .from('compliance_metrics')
           .select('department_id, compliance_rate')
-          .lt('compliance_rate', thresholdRate)
+          .lt('compliance_rate', thresholdPct)
         const lowDeptIds = (lowResult.data ?? [])
           .map((r) => r.department_id)
           .filter((x): x is string => !!x)
