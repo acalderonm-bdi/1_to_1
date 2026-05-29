@@ -558,6 +558,8 @@ export type Database = {
           channel: string
           context: Json
           created_at: string
+          delivered_at: string | null
+          failed_reason: string | null
           id: string
           recipient_id: string
           rule_id: string | null
@@ -567,6 +569,8 @@ export type Database = {
           channel: string
           context: Json
           created_at?: string
+          delivered_at?: string | null
+          failed_reason?: string | null
           id?: string
           recipient_id: string
           rule_id?: string | null
@@ -576,6 +580,8 @@ export type Database = {
           channel?: string
           context?: Json
           created_at?: string
+          delivered_at?: string | null
+          failed_reason?: string | null
           id?: string
           recipient_id?: string
           rule_id?: string | null

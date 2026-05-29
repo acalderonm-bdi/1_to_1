@@ -17,8 +17,10 @@
  */
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import * as Sentry from '@sentry/nextjs'
 import { runDueAgreementsNotifications } from '@/lib/cron/due-agreements'
 import { runScheduledReports } from '@/lib/cron/scheduled-reports'
+import { runCadenceCheck } from '@/lib/cron/cadence'
 import { assertCronAuth } from '@/lib/cron/auth'
 import { escapeHtml, notifyByEmail } from '@/lib/email/notify'
 import { notifySlackGeneric } from '@/lib/slack/notify'
@@ -46,11 +48,14 @@ function linkForTrigger(
     case 'cumplimiento_bajo':
       return role === 'hr' ? '/arquitectura-humana/mapa-calor' : '/lider/equipo'
     case 'acuerdo_vencido':
-      return role === 'collaborator' ? '/colaborador/acuerdos' : '/lider/equipo'
+      // "Mis acuerdos" es el espacio personal del responsable (accesible a todos
+      // tras el acceso relacional), sin importar su rol.
+      return '/colaborador/acuerdos'
     case 'disputa_nueva':
       return role === 'hr' ? '/arquitectura-humana/disputas' : role === 'leader' ? '/lider/equipo' : '/colaborador/historial'
     case 'vobo_pendiente':
-      return role === 'collaborator' ? '/colaborador/historial' : '/lider/equipo'
+      // El historial personal lista sus 1:1 a confirmar (accesible a todos).
+      return '/colaborador/historial'
     case 'calidez_baja':
       return '/arquitectura-humana/mapa-calor'
     case 'reminder_pre_1to1':
@@ -73,6 +78,13 @@ export async function GET(request: NextRequest) {
 
   const rules = (rulesResult.data ?? []) as unknown as NotificationRuleRow[]
   let totalDispatched = 0
+
+  // Opt-out granular (H4.1): preferencias con enabled=false. in_app no se desactiva.
+  const { data: prefsRaw } = await admin
+    .from('notification_preferences')
+    .select('user_id, trigger_type, channel')
+    .eq('enabled', false)
+  const optOut = new Set((prefsRaw ?? []).map((p) => `${p.user_id}|${p.trigger_type}|${p.channel}`))
 
   // Cache HR user list (used by multiple triggers).
   let hrUsersCache: string[] | null = null
@@ -160,12 +172,47 @@ export async function GET(request: NextRequest) {
         break
       }
 
-      case 'vobo_pendiente':
-      case 'calidez_baja':
       case 'reminder_pre_1to1': {
-        // TODO: implementación específica. Por ahora dispatch mínimo a HR si
-        // está en la audiencia, para que el flujo de notificación quede
-        // ejercitado en producción.
+        // 1:1 agendadas en las próximas 48h → recordar a ambos participantes
+        // (previene no-shows, lo único que ATACA el incumplimiento en vez de
+        // detectarlo a posteriori).
+        const now = new Date()
+        const in48h = new Date(now.getTime() + 48 * 3600 * 1000)
+        const { data: upcoming } = await admin
+          .from('one_on_ones')
+          .select('leader_id, collaborator_id')
+          .eq('status', 'agendada')
+          .gte('scheduled_at', now.toISOString())
+          .lte('scheduled_at', in48h.toISOString())
+        const rows = (upcoming ?? []) as Array<{ leader_id: string; collaborator_id: string }>
+        if (audience.has('leader')) for (const r of rows) recipients.add(r.leader_id)
+        if (audience.has('collaborator')) for (const r of rows) recipients.add(r.collaborator_id)
+        if (audience.has('hr')) for (const id of await getHrUserIds()) recipients.add(id)
+        break
+      }
+
+      case 'vobo_pendiente': {
+        // 1:1 ya ocurridas (agendadas, fecha pasada) sin VoBo del participante →
+        // recordar a quien falta confirmar.
+        const { data: past } = await admin
+          .from('one_on_ones')
+          .select('leader_id, collaborator_id, vobos(user_id)')
+          .eq('status', 'agendada')
+          .lt('scheduled_at', new Date().toISOString())
+        for (const m of (past ?? []) as Array<{
+          leader_id: string; collaborator_id: string; vobos: Array<{ user_id: string }>
+        }>) {
+          const voters = new Set(m.vobos.map((v) => v.user_id))
+          if (audience.has('leader') && !voters.has(m.leader_id)) recipients.add(m.leader_id)
+          if (audience.has('collaborator') && !voters.has(m.collaborator_id)) recipients.add(m.collaborator_id)
+        }
+        if (audience.has('hr')) for (const id of await getHrUserIds()) recipients.add(id)
+        break
+      }
+
+      case 'calidez_baja': {
+        // Señal coarse a RH (su audiencia natural). El umbral fino sobre
+        // warmth_survey es mejora futura; por ahora se informa a RH si aplica.
         if (audience.has('hr')) {
           for (const id of await getHrUserIds()) recipients.add(id)
         }
@@ -189,12 +236,12 @@ export async function GET(request: NextRequest) {
       const deepLink = linkForTrigger(rule.trigger_type, userRow.role)
 
       for (const channel of rule.channels) {
-        // TODO (Fase 7.A — opt-out granular): antes de enviar, consultar
-        // `notification_preferences` con
-        //   (user_id = recipientId, trigger_type = rule.trigger_type, channel)
-        // y si `enabled = false` saltar este recipient/channel. Si no hay
-        // row, asumir habilitado (default opt-in). Ver
-        // `src/lib/actions/notification-preferences.ts` + migration 25.
+        // Opt-out granular (H4.1): si el destinatario desactivó este canal para
+        // este trigger, saltar. in_app no es desactivable; ausencia de fila =
+        // opt-in por defecto.
+        if (channel !== 'in_app' && optOut.has(`${recipientId}|${rule.trigger_type}|${channel}`)) {
+          continue
+        }
         let delivered = false
         let failedReason: string | null = null
 
@@ -238,11 +285,6 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // NOTE: `notification_dispatches.failed_reason` column does not exist yet
-        // (see migration 00000000000020). TODO: add column in a future migration
-        // and persist `failedReason` so the matrix can show real delivery state.
-        // For now we only persist status; failedReason is computed for future use.
-        void failedReason
         const { error } = await admin
           .from('notification_dispatches')
           .insert({
@@ -251,6 +293,8 @@ export async function GET(request: NextRequest) {
             channel,
             context: { trigger: rule.trigger_type, rule_name: rule.name },
             status: delivered ? 'sent' : 'failed',
+            failed_reason: failedReason,
+            delivered_at: delivered ? new Date().toISOString() : null,
           })
         if (!error && delivered) {
           totalDispatched++
@@ -261,15 +305,25 @@ export async function GET(request: NextRequest) {
   }
 
   // Plan Hobby: solo 2 cron jobs agendables en Vercel. Este cron diario también
-  // dispara los avisos de "acuerdo por vencer mañana" y los reportes programados
-  // pendientes (granularidad diaria). Sus rutas standalone quedan para trigger
-  // manual. Ver vercel.json y docs/architecture.md.
-  const due_agreements = await runDueAgreementsNotifications(admin)
-  const scheduled_reports = await runScheduledReports(admin)
+  // dispara la alarma de cadencia, los avisos de "acuerdo por vencer mañana" y
+  // los reportes programados. Cada sub-job AISLADO (H4.2): un fallo se reporta a
+  // Sentry y no tumba a los demás. Sus rutas standalone quedan para trigger manual.
+  async function safe<T>(label: string, fn: () => Promise<T>): Promise<T | { error: string }> {
+    try {
+      return await fn()
+    } catch (e) {
+      Sentry.captureException(e, { tags: { cron: 'check-thresholds', subjob: label } })
+      return { error: e instanceof Error ? e.message : 'error' }
+    }
+  }
+  const cadence = await safe('cadence', () => runCadenceCheck(admin))
+  const due_agreements = await safe('due_agreements', () => runDueAgreementsNotifications(admin))
+  const scheduled_reports = await safe('scheduled_reports', () => runScheduledReports(admin))
 
   return NextResponse.json({
     rules_evaluated: rules.length,
     total_dispatched: totalDispatched,
+    cadence,
     due_agreements,
     scheduled_reports,
   })

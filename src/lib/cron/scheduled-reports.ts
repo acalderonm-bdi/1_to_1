@@ -18,6 +18,7 @@ import { generateAcuerdosCSV } from '@/lib/exports/acuerdos-csv'
 import { generateCalidezCSV } from '@/lib/exports/calidez-csv'
 import { generateCumplimientoCSV } from '@/lib/exports/cumplimiento-csv'
 import { notifyHRReport } from '@/lib/slack/notify'
+import { notifyByEmail, escapeHtml } from '@/lib/email/notify'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import type { ScheduledReportType } from '@/types/domain'
 
@@ -94,6 +95,7 @@ export async function runScheduledReports(
       }
     }
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
     for (const recipient of report.recipients) {
       const { data: userRow } = await admin
         .from('users')
@@ -102,6 +104,18 @@ export async function runScheduledReports(
         .maybeSingle()
 
       if (!userRow) continue
+
+      // Envío REAL por email (con link al export; Resend sin adjunto en el wrapper).
+      // El status refleja la entrega real — antes se marcaba 'sent' siempre, sin
+      // enviar nada, engañando a RH.
+      const res = await notifyByEmail({
+        to: [recipient],
+        subject: `[1to1] Reporte programado: ${report.name}`,
+        html:
+          `<p>El reporte <strong>${escapeHtml(report.name)}</strong> está listo (${escapeHtml(csv.filename)}).</p>` +
+          `<p><a href="${appUrl}/arquitectura-humana/exportes" style="background:#ED6134;color:white;padding:8px 16px;border-radius:6px;text-decoration:none;display:inline-block;">Descargar en 1to1</a></p>`,
+        recipientRole: 'hr',
+      })
 
       const { error: insErr } = await admin
         .from('notification_dispatches')
@@ -115,10 +129,12 @@ export async function runScheduledReports(
             filename: csv.filename,
             cron_dispatch: true,
           },
-          status: 'sent',
+          status: res.sent ? 'sent' : 'failed',
+          failed_reason: res.error ?? (res.skipped ? 'EMAIL_NOT_CONFIGURED' : null),
+          delivered_at: res.sent ? nowIso : null,
         })
 
-      if (!insErr) totalDispatched++
+      if (!insErr && res.sent) totalDispatched++
     }
 
     const nextRun = safeNextRun(report.schedule_cron)
