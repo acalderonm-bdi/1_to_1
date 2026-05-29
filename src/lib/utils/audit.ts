@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import type { Json } from '@/types/database.types'
 
 interface AuditLogEntry {
   userId?: string
@@ -16,7 +17,7 @@ export async function logAudit(entry: AuditLogEntry): Promise<void> {
       action: entry.action,
       resource_type: entry.resourceType,
       resource_id: entry.resourceId ?? null,
-      metadata: entry.metadata ?? null,
+      metadata: (entry.metadata ?? null) as Json,
     })
   } catch {
     // Los errores de auditoría no deben romper el flujo principal

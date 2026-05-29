@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -193,6 +188,61 @@ export type Database = {
             columns: ["responsible_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_insights: {
+        Row: {
+          collaborator_id: string
+          content: Json
+          created_at: string
+          id: string
+          leader_id: string
+          one_on_one_id: string | null
+          type: string
+          used: boolean
+        }
+        Insert: {
+          collaborator_id: string
+          content: Json
+          created_at?: string
+          id?: string
+          leader_id: string
+          one_on_one_id?: string | null
+          type: string
+          used?: boolean
+        }
+        Update: {
+          collaborator_id?: string
+          content?: Json
+          created_at?: string
+          id?: string
+          leader_id?: string
+          one_on_one_id?: string | null
+          type?: string
+          used?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_insights_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_insights_leader_id_fkey"
+            columns: ["leader_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_insights_one_on_one_id_fkey"
+            columns: ["one_on_one_id"]
+            isOneToOne: false
+            referencedRelation: "one_on_ones"
             referencedColumns: ["id"]
           },
         ]
@@ -548,6 +598,44 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          channel: string
+          created_at: string
+          enabled: boolean
+          id: string
+          trigger_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          trigger_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          trigger_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_rules: {
         Row: {
           audience: string[]
@@ -826,6 +914,7 @@ export type Database = {
           created_at: string
           department_id: string | null
           email: string
+          employee_id: string | null
           full_name: string
           google_calendar_token: Json | null
           google_id: string | null
@@ -841,6 +930,7 @@ export type Database = {
           created_at?: string
           department_id?: string | null
           email: string
+          employee_id?: string | null
           full_name: string
           google_calendar_token?: Json | null
           google_id?: string | null
@@ -856,6 +946,7 @@ export type Database = {
           created_at?: string
           department_id?: string | null
           email?: string
+          employee_id?: string | null
           full_name?: string
           google_calendar_token?: Json | null
           google_id?: string | null
@@ -938,6 +1029,40 @@ export type Database = {
         }
         Relationships: []
       }
+      compliance_metrics_by_leader: {
+        Row: {
+          compliance_rate: number | null
+          department_id: string | null
+          direct_reports: number | null
+          leader_id: string | null
+          leader_name: string | null
+          realized_meetings: number | null
+          total_meetings: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leadership_relations_leader_id_fkey"
+            columns: ["leader_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "users_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_metrics"
+            referencedColumns: ["department_id"]
+          },
+          {
+            foreignKeyName: "users_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       open_agreements_by_collaborator: {
         Row: {
           ai_confidence: number | null
@@ -996,16 +1121,52 @@ export type Database = {
           },
         ]
       }
-      pending_alerts: {
+      overdue_relations: {
         Row: {
-          actor_id: string | null
-          alert_type: string | null
-          detected_at: string | null
-          metadata: Json | null
-          severity: string | null
-          subject_id: string | null
+          cadence_days: number | null
+          collaborator_id: string | null
+          collaborator_name: string | null
+          days_since: number | null
+          department_id: string | null
+          department_name: string | null
+          is_overdue: boolean | null
+          last_meeting_at: string | null
+          leader_email: string | null
+          leader_id: string | null
+          leader_name: string | null
+          leader_slack_user_id: string | null
+          relation_id: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "leadership_relations_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leadership_relations_leader_id_fkey"
+            columns: ["leader_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "users_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_metrics"
+            referencedColumns: ["department_id"]
+          },
+          {
+            foreignKeyName: "users_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       warmth_metrics_by_department: {
         Row: {
@@ -1074,7 +1235,6 @@ export type Database = {
       is_hr: { Args: never; Returns: boolean }
       is_leader_of: { Args: { p_collaborator_id: string }; Returns: boolean }
       is_participant: { Args: { p_one_on_one_id: string }; Returns: boolean }
-      refresh_pending_alerts: { Args: never; Returns: undefined }
     }
     Enums: {
       agreement_status: "pendiente" | "cumplido" | "parcial" | "no_cumplido"
@@ -1239,3 +1399,4 @@ export const Constants = {
     },
   },
 } as const
+

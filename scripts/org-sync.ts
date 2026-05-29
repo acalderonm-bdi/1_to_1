@@ -12,6 +12,7 @@ import { readFileSync } from 'node:fs'
 import { config as loadEnv } from 'dotenv'
 import { createClient } from '@supabase/supabase-js'
 import { parseOrgCsv, syncOrg } from '../src/lib/sync/org-sync'
+import type { Database } from '../src/types/database.types'
 
 loadEnv({ path: '.env.local' })
 
@@ -66,7 +67,7 @@ async function main() {
 }
 
 function admin(url: string, key: string) {
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
+  return createClient<Database>(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
 }
 
 main().catch((err) => {

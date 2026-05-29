@@ -18,6 +18,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { parse } from 'csv-parse/sync'
+import type { Database } from '@/types/database.types'
 
 export const HR_AREA = 'ARQUITECTURA HUMANA Y TRANSFORMACION DEL TALENTO'
 export const OWNER_EMPLOYEE_IDS = new Set(['0543', '1095'])
@@ -70,7 +71,7 @@ function isValidEmail(email: string): boolean {
 }
 
 export async function syncOrg(
-  admin: SupabaseClient,
+  admin: SupabaseClient<Database>,
   rows: OrgRow[],
   opts: { dryRun?: boolean } = {},
 ): Promise<SyncReport> {
