@@ -17,6 +17,7 @@ import type { Database } from '../src/types/database.types'
 loadEnv({ path: '.env.local' })
 
 function projectRef(url: string): string {
+  if (/127\.0\.0\.1|localhost/.test(url)) return 'local'
   const m = url.match(/https:\/\/([a-z0-9]+)\.supabase\.co/i)
   return m?.[1] ?? '?'
 }
@@ -59,6 +60,11 @@ async function main() {
   const report = await syncOrg(admin(url, key), rows, { dryRun: !apply })
   console.log(JSON.stringify(report, null, 2))
 
+  if (report.validationErrors.length > 0) {
+    console.error(`\n⛔ CSV inválido (${report.validationErrors.length}). No se escribió nada:`)
+    for (const e of report.validationErrors) console.error(`   - ${e}`)
+    process.exit(1)
+  }
   if (report.errors.length > 0) {
     console.error(`\n${report.errors.length} error(es). Revisa arriba.`)
     process.exit(1)
