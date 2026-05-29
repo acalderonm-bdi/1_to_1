@@ -105,14 +105,22 @@ export async function GET(request: NextRequest) {
           .filter((x): x is string => !!x)
 
         if (audience.has('leader') && lowDeptIds.length > 0) {
-          // Leaders = users with role='leader' whose department is flagged.
-          const { data: leadersRaw } = await admin
-            .from('users')
-            .select('id')
-            .eq('role', 'leader')
-            .in('department_id', lowDeptIds)
-          for (const l of (leadersRaw ?? []) as Array<{ id: string }>) {
-            recipients.add(l.id)
+          // Por RELACIÓN, no por rol: líderes de colaboradores cuyo departamento
+          // tiene bajo cumplimiento. Targeting por role='leader' dejaba ciegos a
+          // los 51 duales (role distinto que igual lideran) — justo lo que RH más
+          // necesita escalar.
+          const { data: rels } = await admin
+            .from('leadership_relations')
+            .select('leader_id, collaborator:users!leadership_relations_collaborator_id_fkey(department_id)')
+            .is('ended_at', null)
+          for (const rel of (rels ?? []) as Array<{
+            leader_id: string
+            collaborator: { department_id: string | null } | Array<{ department_id: string | null }> | null
+          }>) {
+            const col = Array.isArray(rel.collaborator) ? rel.collaborator[0] : rel.collaborator
+            if (col?.department_id && lowDeptIds.includes(col.department_id)) {
+              recipients.add(rel.leader_id)
+            }
           }
         }
         if (audience.has('hr')) {

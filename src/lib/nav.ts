@@ -9,7 +9,7 @@
 import {
   Home, CalendarPlus, CheckSquare, Users, LayoutDashboard,
   Grid, FileText, AlertTriangle, Repeat, Network, UsersRound, Settings,
-  Bell, SlidersHorizontal, Download, RefreshCcw,
+  Bell, SlidersHorizontal, Download, RefreshCcw, CalendarClock,
 } from 'lucide-react'
 import type { UserRole } from '@/types/domain'
 import type { RelationFlags } from '@/lib/relations'
@@ -38,6 +38,7 @@ const LEADER_NAV: NavItem[] = [
 
 const HR_NAV: NavItem[] = [
   { key: 'rh-dash', label: 'Panel general', icon: LayoutDashboard, href: '/arquitectura-humana' },
+  { key: 'rh-incumplimientos', label: 'Incumplimientos', icon: CalendarClock, href: '/arquitectura-humana/incumplimientos' },
   { key: 'rh-mapa', label: 'Mapa de calor', icon: Grid, href: '/arquitectura-humana/mapa-calor' },
   { key: 'rh-reportes', label: 'Reportes IA', icon: FileText, href: '/arquitectura-humana/reportes' },
   { key: 'rh-disputas', label: 'Disputas', icon: AlertTriangle, href: '/arquitectura-humana/disputas' },
