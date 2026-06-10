@@ -23,11 +23,27 @@ import { escapeHtml, notifyByEmail } from '@/lib/email/notify'
 import { notifySlackGeneric } from '@/lib/slack/notify'
 import type { NotificationRuleRow } from '@/types/domain'
 
-// Templates importados aquí (nunca eran importados antes — Bug #1 y Bug #3).
-// renderToStaticMarkup convierte el JSX del template a HTML string para Resend.
-import { renderToStaticMarkup } from 'react-dom/server'
-import { VoboRequestEmail } from '@/lib/email/templates/vobo-request'
-import { MeetingReminderEmail } from '@/lib/email/templates/meeting-reminder'
+// HTML builders para templates de email — usamos strings directas porque
+// react-dom/server no está permitido en Route Handlers de Next.js App Router.
+function voboRequestHtml(p: { recipientName: string; partnerName: string; meetingDate: string; voboUrl: string }): string {
+  return `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+<h1 style="color:#1e293b">¿Se realizó tu 1:1?</h1>
+<p>Hola ${escapeHtml(p.recipientName)},</p>
+<p>Por favor confirma si tu 1:1 del <strong>${escapeHtml(p.meetingDate)}</strong> con <strong>${escapeHtml(p.partnerName)}</strong> se llevó a cabo.</p>
+<a href="${p.voboUrl}" style="display:inline-block;padding:12px 24px;background:#1e293b;color:#fff;text-decoration:none;border-radius:6px">Dar VoBo</a>
+<hr/><small style="color:#64748b">Sistema de 1:1s</small></div>`
+}
+function meetingReminderHtml(p: { recipientName: string; partnerName: string; meetingDate: string; meetingTime: string; modality: string; meetLink?: string; location?: string }): string {
+  const link = p.modality === 'virtual' && p.meetLink
+    ? `<p><a href="${p.meetLink}" style="color:#3b82f6">Unirse a Google Meet</a></p>` : ''
+  const loc = p.modality === 'presencial' && p.location
+    ? `<p>Lugar: ${escapeHtml(p.location)}</p>` : ''
+  return `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+<h1 style="color:#1e293b">Recordatorio: 1:1 en 1 hora</h1>
+<p>Hola ${escapeHtml(p.recipientName)},</p>
+<p>Tu 1:1 con <strong>${escapeHtml(p.partnerName)}</strong> es hoy a las <strong>${escapeHtml(p.meetingTime)}</strong> (${escapeHtml(p.meetingDate)}).</p>
+${link}${loc}<hr/><small style="color:#64748b">Sistema de 1:1s</small></div>`
+}
 
 interface RecipientRow {
   id: string
@@ -225,15 +241,12 @@ export async function GET(request: NextRequest) {
               delivered = !error
               failedReason = error?.message ?? null
             } else if (channel === 'email' && collabRow.email) {
-              const html = renderToStaticMarkup(
-                VoboRequestEmail({
-                  recipientName: collabRow.full_name ?? '',
-                  partnerName: leaderName,
-                  meetingDate,
-                  appUrl,
-                  oneOnOneId: row.id,
-                }),
-              )
+              const html = voboRequestHtml({
+                recipientName: collabRow.full_name ?? '',
+                partnerName: leaderName,
+                meetingDate,
+                voboUrl: `${appUrl}/colaborador/1to1/${row.id}`,
+              })
               const res = await notifyByEmail({
                 to: [collabRow.email],
                 subject: `[1to1] VoBo pendiente: 1:1 del ${meetingDate}`,
@@ -382,17 +395,15 @@ export async function GET(request: NextRequest) {
                 delivered = !error
                 failedReason = error?.message ?? null
               } else if (channel === 'email' && recipUser.email) {
-                const html = renderToStaticMarkup(
-                  MeetingReminderEmail({
-                    recipientName: recipUser.full_name ?? '',
-                    partnerName,
-                    meetingDate,
-                    meetingTime,
-                    modality: row.modality as 'virtual' | 'presencial',
-                    meetLink: row.meet_link ?? undefined,
-                    location: row.location ?? undefined,
-                  }),
-                )
+                const html = meetingReminderHtml({
+                  recipientName: recipUser.full_name ?? '',
+                  partnerName,
+                  meetingDate,
+                  meetingTime,
+                  modality: row.modality as 'virtual' | 'presencial',
+                  meetLink: row.meet_link ?? undefined,
+                  location: row.location ?? undefined,
+                })
                 const res = await notifyByEmail({
                   to: [recipUser.email],
                   subject: `[1to1] Recordatorio: 1:1 hoy a las ${meetingTime}`,
