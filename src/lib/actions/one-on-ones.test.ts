@@ -34,7 +34,7 @@ vi.mock('@/lib/org-settings', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { markNonRealization, dismissTransferBanner } from './one-on-ones'
+import { scheduleOneOnOne, markNonRealization, dismissTransferBanner } from './one-on-ones'
 
 type MeetingRow = {
   id: string
@@ -354,5 +354,171 @@ describe('dismissTransferBanner', () => {
     })
     expect(result.success).toBe(false)
     if (!result.success) expect(result.error).toBe('permission denied')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// scheduleOneOnOne — tests
+// ---------------------------------------------------------------------------
+
+type ScheduleMockOpts = {
+  user?: { id: string } | null
+  /** role del usuario (líder / colaborador / hr) */
+  role?: string | null
+  /** Error simulado en el INSERT a one_on_ones */
+  insertError?: { message: string } | null
+  /** Datos que devuelve el INSERT */
+  insertData?: Record<string, unknown> | null
+}
+
+/** Mock especializado para scheduleOneOnOne (usa getSession, no getUser). */
+function mockSchedule(opts: ScheduleMockOpts) {
+  const insertChain = {
+    select: vi.fn().mockReturnThis(),
+    single: vi.fn().mockResolvedValue({
+      data: opts.insertData ?? { id: 'new-oo-id', meet_link: null, google_calendar_event_id: null },
+      error: opts.insertError ?? null,
+    }),
+  }
+
+  const chain = {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({
+        data: {
+          session: opts.user
+            ? { user: opts.user, provider_token: null }
+            : null,
+        },
+        error: null,
+      }),
+    },
+    from: vi.fn((table: string) => {
+      if (table === 'users') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          in: vi.fn().mockReturnThis(),
+          returns: vi.fn().mockResolvedValue({ data: [], error: null }),
+          single: vi.fn().mockResolvedValue({
+            data: opts.role !== undefined ? (opts.role ? { role: opts.role } : null) : null,
+            error: null,
+          }),
+        }
+      }
+      if (table === 'one_on_ones') {
+        return {
+          insert: vi.fn(() => insertChain),
+          update: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) })),
+        }
+      }
+      // Tablas no esperadas para este set de tests
+      throw new Error(`mockSchedule: tabla no soportada: ${table}`)
+    }),
+  }
+  ;(createClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(chain)
+  return { chain }
+}
+
+const FUTURE_DATE = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+const PAST_DATE   = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+const BASE_INPUT = {
+  collaboratorId: COLAB_ID,
+  scheduledAt: FUTURE_DATE,
+  durationMinutes: 30,
+  modality: 'virtual' as const,
+}
+
+describe('scheduleOneOnOne', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('rechaza no autenticado', async () => {
+    mockSchedule({ user: null })
+    const result = await scheduleOneOnOne(BASE_INPUT)
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toBe('No autenticado')
+  })
+
+  it('rechaza a usuario sin rol de líder ni HR', async () => {
+    mockSchedule({ user: { id: LEADER_ID }, role: 'collaborator' })
+    const result = await scheduleOneOnOne(BASE_INPUT)
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toMatch(/líder/)
+  })
+
+  it('no puede agendar una 1:1 consigo mismo', async () => {
+    // collaboratorId === user.id
+    mockSchedule({ user: { id: LEADER_ID }, role: 'leader' })
+    const result = await scheduleOneOnOne({ ...BASE_INPUT, collaboratorId: LEADER_ID })
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toMatch(/contigo mismo/)
+  })
+
+  it('líder puede agendar 1:1 con colaborador → success:true', async () => {
+    mockSchedule({
+      user: { id: LEADER_ID },
+      role: 'leader',
+      insertData: { id: 'new-oo-id', meet_link: null, google_calendar_event_id: null },
+    })
+    const result = await scheduleOneOnOne(BASE_INPUT)
+    expect(result.success).toBe(true)
+  })
+
+  it('HR puede agendar 1:1', async () => {
+    mockSchedule({
+      user: { id: HR_ID },
+      role: 'hr',
+      insertData: { id: 'new-oo-id', meet_link: null, google_calendar_event_id: null },
+    })
+    const result = await scheduleOneOnOne({ ...BASE_INPUT, collaboratorId: COLAB_ID })
+    expect(result.success).toBe(true)
+  })
+
+  it('rechaza input con UUID inválido (collaboratorId)', async () => {
+    mockSchedule({ user: { id: LEADER_ID }, role: 'leader' })
+    const result = await scheduleOneOnOne({ ...BASE_INPUT, collaboratorId: 'no-uuid' })
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toBe('Datos inválidos')
+  })
+
+  it('rechaza durationMinutes fuera de rango (> 120)', async () => {
+    mockSchedule({ user: { id: LEADER_ID }, role: 'leader' })
+    const result = await scheduleOneOnOne({ ...BASE_INPUT, durationMinutes: 200 })
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toBe('Datos inválidos')
+  })
+
+  it('rechaza durationMinutes fuera de rango (< 15)', async () => {
+    mockSchedule({ user: { id: LEADER_ID }, role: 'leader' })
+    const result = await scheduleOneOnOne({ ...BASE_INPUT, durationMinutes: 5 })
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toBe('Datos inválidos')
+  })
+
+  it('propaga error si el INSERT falla', async () => {
+    mockSchedule({
+      user: { id: LEADER_ID },
+      role: 'leader',
+      insertError: { message: 'unique violation' },
+    })
+    const result = await scheduleOneOnOne(BASE_INPUT)
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toBe('unique violation')
+  })
+
+  it('acepta modality presencial con location', async () => {
+    mockSchedule({
+      user: { id: LEADER_ID },
+      role: 'leader',
+      insertData: { id: 'new-oo-id', meet_link: null, google_calendar_event_id: null },
+    })
+    const result = await scheduleOneOnOne({
+      ...BASE_INPUT,
+      modality: 'presencial',
+      location: 'Sala A',
+    })
+    expect(result.success).toBe(true)
   })
 })

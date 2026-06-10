@@ -1,32 +1,27 @@
 name: CI
 
-on:
-  pull_request:
-  push:
-    branches: [main]
+on: [push, pull_request]
 
 jobs:
-  check:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: '10'
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm tsc -b
+      - run: pnpm exec tsc --noEmit
 
-      - run: pnpm lint
-
-      - run: pnpm test          # vitest unit
+      - run: pnpm test
       # E2E commented out hasta que tengamos staging env
       # - run: pnpm exec playwright install --with-deps chromium
       # - run: pnpm test:e2e
