@@ -28,6 +28,16 @@ export default async function LiderPage() {
     users: { id: string; full_name: string; email: string } | Array<{ id: string; full_name: string; email: string }> | null
   }>
 
+  // Middle-manager: check if this leader also has their own leader
+  const { data: rawOwnLeaderRel } = await supabase
+    .from('leadership_relations')
+    .select('leader_id, users!leadership_relations_leader_id_fkey(id, full_name, email)')
+    .eq('collaborator_id', user.id)
+    .is('ended_at', null)
+    .maybeSingle()
+  const ownLeaderRelUser = rawOwnLeaderRel?.users ?? null
+  const ownLeader = ownLeaderRelUser ? (Array.isArray(ownLeaderRelUser) ? ownLeaderRelUser[0] : ownLeaderRelUser) as { id: string; full_name: string; email: string } | null : null
+
   const collaboratorIds = relations.map(r => r.collaborator_id)
 
   const startOfMonth = new Date()
@@ -47,6 +57,35 @@ export default async function LiderPage() {
 
   const startOfToday = new Date()
   startOfToday.setHours(0, 0, 0, 0)
+
+  // Fetch this leader's own 1:1s with their boss (if middle manager)
+  let ownNextMeeting: { id: string; scheduled_at: string; modality: string; meet_link: string | null } | null = null
+  let ownPendingVobo: { id: string; scheduled_at: string; modality: string } | null = null
+  if (ownLeader) {
+    const { data: rawOwnUpcoming } = await supabase
+      .from('one_on_ones')
+      .select('id, scheduled_at, modality, meet_link')
+      .eq('collaborator_id', user.id)
+      .eq('status', 'agendada')
+      .gte('scheduled_at', startOfToday.toISOString())
+      .order('scheduled_at', { ascending: true })
+      .limit(1)
+    ownNextMeeting = (rawOwnUpcoming?.[0] as { id: string; scheduled_at: string; modality: string; meet_link: string | null } | undefined) ?? null
+
+    const { data: rawOwnPast } = await supabase
+      .from('one_on_ones')
+      .select('id, scheduled_at, modality, vobos!left(user_id)')
+      .eq('collaborator_id', user.id)
+      .eq('status', 'agendada')
+      .lt('scheduled_at', startOfToday.toISOString())
+      .order('scheduled_at', { ascending: false })
+      .limit(3)
+    const ownPastFiltered = ((rawOwnPast ?? []) as Array<{
+      id: string; scheduled_at: string; modality: string
+      vobos: Array<{ user_id: string }>
+    }>).filter(m => !m.vobos.some(v => v.user_id === user.id))
+    ownPendingVobo = ownPastFiltered[0] ?? null
+  }
 
   const upcomingMap: Record<string, { id: string; scheduled_at: string }> = {}
   if (collaboratorIds.length > 0) {
@@ -273,6 +312,64 @@ export default async function LiderPage() {
           )}
         </div>
       </div>
+
+      {ownLeader && (
+        <div className="ui-card" style={{ marginTop: 18 }}>
+          <div className="ui-card__head">
+            <div>
+              <h3 className="ui-card__title">
+                <ArrowRight size={15} /> Tu 1:1 con tu líder
+              </h3>
+              <p className="ui-card__desc">Con {ownLeader.full_name}</p>
+            </div>
+          </div>
+          <div className="ui-card__body ui-card__body--flush">
+            {ownPendingVobo && (
+              <div className="list-row" style={{ borderBottom: '1px solid hsl(var(--warning) / 0.3)', background: 'hsl(var(--warning) / 0.04)' }}>
+                <div className="list-row__content">
+                  <div className="list-row__title">
+                    <AlertCircle size={13} style={{ color: 'hsl(var(--warning))' }} /> Pendiente de confirmar
+                  </div>
+                  <div className="list-row__meta">
+                    <span style={{ textTransform: 'capitalize' }}>
+                      {new Date(ownPendingVobo.scheduled_at).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      {' · '}
+                      {new Date(ownPendingVobo.scheduled_at).toTimeString().slice(0, 5)}
+                    </span>
+                  </div>
+                </div>
+                <Link href={`/lider/1to1/${ownPendingVobo.id}`} className="ui-btn ui-btn--accent ui-btn--sm list-row__action">
+                  Confirmar <ArrowRight size={12} />
+                </Link>
+              </div>
+            )}
+            {ownNextMeeting ? (
+              <div className="list-row">
+                <div className="list-row__content">
+                  <div className="list-row__title">
+                    Próxima 1:1 con {ownLeader.full_name}
+                  </div>
+                  <div className="list-row__meta">
+                    <span style={{ textTransform: 'capitalize' }}>
+                      {new Date(ownNextMeeting.scheduled_at).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      {' · '}
+                      {new Date(ownNextMeeting.scheduled_at).toTimeString().slice(0, 5)}
+                    </span>
+                    {ownNextMeeting.modality === 'virtual' ? <Video size={12} /> : <MapPin size={12} />}
+                  </div>
+                </div>
+                <Link href={`/lider/1to1/${ownNextMeeting.id}`} className="ui-btn ui-btn--outline ui-btn--sm list-row__action">
+                  Ver <ArrowRight size={12} />
+                </Link>
+              </div>
+            ) : (
+              <div style={{ padding: '20px 24px', fontSize: 13.5, color: 'var(--text-muted)' }}>
+                Sin 1:1 próxima agendada. Tu líder ({ownLeader.full_name}) debe agendarla.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {recentMeetings.length > 0 && (
         <div className="ui-card" style={{ marginTop: 18 }}>

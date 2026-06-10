@@ -51,7 +51,8 @@ export default async function LiderOneOnOneDetailPage({ params }: { params: { id
   const nonRealizationMarker = (Array.isArray(meeting.non_realization_marker)
     ? meeting.non_realization_marker[0]
     : meeting.non_realization_marker) as Marker | null
-  if (leader?.id !== user.id) redirect('/lider')
+  if (leader?.id !== user.id && collaborator?.id !== user.id) redirect('/lider')
+  const isLeader = leader?.id === user.id
 
   const [
     { data: rawAgenda }, { data: rawMinute }, { data: rawAgreements }, { data: rawVobos }
@@ -84,7 +85,7 @@ export default async function LiderOneOnOneDetailPage({ params }: { params: { id
         collaborator: { id: collaborator.id, name: collaborator.full_name, email: collaborator.email },
       }
     : null
-  const partnerName = collaborator?.full_name ?? ''
+  const partnerName = isLeader ? (collaborator?.full_name ?? '') : (leader?.full_name ?? '')
   const lInit = leader?.full_name.split(' ').map(p => p[0]).slice(0, 2).join('') ?? '?'
   const cInit = collaborator?.full_name.split(' ').map(p => p[0]).slice(0, 2).join('') ?? '?'
 
@@ -155,7 +156,7 @@ export default async function LiderOneOnOneDetailPage({ params }: { params: { id
                 <div style={{ fontSize: 13 }}>
                   <div style={{ fontWeight: 500, letterSpacing: '-0.005em' }}>{leader?.full_name}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
-                    Tú · Líder
+                    {isLeader ? 'Tú · Líder' : 'Tu líder'}
                   </div>
                 </div>
               </div>
@@ -165,7 +166,7 @@ export default async function LiderOneOnOneDetailPage({ params }: { params: { id
                 <div style={{ fontSize: 13 }}>
                   <div style={{ fontWeight: 500, letterSpacing: '-0.005em' }}>{collaborator?.full_name}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
-                    Colaborador
+                    {isLeader ? 'Colaborador' : 'Tú · Colaborador'}
                   </div>
                 </div>
               </div>
@@ -221,7 +222,7 @@ export default async function LiderOneOnOneDetailPage({ params }: { params: { id
       {(() => {
         const rail = (
           <>
-            {collaborator && (
+            {isLeader && collaborator && (
               <LeaderInsightPanel
                 collaboratorId={collaborator.id}
                 collaboratorName={collaborator.full_name}
