@@ -63,6 +63,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@slack/types": "^2.21.0",
     "@playwright/test": "^1.60.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

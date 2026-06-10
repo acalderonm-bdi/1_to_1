@@ -129,6 +129,9 @@ importers:
       '@playwright/test':
         specifier: ^1.60.0
         version: 1.60.0
+      '@slack/types':
+        specifier: ^2.21.0
+        version: 2.21.0
       '@testing-library/jest-dom':
         specifier: ^6.9.1
         version: 6.9.1
