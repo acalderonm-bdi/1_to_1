@@ -465,12 +465,18 @@ export async function GET(request: NextRequest) {
       const deepLink = linkForTrigger(rule.trigger_type, userRow.role)
 
       for (const channel of rule.channels) {
-        // TODO (Fase 7.A — opt-out granular): antes de enviar, consultar
-        // `notification_preferences` con
-        //   (user_id = recipientId, trigger_type = rule.trigger_type, channel)
-        // y si `enabled = false` saltar este recipient/channel. Si no hay
-        // row, asumir habilitado (default opt-in). Ver
-        // `src/lib/actions/notification-preferences.ts` + migration 25.
+        // Fase 7.A — opt-out granular: consultar notification_preferences.
+        // Si el usuario desactivó este trigger_type × channel, omitir.
+        // Si no existe row, asumir habilitado (default opt-in).
+        const { data: pref } = await admin
+          .from('notification_preferences')
+          .select('enabled')
+          .eq('user_id', recipientId)
+          .eq('trigger_type', rule.trigger_type)
+          .eq('channel', channel)
+          .maybeSingle()
+        if (pref && pref.enabled === false) continue
+
         let delivered = false
         let failedReason: string | null = null
 
