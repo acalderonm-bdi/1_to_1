@@ -23,6 +23,12 @@ import { escapeHtml, notifyByEmail } from '@/lib/email/notify'
 import { notifySlackGeneric } from '@/lib/slack/notify'
 import type { NotificationRuleRow } from '@/types/domain'
 
+// Templates importados aquí (nunca eran importados antes — Bug #1 y Bug #3).
+// renderToStaticMarkup convierte el JSX del template a HTML string para Resend.
+import { renderToStaticMarkup } from 'react-dom/server'
+import { VoboRequestEmail } from '@/lib/email/templates/vobo-request'
+import { MeetingReminderEmail } from '@/lib/email/templates/meeting-reminder'
+
 interface RecipientRow {
   id: string
   email: string | null
@@ -151,14 +157,282 @@ export async function GET(request: NextRequest) {
         break
       }
 
-      case 'vobo_pendiente':
-      case 'calidez_baja':
-      case 'reminder_pre_1to1': {
-        // TODO: implementación específica. Por ahora dispatch mínimo a HR si
-        // está en la audiencia, para que el flujo de notificación quede
-        // ejercitado en producción.
+      case 'vobo_pendiente': {
+        // Busca 1:1s cuyo VoBo aún está pendiente (status='agendada' y
+        // scheduled_at ya pasó hace más de `threshold.days` días, default 2).
+        // La audiencia correcta es el colaborador que debe dar su VoBo.
+        const pendingDays =
+          typeof rule.threshold?.days === 'number' ? rule.threshold.days : 2
+        const cutoff = new Date(Date.now() - pendingDays * 24 * 60 * 60 * 1000).toISOString()
+
+        const { data: pendingVobos } = await admin
+          .from('one_on_ones')
+          .select('id, collaborator_id, leader_id, scheduled_at, modality, location, meet_link')
+          .eq('status', 'agendada')
+          .lt('scheduled_at', cutoff)
+        const voboRows = (pendingVobos ?? []) as Array<{
+          id: string
+          collaborator_id: string
+          leader_id: string
+          scheduled_at: string
+          modality: string
+          location: string | null
+          meet_link: string | null
+        }>
+
+        // Notificar al colaborador (y al líder si está en la audiencia).
+        for (const row of voboRows) {
+          if (audience.has('collaborator')) recipients.add(row.collaborator_id)
+          if (audience.has('leader')) recipients.add(row.leader_id)
+        }
         if (audience.has('hr')) {
           for (const id of await getHrUserIds()) recipients.add(id)
+        }
+
+        // Envío temprano con template VoboRequestEmail (solo para colaboradores).
+        // Los demás destinatarios recibirán el email genérico del bucle principal.
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+        for (const row of voboRows) {
+          const { data: collabRow } = await admin
+            .from('users')
+            .select('id, email, full_name, slack_user_id, role')
+            .eq('id', row.collaborator_id)
+            .single<RecipientRow>()
+          if (!collabRow) continue
+
+          const { data: leaderRow } = await admin
+            .from('users')
+            .select('full_name')
+            .eq('id', row.leader_id)
+            .single<{ full_name: string | null }>()
+          const leaderName = leaderRow?.full_name ?? ''
+          const meetingDate = new Date(row.scheduled_at).toLocaleDateString('es-MX', {
+            day: '2-digit', month: 'long', year: 'numeric',
+          })
+
+          for (const channel of rule.channels) {
+            let delivered = false
+            let failedReason: string | null = null
+
+            if (channel === 'in_app') {
+              const { error } = await admin.from('notifications').insert({
+                user_id: row.collaborator_id,
+                channel: 'in_app',
+                title: `[${rule.name}]`,
+                content: `Tu VoBo para la 1:1 del ${meetingDate} con ${leaderName} está pendiente.`,
+                link: `/colaborador/1to1/${row.id}`,
+              })
+              delivered = !error
+              failedReason = error?.message ?? null
+            } else if (channel === 'email' && collabRow.email) {
+              const html = renderToStaticMarkup(
+                VoboRequestEmail({
+                  recipientName: collabRow.full_name ?? '',
+                  partnerName: leaderName,
+                  meetingDate,
+                  appUrl,
+                  oneOnOneId: row.id,
+                }),
+              )
+              const res = await notifyByEmail({
+                to: [collabRow.email],
+                subject: `[1to1] VoBo pendiente: 1:1 del ${meetingDate}`,
+                html,
+                recipientRole: 'collaborator',
+              })
+              delivered = res.sent
+              failedReason = res.error ?? (res.skipped ? 'EMAIL_NOT_CONFIGURED' : null)
+            } else if (channel === 'slack' && collabRow.slack_user_id) {
+              const voboUrl = `${appUrl}/colaborador/1to1/${row.id}`
+              const res = await notifySlackGeneric(
+                collabRow.slack_user_id,
+                rule.name,
+                `Tu VoBo para la 1:1 del ${meetingDate} con ${escapeHtml(leaderName)} está pendiente.`,
+                voboUrl,
+              )
+              delivered = res.sent
+              failedReason = res.error ?? (res.skipped ? 'SLACK_NOT_CONFIGURED' : null)
+            } else {
+              // Canal no aplicable para este colaborador en esta iteración.
+              continue
+            }
+
+            void failedReason
+            await admin.from('notification_dispatches').insert({
+              rule_id: rule.id,
+              recipient_id: row.collaborator_id,
+              channel,
+              context: {
+                trigger: rule.trigger_type,
+                rule_name: rule.name,
+                one_on_one_id: row.id,
+              },
+              status: delivered ? 'sent' : 'failed',
+            })
+            if (delivered) totalDispatched++
+          }
+
+          // Quitar al colaborador del set para evitar doble-envío en el bucle genérico.
+          recipients.delete(row.collaborator_id)
+        }
+        break
+      }
+
+      case 'calidez_baja': {
+        // Consulta la vista `warmth_metrics_by_leader` para líderes cuyo
+        // avg_overall esté por debajo del threshold (default: 3 sobre 5).
+        const thresholdScore =
+          typeof rule.threshold?.value === 'number' ? rule.threshold.value : 3
+
+        const { data: lowWarmth } = await admin
+          .from('warmth_metrics_by_leader')
+          .select('leader_id, avg_overall')
+          .lt('avg_overall', thresholdScore)
+        const warmthRows = (lowWarmth ?? []) as Array<{
+          leader_id: string
+          avg_overall: number | null
+        }>
+
+        if (audience.has('leader')) {
+          for (const r of warmthRows) recipients.add(r.leader_id)
+        }
+        if (audience.has('hr')) {
+          for (const id of await getHrUserIds()) recipients.add(id)
+        }
+        break
+      }
+
+      case 'reminder_pre_1to1': {
+        // Busca 1:1s con scheduled_at en la ventana de anticipación configurable.
+        // Default: ventana de las próximas 24 horas.
+        const windowHours =
+          typeof rule.threshold?.value === 'number' ? rule.threshold.value : 24
+        const now = new Date()
+        const windowEnd = new Date(now.getTime() + windowHours * 60 * 60 * 1000)
+
+        const { data: upcoming } = await admin
+          .from('one_on_ones')
+          .select('id, leader_id, collaborator_id, scheduled_at, modality, location, meet_link')
+          .eq('status', 'agendada')
+          .gte('scheduled_at', now.toISOString())
+          .lte('scheduled_at', windowEnd.toISOString())
+        const meetingRows = (upcoming ?? []) as Array<{
+          id: string
+          leader_id: string
+          collaborator_id: string
+          scheduled_at: string
+          modality: string
+          location: string | null
+          meet_link: string | null
+        }>
+
+        // Notificar tanto al líder como al colaborador.
+        for (const row of meetingRows) {
+          if (audience.has('leader')) recipients.add(row.leader_id)
+          if (audience.has('collaborator')) recipients.add(row.collaborator_id)
+        }
+        if (audience.has('hr')) {
+          for (const id of await getHrUserIds()) recipients.add(id)
+        }
+
+        // Envío temprano con template MeetingReminderEmail para líder y colaborador.
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+        for (const row of meetingRows) {
+          const participants: Array<{ userId: string; isLeader: boolean }> = []
+          if (audience.has('leader')) participants.push({ userId: row.leader_id, isLeader: true })
+          if (audience.has('collaborator')) participants.push({ userId: row.collaborator_id, isLeader: false })
+
+          for (const { userId, isLeader } of participants) {
+            const { data: recipUser } = await admin
+              .from('users')
+              .select('id, email, full_name, slack_user_id, role')
+              .eq('id', userId)
+              .single<RecipientRow>()
+            if (!recipUser) continue
+
+            const partnerId = isLeader ? row.collaborator_id : row.leader_id
+            const { data: partnerRow } = await admin
+              .from('users')
+              .select('full_name')
+              .eq('id', partnerId)
+              .single<{ full_name: string | null }>()
+            const partnerName = partnerRow?.full_name ?? ''
+
+            const scheduledDate = new Date(row.scheduled_at)
+            const meetingDate = scheduledDate.toLocaleDateString('es-MX', {
+              day: '2-digit', month: 'long', year: 'numeric',
+            })
+            const meetingTime = scheduledDate.toLocaleTimeString('es-MX', {
+              hour: '2-digit', minute: '2-digit',
+            })
+            const deepLink = isLeader ? '/lider' : '/colaborador'
+
+            for (const channel of rule.channels) {
+              let delivered = false
+              let failedReason: string | null = null
+
+              if (channel === 'in_app') {
+                const { error } = await admin.from('notifications').insert({
+                  user_id: userId,
+                  channel: 'in_app',
+                  title: `[${rule.name}]`,
+                  content: `Tu 1:1 con ${partnerName} es hoy a las ${meetingTime}.`,
+                  link: `${deepLink}`,
+                })
+                delivered = !error
+                failedReason = error?.message ?? null
+              } else if (channel === 'email' && recipUser.email) {
+                const html = renderToStaticMarkup(
+                  MeetingReminderEmail({
+                    recipientName: recipUser.full_name ?? '',
+                    partnerName,
+                    meetingDate,
+                    meetingTime,
+                    modality: row.modality as 'virtual' | 'presencial',
+                    meetLink: row.meet_link ?? undefined,
+                    location: row.location ?? undefined,
+                  }),
+                )
+                const res = await notifyByEmail({
+                  to: [recipUser.email],
+                  subject: `[1to1] Recordatorio: 1:1 hoy a las ${meetingTime}`,
+                  html,
+                  recipientRole: recipUser.role,
+                })
+                delivered = res.sent
+                failedReason = res.error ?? (res.skipped ? 'EMAIL_NOT_CONFIGURED' : null)
+              } else if (channel === 'slack' && recipUser.slack_user_id) {
+                const meetUrl = row.meet_link ?? `${appUrl}${deepLink}`
+                const res = await notifySlackGeneric(
+                  recipUser.slack_user_id,
+                  rule.name,
+                  `Tu 1:1 con ${escapeHtml(partnerName)} es hoy a las ${meetingTime}.`,
+                  meetUrl,
+                )
+                delivered = res.sent
+                failedReason = res.error ?? (res.skipped ? 'SLACK_NOT_CONFIGURED' : null)
+              } else {
+                continue
+              }
+
+              void failedReason
+              await admin.from('notification_dispatches').insert({
+                rule_id: rule.id,
+                recipient_id: userId,
+                channel,
+                context: {
+                  trigger: rule.trigger_type,
+                  rule_name: rule.name,
+                  one_on_one_id: row.id,
+                },
+                status: delivered ? 'sent' : 'failed',
+              })
+              if (delivered) totalDispatched++
+            }
+
+            // Quitar del set genérico para evitar doble-envío.
+            recipients.delete(userId)
+          }
         }
         break
       }

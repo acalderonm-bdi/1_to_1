@@ -23,6 +23,7 @@ import { CronExpressionParser } from 'cron-parser'
 import { z } from 'zod'
 
 import { requireHR } from '@/lib/auth-guards'
+import { notifyByEmail, escapeHtml } from '@/lib/email/notify'
 import type { ActionResult, ScheduledReportType } from '@/types/domain'
 
 const scheduleSchema = z.object({
@@ -169,11 +170,9 @@ export async function runReportNow(
     return { success: false, error: message }
   }
 
-  // STUB email send — log + audit a notification_dispatches.
-  // eslint-disable-next-line no-console
-  console.log(
-    `[scheduled-report] would send ${csv.filename} to ${report.recipients.join(', ')}`,
-  )
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const lineCount = (csv.content.match(/\n/g)?.length ?? 1) - 1
+  const exportesUrl = `${appUrl}/arquitectura-humana/exportes`
 
   let dispatched = 0
   for (const recipient of report.recipients) {
@@ -185,6 +184,19 @@ export async function runReportNow(
 
     if (!userRow) continue
 
+    // Envío real de email vía Resend. notifyByEmail hace skip silencioso si
+    // RESEND_API_KEY o EMAIL_FROM no están configurados (dev/CI).
+    const emailRes = await notifyByEmail({
+      to: [recipient],
+      subject: `[1to1] Reporte: ${report.name}`,
+      html:
+        `<p>Tu reporte programado "<strong>${escapeHtml(report.name)}</strong>" está listo.</p>` +
+        `<p>Archivo: <code>${escapeHtml(csv.filename)}</code> (${Math.max(lineCount, 0)} filas)</p>` +
+        `<p><a href="${exportesUrl}" style="background:#ED6134;color:white;padding:8px 16px;border-radius:6px;text-decoration:none;display:inline-block;">Ver en Exportes</a></p>`,
+      recipientRole: 'hr',
+    })
+
+    const dispatchStatus = emailRes.sent ? 'sent' : emailRes.skipped ? 'skipped' : 'failed'
     const { error: insErr } = await guard.supabase
       .from('notification_dispatches')
       .insert({
@@ -197,10 +209,10 @@ export async function runReportNow(
           filename: csv.filename,
           manual_run: true,
         },
-        status: 'sent',
+        status: dispatchStatus,
       })
 
-    if (!insErr) dispatched++
+    if (!insErr && emailRes.sent) dispatched++
   }
 
   // Update last_run_at + recalcular next_run_at.

@@ -17,6 +17,7 @@ import { CronExpressionParser } from 'cron-parser'
 import { generateAcuerdosCSV } from '@/lib/exports/acuerdos-csv'
 import { generateCalidezCSV } from '@/lib/exports/calidez-csv'
 import { generateCumplimientoCSV } from '@/lib/exports/cumplimiento-csv'
+import { notifyByEmail, escapeHtml } from '@/lib/email/notify'
 import { notifyHRReport } from '@/lib/slack/notify'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import type { ScheduledReportType } from '@/types/domain'
@@ -72,11 +73,6 @@ export async function runScheduledReports(
       continue
     }
 
-    // eslint-disable-next-line no-console
-    console.log(
-      `[cron-reports] would send ${csv.filename} to ${report.recipients.join(', ')}`,
-    )
-
     // Slack al canal RH (best-effort). El helper hace skip si no hay
     // SLACK_BOT_TOKEN, y guardamos contra falla de la API.
     const slackChannel = process.env.SLACK_DEFAULT_CHANNEL
@@ -94,6 +90,10 @@ export async function runScheduledReports(
       }
     }
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+    const lineCount = (csv.content.match(/\n/g)?.length ?? 1) - 1
+    const exportesUrl = `${appUrl}/arquitectura-humana/exportes`
+
     for (const recipient of report.recipients) {
       const { data: userRow } = await admin
         .from('users')
@@ -103,6 +103,19 @@ export async function runScheduledReports(
 
       if (!userRow) continue
 
+      // Envío real de email vía Resend. notifyByEmail hace skip silencioso si
+      // RESEND_API_KEY o EMAIL_FROM no están configurados (dev/CI).
+      const emailRes = await notifyByEmail({
+        to: [recipient],
+        subject: `[1to1] Reporte: ${report.name}`,
+        html:
+          `<p>Tu reporte programado "<strong>${escapeHtml(report.name)}</strong>" está listo.</p>` +
+          `<p>Archivo: <code>${escapeHtml(csv.filename)}</code> (${Math.max(lineCount, 0)} filas)</p>` +
+          `<p><a href="${exportesUrl}" style="background:#ED6134;color:white;padding:8px 16px;border-radius:6px;text-decoration:none;display:inline-block;">Ver en Exportes</a></p>`,
+        recipientRole: 'hr',
+      })
+
+      const dispatchStatus = emailRes.sent ? 'sent' : emailRes.skipped ? 'skipped' : 'failed'
       const { error: insErr } = await admin
         .from('notification_dispatches')
         .insert({
@@ -115,10 +128,10 @@ export async function runScheduledReports(
             filename: csv.filename,
             cron_dispatch: true,
           },
-          status: 'sent',
+          status: dispatchStatus,
         })
 
-      if (!insErr) totalDispatched++
+      if (!insErr && emailRes.sent) totalDispatched++
     }
 
     const nextRun = safeNextRun(report.schedule_cron)
