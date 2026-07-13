@@ -39,7 +39,7 @@ export type SyncPreview = {
 }
 
 // Raw row as read from Excel
-interface HrRow {
+export interface HrRow {
   hr_id: string          // e.g. '0006'
   full_name: string
   email: string
@@ -51,7 +51,7 @@ interface HrRow {
 // Excel parser
 // ---------------------------------------------------------------------------
 
-function parseExcel(buffer: ArrayBuffer): { rows: HrRow[]; errors: string[] } {
+export function parseExcel(buffer: ArrayBuffer): { rows: HrRow[]; errors: string[] } {
   const errors: string[] = []
   const wb = XLSX.read(buffer, { type: 'array' })
 

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { LogOut, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAppShell } from '@/components/layout/app-shell'
-import { NAV_BY_ROLE, isNavItemActive } from '@/lib/nav'
+import { isNavItemActive, type NavItem } from '@/lib/nav'
 import type { UserRole } from '@/types/domain'
 
 const ROLE_LABEL: Record<UserRole, string> = {
@@ -16,15 +16,15 @@ const ROLE_LABEL: Record<UserRole, string> = {
 
 interface SidebarProps {
   role: UserRole
+  items: NavItem[]
   currentPath: string
   userName?: string
   userEmail?: string
 }
 
-export function Sidebar({ role, currentPath, userName, userEmail }: SidebarProps) {
+export function Sidebar({ role, items, currentPath, userName, userEmail }: SidebarProps) {
   const router = useRouter()
   const { drawerOpen, closeDrawer } = useAppShell()
-  const items = NAV_BY_ROLE[role] ?? []
 
   async function handleSignOut() {
     const supabase = createClient()
