@@ -425,7 +425,9 @@ export async function syncOrg(
 
   for (const row of valid) {
     const desiredEmpIds = leadersByEmp.get(row.employeeId) ?? []
-    if (desiredEmpIds.length === 0) { report.roots.push(row.employeeId); continue }
+    // Raíz (sin jefe en el CSV): se registra pero NO se salta la reconciliación —
+    // si venía con líder en un corte anterior, esa relación debe cerrarse.
+    if (desiredEmpIds.length === 0) report.roots.push(row.employeeId)
 
     const collaboratorId = empToUserId[row.employeeId]
     const currentRels = collaboratorId ? (activeRelsByCollab.get(collaboratorId) ?? []) : []

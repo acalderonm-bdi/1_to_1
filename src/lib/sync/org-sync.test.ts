@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseOrgCsv, validateOrgCsv, deriveLeaderNames, diffLeaderSets, CHAIN_COLUMNS } from './org-sync'
+import { parseOrgCsv, validateOrgCsv, deriveLeaderNames, diffLeaderSets, syncOrg, CHAIN_COLUMNS } from './org-sync'
 
 // Encabezado real del export de RH (nótese el espacio colgante en "GERENCIA ").
 const HEADER =
@@ -148,6 +148,48 @@ describe('diffLeaderSets', () => {
     const { toClose, toCreate } = diffLeaderSets(new Set(['A']), new Set(['A']))
     expect(toClose).toEqual([])
     expect(toCreate).toEqual([])
+  })
+})
+
+// Stub chainable mínimo del admin client para syncOrg en dry-run (solo lecturas).
+function stubAdmin(tables: { users: unknown[]; departments: unknown[]; relations: unknown[] }) {
+  const makeQuery = (data: unknown[]) => {
+    const q = {
+      select: () => q,
+      is: () => q,
+      then: (resolve: (v: { data: unknown[] }) => void) => resolve({ data }),
+    }
+    return q
+  }
+  return {
+    from: (table: string) =>
+      makeQuery(table === 'users' ? tables.users : table === 'departments' ? tables.departments : tables.relations),
+  } as never
+}
+
+describe('syncOrg (dry-run) — reconciliación de raíces', () => {
+  it('una raíz del CSV con relación previa en DB la CIERRA (no la salta)', async () => {
+    const rows = parseOrgCsv(csv(
+      DG, // 0001 GERARDO DG, sin jefe → raíz
+      '0022,ANA LOPEZ,ACTIVO,ANALISTA,O,N/A,FIN,N/A,X,N/A,N/A,N/A,N/A,N/A,GERARDO DG,alopez@b-drive.com.mx',
+    ))
+    const dbUser = (id: string, emp: string, email: string) => ({
+      id, email, hr_employee_id: emp, role: 'collaborator', department_id: null,
+      is_active: true, full_name: id, puesto: null, nivel_puesto: null, sub_area: null, proyecto: null,
+    })
+    const admin = stubAdmin({
+      users: [dbUser('u-dg', '0001', 'gdg@b-drive.com.mx'), dbUser('u-ana', '0022', 'alopez@b-drive.com.mx')],
+      departments: [{ id: 'd1', name: 'DIRECCION GENERAL' }, { id: 'd2', name: 'FIN' }],
+      // Relación vieja invertida: Ana era "líder" de Gerardo. El CSV nuevo lo hace raíz.
+      relations: [{ id: 'rel-1', leader_id: 'u-ana', collaborator_id: 'u-dg' }],
+    })
+    const report = await syncOrg(admin, rows, { dryRun: true })
+    expect(report.validationErrors).toEqual([])
+    expect(report.roots).toContain('0001')
+    const dgChange = report.relationChanges.find((rc) => rc.collaboratorEmployeeId === '0001')
+    expect(dgChange?.closes).toEqual(['0022'])
+    expect(dgChange?.creates).toEqual([])
+    expect(report.relationsClosed).toBeGreaterThanOrEqual(1)
   })
 })
 
