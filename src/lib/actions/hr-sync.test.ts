@@ -10,7 +10,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import * as XLSX from 'xlsx'
-import { parseExcel } from './hr-sync'
+import { parseExcel } from '@/lib/sync/hr-excel'
 
 const HEADERS = {
   ID: 'ID',
