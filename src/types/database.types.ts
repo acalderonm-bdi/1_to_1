@@ -926,8 +926,12 @@ export type Database = {
           hr_employee_id: string | null
           id: string
           is_active: boolean
+          nivel_puesto: string | null
+          proyecto: string | null
+          puesto: string | null
           role: Database["public"]["Enums"]["user_role"]
           slack_user_id: string | null
+          sub_area: string | null
           updated_at: string
         }
         Insert: {
@@ -942,8 +946,12 @@ export type Database = {
           hr_employee_id?: string | null
           id: string
           is_active?: boolean
+          nivel_puesto?: string | null
+          proyecto?: string | null
+          puesto?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           slack_user_id?: string | null
+          sub_area?: string | null
           updated_at?: string
         }
         Update: {
@@ -958,8 +966,12 @@ export type Database = {
           hr_employee_id?: string | null
           id?: string
           is_active?: boolean
+          nivel_puesto?: string | null
+          proyecto?: string | null
+          puesto?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           slack_user_id?: string | null
+          sub_area?: string | null
           updated_at?: string
         }
         Relationships: [
