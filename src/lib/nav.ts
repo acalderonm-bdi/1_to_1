@@ -76,13 +76,20 @@ export function navFor({ role, isLeader, isCollaborator }: NavContext): NavItem[
   // Fallback: si por datos raros (p.ej. un dueño sin líder ni reportes y sin rol hr)
   // el menú quedara vacío, mostrar al menos la vista personal.
   if (items.length === 0) items.push(...PERSONAL_NAV)
+  // Organigrama: visible para todos; la página acota qué parte del árbol se ve.
+  items.push(ORGANIGRAMA_NAV)
   items.push(CONFIG_BY_ROLE[role])
   return items
+}
+
+const ORGANIGRAMA_NAV: NavItem = {
+  key: 'organigrama', label: 'Organigrama', icon: Network, href: '/organigrama', divider: true,
 }
 
 // Todos los ítems posibles, para resolver breadcrumbs sin importar la sección.
 const ALL_NAV_ITEMS: NavItem[] = [
   ...PERSONAL_NAV, ...LEADER_NAV, ...HR_NAV,
+  ORGANIGRAMA_NAV,
   ...Object.values(CONFIG_BY_ROLE),
 ]
 
