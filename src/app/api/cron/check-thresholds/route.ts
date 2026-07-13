@@ -8,17 +8,20 @@
  * by the Wave 1 foundation prevents duplicate dispatches within the same day.
  * Insert failures from that unique violation are swallowed silently.
  *
- * Auth: `Authorization: Bearer ${CRON_SECRET}`.
+ * Auth: `assertCronAuth` (bearer timing-safe + rechazo de secretos débiles).
  *
  * Note: rows from `notification_rules` come back with DB-level types
  * (`trigger_type: string`, `audience: string[]`, etc.). We narrow to the
  * stricter domain `NotificationRuleRow` shape at the boundary because writes
  * are zod-validated against the union types in `notification-rules.ts`.
  */
+import * as Sentry from '@sentry/nextjs'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runDueAgreementsNotifications } from '@/lib/cron/due-agreements'
 import { runScheduledReports } from '@/lib/cron/scheduled-reports'
+import { runCadenceCheck } from '@/lib/cron/cadence'
+import { assertCronAuth } from '@/lib/cron/auth'
 import { escapeHtml, notifyByEmail } from '@/lib/email/notify'
 import { notifySlackGeneric } from '@/lib/slack/notify'
 import type { NotificationRuleRow } from '@/types/domain'
@@ -82,10 +85,8 @@ function linkForTrigger(
 }
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authErr = assertCronAuth(request)
+  if (authErr) return authErr
 
   const admin = createAdminClient()
 
@@ -112,28 +113,38 @@ export async function GET(request: NextRequest) {
 
     switch (rule.trigger_type) {
       case 'cumplimiento_bajo': {
-        // The `compliance_metrics` view aggregates per department
-        // (compliance_rate as a fraction 0-1; the rule threshold uses percent).
+        // `compliance_metrics.compliance_rate` viene como PORCENTAJE 0-100 (la
+        // vista multiplica por 100, ver migración 29). El umbral de la regla
+        // también es 0-100, así que se comparan DIRECTAMENTE — NO dividir entre
+        // 100 (bug histórico que dejaba la alarma muda salvo a 0%). No normalizar
+        // la vista a 0-1: la usan mapa-calor y exports con la convención 0-100.
         const thresholdPct = typeof rule.threshold?.value === 'number' ? rule.threshold.value : 50
-        const thresholdRate = thresholdPct / 100
 
         const lowResult = await admin
           .from('compliance_metrics')
           .select('department_id, compliance_rate')
-          .lt('compliance_rate', thresholdRate)
+          .lt('compliance_rate', thresholdPct)
         const lowDeptIds = (lowResult.data ?? [])
           .map((r) => r.department_id)
           .filter((x): x is string => !!x)
 
         if (audience.has('leader') && lowDeptIds.length > 0) {
-          // Leaders = users with role='leader' whose department is flagged.
-          const { data: leadersRaw } = await admin
-            .from('users')
-            .select('id')
-            .eq('role', 'leader')
-            .in('department_id', lowDeptIds)
-          for (const l of (leadersRaw ?? []) as Array<{ id: string }>) {
-            recipients.add(l.id)
+          // Por RELACIÓN, no por rol: líderes de colaboradores cuyo departamento
+          // tiene bajo cumplimiento. Targeting por role='leader' dejaba ciegos a
+          // los duales (role distinto que igual lideran) — justo lo que RH más
+          // necesita escalar.
+          const { data: rels } = await admin
+            .from('leadership_relations')
+            .select('leader_id, collaborator:users!leadership_relations_collaborator_id_fkey(department_id)')
+            .is('ended_at', null)
+          for (const rel of (rels ?? []) as Array<{
+            leader_id: string
+            collaborator: { department_id: string | null } | Array<{ department_id: string | null }> | null
+          }>) {
+            const col = Array.isArray(rel.collaborator) ? rel.collaborator[0] : rel.collaborator
+            if (col?.department_id && lowDeptIds.includes(col.department_id)) {
+              recipients.add(rel.leader_id)
+            }
           }
         }
         if (audience.has('hr')) {
@@ -270,7 +281,6 @@ export async function GET(request: NextRequest) {
               continue
             }
 
-            void failedReason
             await admin.from('notification_dispatches').insert({
               rule_id: rule.id,
               recipient_id: row.collaborator_id,
@@ -281,6 +291,8 @@ export async function GET(request: NextRequest) {
                 one_on_one_id: row.id,
               },
               status: delivered ? 'sent' : 'failed',
+              failed_reason: failedReason,
+              delivered_at: delivered ? new Date().toISOString() : null,
             })
             if (delivered) totalDispatched++
           }
@@ -426,7 +438,6 @@ export async function GET(request: NextRequest) {
                 continue
               }
 
-              void failedReason
               await admin.from('notification_dispatches').insert({
                 rule_id: rule.id,
                 recipient_id: userId,
@@ -437,6 +448,8 @@ export async function GET(request: NextRequest) {
                   one_on_one_id: row.id,
                 },
                 status: delivered ? 'sent' : 'failed',
+                failed_reason: failedReason,
+                delivered_at: delivered ? new Date().toISOString() : null,
               })
               if (delivered) totalDispatched++
             }
@@ -520,11 +533,8 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // NOTE: `notification_dispatches.failed_reason` column does not exist yet
-        // (see migration 00000000000020). TODO: add column in a future migration
-        // and persist `failedReason` so the matrix can show real delivery state.
-        // For now we only persist status; failedReason is computed for future use.
-        void failedReason
+        // Persistimos failed_reason/delivered_at (migración 31) para que la
+        // matriz de RH muestre el estado real de entrega, no solo sent/failed.
         const { error } = await admin
           .from('notification_dispatches')
           .insert({
@@ -533,6 +543,8 @@ export async function GET(request: NextRequest) {
             channel,
             context: { trigger: rule.trigger_type, rule_name: rule.name },
             status: delivered ? 'sent' : 'failed',
+            failed_reason: failedReason,
+            delivered_at: delivered ? new Date().toISOString() : null,
           })
         if (!error && delivered) {
           totalDispatched++
@@ -543,15 +555,26 @@ export async function GET(request: NextRequest) {
   }
 
   // Plan Hobby: solo 2 cron jobs agendables en Vercel. Este cron diario también
-  // dispara los avisos de "acuerdo por vencer mañana" y los reportes programados
-  // pendientes (granularidad diaria). Sus rutas standalone quedan para trigger
-  // manual. Ver vercel.json y docs/architecture.md.
-  const due_agreements = await runDueAgreementsNotifications(admin)
-  const scheduled_reports = await runScheduledReports(admin)
+  // dispara la alarma de cadencia, los avisos de "acuerdo por vencer mañana" y
+  // los reportes programados. Cada sub-job AISLADO: un fallo se reporta a Sentry
+  // y no tumba a los demás. Sus rutas standalone quedan para trigger manual.
+  // Ver vercel.json y docs/architecture.md.
+  async function safe<T>(label: string, fn: () => Promise<T>): Promise<T | { error: string }> {
+    try {
+      return await fn()
+    } catch (e) {
+      Sentry.captureException(e, { tags: { cron: 'check-thresholds', subjob: label } })
+      return { error: e instanceof Error ? e.message : 'error' }
+    }
+  }
+  const cadence = await safe('cadence', () => runCadenceCheck(admin))
+  const due_agreements = await safe('due_agreements', () => runDueAgreementsNotifications(admin))
+  const scheduled_reports = await safe('scheduled_reports', () => runScheduledReports(admin))
 
   return NextResponse.json({
     rules_evaluated: rules.length,
     total_dispatched: totalDispatched,
+    cadence,
     due_agreements,
     scheduled_reports,
   })

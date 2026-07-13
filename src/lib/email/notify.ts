@@ -88,11 +88,18 @@ export async function notifyByEmail(input: NotifyByEmailInput): Promise<EmailRes
   const from = process.env.EMAIL_FROM
   if (!from) return { sent: false, skipped: true }
 
+  // Arranque suave: si EMAIL_SANDBOX_TO está seteada, TODO correo saliente se
+  // redirige a esa dirección y el asunto conserva el destinatario original.
+  // Quitar la env var en Vercel restaura el envío normal (sin redeploy).
+  const sandbox = process.env.EMAIL_SANDBOX_TO?.trim()
+  const to = sandbox ? [sandbox] : input.to
+  const subject = sandbox ? `[SANDBOX → ${input.to.join(', ')}] ${input.subject}` : input.subject
+
   try {
     const result = await client.emails.send({
       from,
-      to: input.to,
-      subject: input.subject,
+      to,
+      subject,
       html: wrapHtml(input.html, input.recipientRole ?? 'collaborator'),
       text: input.text,
     })

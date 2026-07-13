@@ -14,7 +14,7 @@ export default async function SincronizacionPage() {
         <div>
           <span className="page__eyebrow"><RefreshCcw size={12} /> Sincronización externa</span>
           <h1 className="page__title">Sincronización</h1>
-          <p className="page__subtitle">Sube el Excel de RH para mantener usuarios, departamentos y relaciones de liderazgo actualizados.</p>
+          <p className="page__subtitle">Sube el CSV de RH (base de líderes) para mantener usuarios, áreas y relaciones de liderazgo actualizados.</p>
         </div>
       </div>
 
