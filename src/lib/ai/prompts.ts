@@ -1,5 +1,7 @@
-export function extractAgreementsPrompt(rawMinute: string, participants: { leader: string; collaborator: string }): string {
+export function extractAgreementsPrompt(rawMinute: string, participants: { leader: string; collaborator: string }, today: string): string {
   return `Eres un asistente especializado en reuniones 1:1. Extrae los acuerdos de esta minuta de reunión.
+
+Fecha de hoy: ${today}. Resuelve cualquier fecha relativa o parcial de la minuta (p. ej. "el viernes", "este mes", "antes del 18") tomando HOY como referencia. El año de todo "due_date" debe ser el año en curso o posterior — NUNCA un año pasado.
 
 Participantes:
 - Líder: ${participants.leader}
@@ -25,6 +27,7 @@ Reglas:
 - No inventes acuerdos que no estén en la minuta
 - Si no hay acuerdos claros, devuelve { "agreements": [] }
 - La confianza (confidence) va de 0.0 a 1.0
+- El "due_date" NUNCA debe ser anterior a hoy (${today}); ante ambigüedad de año usa el año en curso
 
 REGLAS DE PRIVACIDAD — críticas, no negociables:
 

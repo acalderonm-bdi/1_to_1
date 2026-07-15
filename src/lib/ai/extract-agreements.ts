@@ -31,10 +31,13 @@ export async function extractAgreements(
 
   try {
     const client = getAIClient()
+    // Fecha de hoy en la zona horaria de la organización, para que el modelo
+    // ancle el año de las fechas relativas (evita due_date en años pasados).
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date())
     const prompt = extractAgreementsPrompt(input.rawMinute, {
       leader: `${input.leader.name} (${input.leader.email})`,
       collaborator: `${input.collaborator.name} (${input.collaborator.email})`,
-    })
+    }, today)
 
     const response = await client.messages.create({
       model,
