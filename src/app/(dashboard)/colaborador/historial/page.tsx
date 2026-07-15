@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Calendar, Clock, Video, MapPin, CheckSquare, ArrowRight, Filter, AlertTriangle } from 'lucide-react'
 import { STATUS_LABELS } from '@/lib/constants'
 import { EmptyState } from '@/components/shared/empty-state'
+import { meetingTime, meetingDate } from '@/lib/meetings/format'
 
 const STATUS_TONE: Record<string, string> = {
   agendada: 'blue', realizada: 'green', no_realizada: 'red', en_disputa: 'orange',
@@ -98,7 +99,6 @@ export default async function HistorialPage({
           ) : (
             filtered.map(m => {
               const leader = Array.isArray(m.leader) ? m.leader[0] : m.leader
-              const d = new Date(m.scheduled_at)
               const agreementCount = m.agreements.length
               const compliedCount = m.agreements.filter(a => a.status === 'cumplido').length
               return (
@@ -112,7 +112,7 @@ export default async function HistorialPage({
                     </div>
                     <div className="list-row__meta">
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <Clock size={11} /> {d.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })} · {d.toTimeString().slice(0, 5)}
+                        <Clock size={11} /> {meetingDate(m.scheduled_at, { weekday: 'short', day: 'numeric', month: 'short' })} · {meetingTime(m.scheduled_at)}
                       </span>
                       {m.modality === 'virtual' ? <Video size={12} /> : <MapPin size={12} />}
                       <span>{m.duration_minutes} min</span>

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { CheckSquare, Calendar, Filter } from 'lucide-react'
 import { EmptyState } from '@/components/shared/empty-state'
 import { AgreementStatusPill } from '@/components/one-on-one/agreement-status-pill'
+import { meetingDate } from '@/lib/meetings/format'
 
 const FILTERS = [
   { key: 'all',         label: 'Todos' },
@@ -65,7 +66,7 @@ export default async function AcuerdosPage({
     return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })
   }
   function formatShort(iso: string) {
-    return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
+    return meetingDate(iso, { day: 'numeric', month: 'short' })
   }
 
   return (

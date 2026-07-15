@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Calendar, CheckSquare, ArrowRight, Video, MapPin, Sparkles, AlertCircle } from 'lucide-react'
 import { STATUS_LABELS, AGREEMENT_LABELS } from '@/lib/constants'
 import { EmptyState } from '@/components/shared/empty-state'
+import { meetingTime, meetingDate } from '@/lib/meetings/format'
 
 export default async function ColaboradorPage() {
   const supabase = createClient()
@@ -129,9 +130,8 @@ export default async function ColaboradorPage() {
           </div>
           <div className="ui-card__body ui-card__body--flush">
             {pendingVobo.map(m => {
-              const d = new Date(m.scheduled_at)
-              const dateLabel = d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
-              const time = d.toTimeString().slice(0, 5)
+              const dateLabel = meetingDate(m.scheduled_at, { weekday: 'long', day: 'numeric', month: 'long' })
+              const time = meetingTime(m.scheduled_at)
               return (
                 <div key={m.id} className="list-row">
                   <div className="list-row__content">
@@ -174,10 +174,9 @@ export default async function ColaboradorPage() {
               />
             ) : (
               upcoming.map(m => {
-                const d = new Date(m.scheduled_at)
-                const day = d.getDate().toString().padStart(2, '0')
-                const month = MONTHS[d.getMonth()]
-                const time = d.toTimeString().slice(0, 5)
+                const day = meetingDate(m.scheduled_at, { day: '2-digit' })
+                const month = MONTHS[Number(meetingDate(m.scheduled_at, { month: 'numeric' })) - 1]
+                const time = meetingTime(m.scheduled_at)
                 return (
                   <div key={m.id} className="up-row">
                     <div className="up-row__date">

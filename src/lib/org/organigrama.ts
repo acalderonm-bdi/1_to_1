@@ -165,3 +165,10 @@ export function buildOrgForest(
   sortNodes(roots)
   return roots
 }
+
+/** Total de personas bajo un nodo (todo el subárbol, sin incluir al nodo). */
+export function countDescendants(node: OrgNode): number {
+  let n = node.children.length
+  for (const child of node.children) n += countDescendants(child)
+  return n
+}

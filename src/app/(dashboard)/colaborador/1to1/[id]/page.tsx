@@ -9,6 +9,7 @@ import { labelForReason } from '@/components/one-on-one/non-realization-reasons'
 import { NonRealizationCTA } from '@/components/one-on-one/non-realization-cta'
 import { EmptyState } from '@/components/shared/empty-state'
 import { getOrgSetting } from '@/lib/org-settings'
+import { meetingTime, meetingDate } from '@/lib/meetings/format'
 
 const STATUS_TONE: Record<string, string> = {
   agendada: 'blue', realizada: 'green', no_realizada: 'red', en_disputa: 'orange',
@@ -92,9 +93,8 @@ export default async function OneOnOneDetailPage({ params }: { params: { id: str
   const myVobo = myVoboRow ? { confirmed: myVoboRow.confirmed } : null
   const partnerVoboRow = vobos.find(v => v.user_id !== user.id)
   const partnerVobo: boolean | null = partnerVoboRow ? partnerVoboRow.confirmed : null
-  const date = new Date(meeting.scheduled_at)
-  const dateLabel = date.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  const time = date.toTimeString().slice(0, 5)
+  const dateLabel = meetingDate(meeting.scheduled_at, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const time = meetingTime(meeting.scheduled_at)
 
   const participants = leader && collaborator
     ? {

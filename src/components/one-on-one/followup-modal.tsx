@@ -75,7 +75,7 @@ export function FollowupModal({ agreements, oneOnOneId, open, onClose }: Followu
               <p className="agreement__desc" style={{ marginBottom: 10 }}>{a.description}</p>
               {a.due_date && (
                 <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 8 }}>
-                  Vencía: {a.due_date}
+                  Vencía: {new Date(a.due_date).toLocaleDateString('es-MX', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' })}
                 </div>
               )}
               <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>

@@ -8,6 +8,7 @@ import {
 import { STATUS_LABELS, AGREEMENT_LABELS, ROLE_LABELS } from '@/lib/constants'
 import { EmptyState } from '@/components/shared/empty-state'
 import { UserAdminControls } from '@/components/arquitectura-humana/user-admin-controls'
+import { meetingTime, meetingDate } from '@/lib/meetings/format'
 
 const STATUS_TONE: Record<string, string> = {
   agendada: 'blue', realizada: 'green', no_realizada: 'red', en_disputa: 'orange',
@@ -275,7 +276,6 @@ export default async function HrUserProfile({ params }: { params: { id: string }
                     ? (Array.isArray(m.counterpart_collab) ? m.counterpart_collab[0] : m.counterpart_collab)
                     : (Array.isArray(m.counterpart_leader) ? m.counterpart_leader[0] : m.counterpart_leader)
                   const role = m.leader_id === params.id ? 'como líder' : 'como colab'
-                  const d = new Date(m.scheduled_at)
                   return (
                     <div key={m.id} className="list-row">
                       <div className="list-row__content">
@@ -286,7 +286,7 @@ export default async function HrUserProfile({ params }: { params: { id: string }
                           <span>1:1 con {counterpart?.full_name ?? '—'} <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 12 }}>({role})</span></span>
                         </div>
                         <div className="list-row__meta">
-                          <span><Clock size={11} /> {d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })} · {d.toTimeString().slice(0, 5)}</span>
+                          <span><Clock size={11} /> {meetingDate(m.scheduled_at, { day: 'numeric', month: 'short' })} · {meetingTime(m.scheduled_at)}</span>
                           {m.modality === 'virtual' ? <Video size={12} /> : <MapPin size={12} />}
                           <span>{m.duration_minutes} min</span>
                           {m.agreements.length > 0 && (

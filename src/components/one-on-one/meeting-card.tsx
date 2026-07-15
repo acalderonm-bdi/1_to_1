@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Calendar, Clock, Video, MapPin, ExternalLink, ArrowRight } from 'lucide-react'
 import { STATUS_LABELS } from '@/lib/constants'
 import { NonRealizationModal } from './non-realization-modal'
+import { meetingTime, meetingDate } from '@/lib/meetings/format'
 
 const STATUS_TONE: Record<string, string> = {
   agendada: 'blue', realizada: 'green', no_realizada: 'red', en_disputa: 'orange',
@@ -29,8 +30,8 @@ interface MeetingCardProps {
 export function MeetingCard({ meeting, partnerName, partnerInitials, partnerColor = 'av-blue', href }: MeetingCardProps) {
   const [showNonRealization, setShowNonRealization] = useState(false)
   const date = new Date(meeting.scheduled_at)
-  const dateLabel = date.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })
-  const time = date.toTimeString().slice(0, 5)
+  const dateLabel = meetingDate(meeting.scheduled_at, { weekday: 'short', day: 'numeric', month: 'short' })
+  const time = meetingTime(meeting.scheduled_at)
   const isVirtual = meeting.modality === 'virtual'
   const canMarkNonRealized = meeting.status === 'agendada' && date < new Date()
 

@@ -183,7 +183,10 @@ export function AgreementList({
   function formatDueDate(iso: string) {
     const d = new Date(iso)
     if (isNaN(d.getTime())) return iso
-    return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
+    // due_date es fecha-only (columna `date`); se formatea en UTC para que el
+    // día calendario sea estable server (UTC) y cliente (tz local) — evita el
+    // off-by-one que mostraba el día anterior en el navegador.
+    return d.toLocaleDateString('es-MX', { timeZone: 'UTC', day: 'numeric', month: 'short' })
   }
 
   return (
