@@ -115,7 +115,7 @@ export default async function EquipoPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11.5, color: 'var(--text-muted)', flexShrink: 0 }}>
                           {a.due_date && (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              <Calendar size={11} /> {a.due_date}
+                              <Calendar size={11} /> {new Date(a.due_date).toLocaleDateString('es-MX', { timeZone: 'UTC', day: 'numeric', month: 'short' })}
                             </span>
                           )}
                           <span className={`ui-badge ui-badge--${STATUS_TONE[a.status] ?? 'slate'}`}>
