@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { deriveStatusFromVobos } from '@/lib/meetings/status'
 import type { ActionResult } from '@/types/domain'
 
 const voboSchema = z.object({
@@ -23,7 +25,7 @@ export async function submitVobo(
   // Verificar que el usuario es participante
   const { data: meeting } = await supabase
     .from('one_on_ones')
-    .select('id, leader_id, collaborator_id')
+    .select('id, leader_id, collaborator_id, status')
     .eq('id', parsed.data.oneOnOneId)
     .or(`leader_id.eq.${user.id},collaborator_id.eq.${user.id}`)
     .maybeSingle()
@@ -59,6 +61,28 @@ export async function submitVobo(
     )
 
   if (error) return { success: false, error: error.message }
+
+  // F3: dejar la columna `status` consistente con los VoBos de ambos (fuente
+  // única de verdad). Antes el status quedaba en 'agendada' aunque ambos
+  // aprobaran, y cada vista derivaba el estado distinto (líder "Agendada" /
+  // colaborador "Realizada"). Solo se toca cuando la 1:1 sigue en 'agendada':
+  // así NO se pisa un estado ya decidido por RH (resolución de disputa) ni por
+  // otro flujo. Se usa el admin client porque la RLS no deja al colaborador
+  // actualizar la 1:1.
+  const m = meeting as { leader_id: string; collaborator_id: string; status: string }
+  if (m.status === 'agendada') {
+    const admin = createAdminClient()
+    const { data: allVobos } = await admin
+      .from('vobos')
+      .select('user_id, confirmed')
+      .eq('one_on_one_id', parsed.data.oneOnOneId)
+    const leaderVobo = (allVobos ?? []).find((v) => v.user_id === m.leader_id)
+    const collaboratorVobo = (allVobos ?? []).find((v) => v.user_id === m.collaborator_id)
+    const newStatus = deriveStatusFromVobos(leaderVobo, collaboratorVobo)
+    if (newStatus) {
+      await admin.from('one_on_ones').update({ status: newStatus }).eq('id', parsed.data.oneOnOneId)
+    }
+  }
 
   revalidatePath('/colaborador')
   revalidatePath('/lider')
