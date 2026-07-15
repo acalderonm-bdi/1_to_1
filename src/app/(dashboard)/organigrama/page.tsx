@@ -1,11 +1,12 @@
 import { redirect } from 'next/navigation'
-import { Network, Eye, Users } from 'lucide-react'
+import { Network, Eye, Users, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   computeVisibleIds,
   buildOrgForest,
   hasFullOrgView,
+  countDescendants,
   type OrgNode,
   type OrgUser,
   type OrgViewer,
@@ -57,6 +58,12 @@ export default async function OrganigramaPage() {
 
   return (
     <div className="page">
+      <style>{`
+        .org-tree summary { list-style: none; }
+        .org-tree summary::-webkit-details-marker { display: none; }
+        .org-tree .org-chev { transition: transform .12s ease; }
+        .org-tree details[open] > summary .org-chev { transform: rotate(90deg); }
+      `}</style>
       <div className="page__head">
         <div>
           <span className="page__eyebrow"><Network size={12} /> Estructura organizacional</span>
@@ -81,7 +88,7 @@ export default async function OrganigramaPage() {
       ) : (
         <div className="ui-card">
           <div className="ui-card__body" style={{ overflowX: 'auto' }}>
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            <ul className="org-tree" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
               {forest.map((node) => (
                 <OrgNodeItem key={node.user.id} node={node} viewerId={viewer.id} depth={0} />
               ))}
@@ -107,6 +114,8 @@ function OrgNodeItem({ node, viewerId, depth }: { node: OrgNode; viewerId: strin
   const isViewer = u.id === viewerId
   const nivel = u.nivel_puesto ?? ''
   const hasChildren = node.children.length > 0
+  const direct = node.children.length
+  const total = hasChildren ? countDescendants(node) : 0
 
   const card = (
     <div
@@ -114,7 +123,7 @@ function OrgNodeItem({ node, viewerId, depth }: { node: OrgNode; viewerId: strin
         display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
         borderRadius: 8, border: '1px solid var(--border)',
         background: isViewer ? 'hsl(var(--accent) / 0.12)' : 'var(--card)',
-        marginBottom: 6, minWidth: 320,
+        marginBottom: 6, minWidth: 320, flex: 1,
       }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -131,9 +140,29 @@ function OrgNodeItem({ node, viewerId, depth }: { node: OrgNode; viewerId: strin
           {u.puesto ?? '—'}{u.sub_area ? ` · ${u.sub_area}` : ''}
         </div>
       </div>
+      {hasChildren && (
+        <span
+          className="ui-badge ui-badge--blue"
+          title={`${total} a cargo · ${direct} ${direct === 1 ? 'directo' : 'directos'}`}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
+        >
+          <Users size={11} /> {total} a cargo
+        </span>
+      )}
       <span className={`ui-badge ui-badge--${NIVEL_TONE[nivel] ?? 'slate'}`}>
         {NIVEL_LABEL[nivel] ?? nivel ?? '—'}
       </span>
+    </div>
+  )
+
+  const row = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      {hasChildren ? (
+        <ChevronRight size={15} className="org-chev" aria-hidden style={{ flexShrink: 0, color: 'var(--text-muted)' }} />
+      ) : (
+        <span aria-hidden style={{ width: 15, flexShrink: 0 }} />
+      )}
+      {card}
     </div>
   )
 
@@ -141,7 +170,7 @@ function OrgNodeItem({ node, viewerId, depth }: { node: OrgNode; viewerId: strin
     <li style={{ paddingLeft: depth === 0 ? 0 : 22, borderLeft: depth === 0 ? 'none' : '1px solid var(--border)' }}>
       {hasChildren ? (
         <details open={depth < 2}>
-          <summary style={{ cursor: 'pointer', listStyle: 'none' }}>{card}</summary>
+          <summary style={{ cursor: 'pointer' }}>{row}</summary>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {node.children.map((child) => (
               <OrgNodeItem key={child.user.id} node={child} viewerId={viewerId} depth={depth + 1} />
@@ -149,7 +178,7 @@ function OrgNodeItem({ node, viewerId, depth }: { node: OrgNode; viewerId: strin
           </ul>
         </details>
       ) : (
-        card
+        row
       )}
     </li>
   )

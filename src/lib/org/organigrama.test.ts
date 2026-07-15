@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeVisibleIds, buildOrgForest, hasFullOrgView, type OrgUser, type OrgViewer, type OrgRelation } from './organigrama'
+import { computeVisibleIds, buildOrgForest, hasFullOrgView, countDescendants, type OrgUser, type OrgViewer, type OrgRelation } from './organigrama'
 import { HR_AREA } from '@/lib/sync/org-sync'
 
 function user(id: string, over: Partial<OrgUser> = {}): OrgUser {
@@ -152,5 +152,24 @@ describe('buildOrgForest', () => {
     const users = [user('a'), user('b', { is_active: false })]
     const forest = buildOrgForest(users, [], 'all')
     expect(forest.map((n) => n.user.id)).toEqual(['a'])
+  })
+})
+
+describe('countDescendants', () => {
+  const forest = buildOrgForest(USERS, RELATIONS, 'all')
+  const byId = (id: string) => {
+    let found: ReturnType<typeof buildOrgForest>[number] | undefined
+    const walk = (nodes: typeof forest) => nodes.forEach((n) => { if (n.user.id === id) found = n; walk(n.children) })
+    walk(forest)
+    return found as ReturnType<typeof buildOrgForest>[number]
+  }
+
+  it('hoja (operativo) no tiene a nadie a cargo', () => {
+    expect(countDescendants(byId('op1'))).toBe(0)
+  })
+  it('cuenta directos + indirectos (subárbol completo)', () => {
+    expect(countDescendants(byId('ger'))).toBe(2)   // op1, op2
+    expect(countDescendants(byId('dir'))).toBe(5)   // ger, ger2, op1, op2, op3
+    expect(countDescendants(byId('dg'))).toBe(6)    // dir + los 5 de abajo
   })
 })
