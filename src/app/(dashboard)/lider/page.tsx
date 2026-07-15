@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Users, Calendar, TrendingUp, Plus, ArrowRight, UserPlus, AlertCircle, Video, MapPin, CheckSquare, Clock } from 'lucide-react'
 import { STATUS_LABELS } from '@/lib/constants'
 import { EmptyState } from '@/components/shared/empty-state'
+import { meetingTime, meetingDate } from '@/lib/meetings/format'
 
 const STATUS_TONE: Record<string, string> = {
   agendada: 'blue', realizada: 'green', no_realizada: 'red', en_disputa: 'orange',
@@ -208,9 +209,8 @@ export default async function LiderPage() {
           </div>
           <div className="ui-card__body ui-card__body--flush">
             {pendingVobo.map(m => {
-              const d = new Date(m.scheduled_at)
-              const dateLabel = d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
-              const time = d.toTimeString().slice(0, 5)
+              const dateLabel = meetingDate(m.scheduled_at, { weekday: 'long', day: 'numeric', month: 'long' })
+              const time = meetingTime(m.scheduled_at)
               const collabName = collabNameMap[m.collaborator_id] ?? 'colaborador'
               return (
                 <div key={m.id} className="list-row">
@@ -332,9 +332,9 @@ export default async function LiderPage() {
                   </div>
                   <div className="list-row__meta">
                     <span style={{ textTransform: 'capitalize' }}>
-                      {new Date(ownPendingVobo.scheduled_at).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      {meetingDate(ownPendingVobo.scheduled_at, { weekday: 'short', day: 'numeric', month: 'short' })}
                       {' · '}
-                      {new Date(ownPendingVobo.scheduled_at).toTimeString().slice(0, 5)}
+                      {meetingTime(ownPendingVobo.scheduled_at)}
                     </span>
                   </div>
                 </div>
@@ -351,9 +351,9 @@ export default async function LiderPage() {
                   </div>
                   <div className="list-row__meta">
                     <span style={{ textTransform: 'capitalize' }}>
-                      {new Date(ownNextMeeting.scheduled_at).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      {meetingDate(ownNextMeeting.scheduled_at, { weekday: 'long', day: 'numeric', month: 'long' })}
                       {' · '}
-                      {new Date(ownNextMeeting.scheduled_at).toTimeString().slice(0, 5)}
+                      {meetingTime(ownNextMeeting.scheduled_at)}
                     </span>
                     {ownNextMeeting.modality === 'virtual' ? <Video size={12} /> : <MapPin size={12} />}
                   </div>
@@ -383,9 +383,8 @@ export default async function LiderPage() {
           </div>
           <div className="ui-card__body ui-card__body--flush">
             {recentMeetings.map(m => {
-              const d = new Date(m.scheduled_at)
-              const dateLabel = d.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })
-              const time = d.toTimeString().slice(0, 5)
+              const dateLabel = meetingDate(m.scheduled_at, { weekday: 'short', day: 'numeric', month: 'short' })
+              const time = meetingTime(m.scheduled_at)
               const collabName = collabNameMap[m.collaborator_id] ?? 'colaborador'
               return (
                 <div key={m.id} className="list-row">

@@ -9,6 +9,7 @@ import { STATUS_LABELS, AGREEMENT_LABELS } from '@/lib/constants'
 import { EmptyState } from '@/components/shared/empty-state'
 import { TransferBanner } from '@/components/shared/transfer-banner'
 import { getOrgSetting } from '@/lib/org-settings'
+import { meetingTime, meetingDate } from '@/lib/meetings/format'
 
 const STATUS_TONE: Record<string, string> = {
   agendada: 'blue', realizada: 'green', no_realizada: 'red', en_disputa: 'orange',
@@ -336,7 +337,6 @@ export default async function LeaderCollabProfile({ params }: { params: { id: st
             meetings.map(m => {
               const agreementCount = m.agreements.length
               const compliedCount = m.agreements.filter(a => a.status === 'cumplido').length
-              const d = new Date(m.scheduled_at)
               return (
                 <div key={m.id} className="list-row">
                   <div className="list-row__content">
@@ -345,7 +345,7 @@ export default async function LeaderCollabProfile({ params }: { params: { id: st
                         {STATUS_LABELS[m.status]}
                       </span>
                       <span>
-                        {d.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })} · {d.toTimeString().slice(0, 5)}
+                        {meetingDate(m.scheduled_at, { weekday: 'short', day: 'numeric', month: 'short' })} · {meetingTime(m.scheduled_at)}
                       </span>
                     </div>
                     <div className="list-row__meta">
